@@ -348,8 +348,14 @@ details.card[open]>summary .putar{transform:rotate(90deg)}
 .pilih-baris:hover{background:var(--surface)}
 .pilih-baris input{width:auto;flex:none}
 .pilih-kump{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:9px 8px 4px}
-.folder-baris{display:grid;grid-template-columns:80px 1fr 1.6fr 36px;gap:8px;align-items:center;margin-bottom:8px}
-@media(max-width:640px){.folder-baris{grid-template-columns:70px 1fr 36px}.folder-baris .fb-kump{grid-column:1/-1;order:5}}
+.folder-baris{display:grid;grid-template-columns:80px minmax(0,1fr) minmax(0,1.6fr) 96px 36px;gap:8px;align-items:center;margin-bottom:8px}
+.fb-kongsi{font-size:12.5px;align-items:center}
+@media(max-width:640px){.folder-baris{grid-template-columns:70px minmax(0,1fr) 36px}.folder-baris .fb-kump{grid-column:1/-1;order:5}.folder-baris .fb-kongsi{grid-column:1/-1;order:6}}
+.cari-rujukan{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.rj-kad{padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.rj-item{display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap}
+.rj-item .fk-lbl{min-width:40px;padding:2px 6px;font-size:11px}
+.b-rujukan{background:var(--sky-soft);color:var(--sky)}
 
 /* ---------- CPD ---------- */
 .hero-cpd{display:grid;grid-template-columns:minmax(260px,320px) 1fr;gap:16px}
@@ -499,11 +505,12 @@ details.card[open]>summary .putar{transform:rotate(90deg)}
    PORTAL PPA KIAS — ANTARA MUKA
    Berfungsi dalam dua mod:
    1. Dihoskan oleh Google Apps Script (disyorkan): memanggil google.script.run.
-   2. Fail HTML berasingan (cth. Google Sites / hos web): isi CONFIG.API_URL
-      dengan pautan Web App, dan deploy dengan akses "Anyone".
+   2. Fail HTML berasingan (cth. GitHub Pages): memanggil CONFIG.API_URL melalui
+      fetch. Deployment Web App mesti ditetapkan kepada akses "Anyone".
+   Fail yang sama boleh digunakan untuk kedua-dua mod tanpa diubah.
    ===================================================================== */
 const CONFIG = {
-  API_URL: '' /*URL_API*/,
+  API_URL: 'https:\/\/script.google.com/macros/s/AKfycbxrGa-EYfSir13DAW_P_se5iKiob2fwVzcyafXfyG9NdG3hKa7BvNLtNHp3xqKyZkHtYw/exec' /*URL_API*/,
   LOGO: ['https:\/\/lh3.googleusercontent.com/d/1Z_Vcc2Ism_XGAC2dnUIL2AM6QI93zzC-',
          'https:\/\/drive.google.com/thumbnail?id=1Z_Vcc2Ism_XGAC2dnUIL2AM6QI93zzC-&sz=w400'],
   TERUS_MB: 5,
@@ -1003,6 +1010,7 @@ function kadPanduanStaf(){
       <li>Tekan <b>Tambah kursus</b> bagi setiap kursus yang anda ajar.</li>
       <li>Buka kursus, kemudian tekan <b>Muat naik</b> pada item folder berkenaan. Status bertukar kepada <b>Lengkap</b> secara automatik.</li>
       <li>Tandakan <b>TB</b> (tidak berkaitan) bagi item yang tidak diperlukan, contohnya labsheet amali.</li>
+      <li>Gunakan <b>Cari fail rujukan PdP</b> di halaman Fail Kursus untuk melihat bahan pengajaran pensyarah lain mengikut kod atau nama kursus.</li>
       <li>Semak jam latihan anda di <b>CPD Pensyarah</b>. Rekod CPD dikemas kini oleh PPA.</li></ol>
     ${!saya() ? '<div class="notis" style="margin:14px 0 0">Akaun anda belum dipautkan kepada rekod pensyarah. Hubungi PPA untuk memautkannya.</div>' : ''}</div>`;
 }
@@ -1090,10 +1098,53 @@ function lukisFK(){
   }
   if(!A && !saya()) h += `<div class="notis">Akaun anda belum dipautkan kepada rekod pensyarah. Hubungi PPA untuk memautkan akaun supaya anda boleh mendaftar kursus dan memuat naik fail.</div>`;
   if(saya()) h += bahagianKursusSaya(sid, fol);
+  if(!S.paparPenuh) h += bahagianCariRujukan(sid);
   h += S.paparPenuh ? bahagianFKPenuh(sid) : bahagianFKRingkas(sid);
   h += panduanFolder(fol);
   el('halaman').innerHTML = h;
-  if(S.paparPenuh){ lukisSenaraiFK(); cartaFK(sid); } else cartaFKRingkas(sid);
+  if(S.paparPenuh){ lukisSenaraiFK(); cartaFK(sid); } else { lukisRujukan(); cartaFKRingkas(sid); }
+}
+
+/* ---------- carian fail rujukan PdP (staf) ---------- */
+function bahagianCariRujukan(sid){
+  const kongsi = folderSesi(sid).filter(f => f.kongsi);
+  const q = UI.fk.carian && UI.fk.carian.sesi === sid ? UI.fk.carian.q : '';
+  return `<section class="blok"><div class="seclabel"><span class="eyebrow">Cari fail rujukan PdP</span><span class="mini">Lihat bahan pengajaran yang dimuat naik oleh pensyarah lain bagi sesi ini</span></div>
+    <div class="card pad">
+      <form class="cari-rujukan" onsubmit="return cariRujukan(event)">
+        <div class="cari">${ik('cari')}<input type="search" id="rjQ" value="${esc(q)}" placeholder="Kod atau nama kursus, cth. USL1013 atau AKIDAH" aria-label="Kod atau nama kursus" autocomplete="off"></div>
+        <button class="btn btn-primary" type="submit" id="rjBtn">${ik('cari')}Cari</button>
+      </form>
+      <p class="mini" style="margin-top:10px;line-height:1.7">${kongsi.length
+        ? 'Item yang boleh dirujuk: ' + kongsi.map(f => `<span class="badge b-rujukan" title="${esc(f.desc)}">${esc(f.label)}</span>`).join(' ') + '. Dokumen yang mengandungi maklumat pelajar, markah atau penilaian tidak dikongsi.'
+        : 'Tiada item folder dibuka sebagai rujukan bagi sesi ini.'}</p>
+      <div id="fkRujukan"></div>
+    </div></section>`;
+}
+async function cariRujukan(ev){
+  if(ev) ev.preventDefault();
+  const q = (el('rjQ').value || '').trim(), sid = UI.fk.sesi;
+  if(q.length < 2){ toast('Masukkan sekurang-kurangnya 2 aksara kod atau nama kursus.', 'ralat'); return false; }
+  const btn = el('rjBtn'); if(btn) btn.disabled = true;
+  await cuba(async () => { const r = await api('fkCari', { sesi: sid, q }); UI.fk.carian = { sesi: sid, q, res: r }; lukisRujukan(); });
+  if(el('rjBtn')) el('rjBtn').disabled = false;
+  return false;
+}
+function lukisRujukan(){
+  const box = el('fkRujukan'); if(!box) return;
+  const c = UI.fk.carian;
+  if(!c || c.sesi !== UI.fk.sesi){ box.innerHTML = ''; return; }
+  const r = c.res, fol = folderSesi(c.sesi);
+  if(!r.hasil.length){ box.innerHTML = `<div class="kosong" style="padding:24px 10px"><div class="serif kosong-tajuk">Tiada kursus ditemui</div><p class="mini">Tiada kursus pensyarah lain yang sepadan dengan "${esc(c.q)}" dalam sesi ini.</p></div>`; return; }
+  box.innerHTML = `<p class="mini" style="margin:14px 0 10px">${r.jumlah} kursus ditemui bagi "<b>${esc(c.q)}</b>"${r.jumlah > r.hasil.length ? `. Dipaparkan ${r.hasil.length} yang pertama; perhalusi carian untuk hasil lain.` : ''}</p>
+    <div class="grid-kursus">${r.hasil.map(k => {
+      const kumpulan = fol.filter(f => k.fail.some(x => x.folderKey === f.key));
+      return `<div class="card rj-kad">
+        <div><div class="kk-kod">${esc(k.kod)}</div><div class="mini">${esc(k.pensyarah)}${k.fakulti ? ' · ' + esc(k.fakulti) : ''}</div></div>
+        ${k.fail.length ? kumpulan.map(f => `<div><div class="rj-item"><span class="fk-lbl">${esc(f.label)}</span><span class="mini">${esc(f.desc)}</span></div>
+            <div class="fk-fail" style="padding-left:0;margin-top:6px">${k.fail.filter(x => x.folderKey === f.key).map(x => `<span class="fail-cip">${ikonFail(x.mime, x.nama)}<button class="cip-nama" onclick="lihatFail('fk',${x.id})" title="Lihat ${esc(x.nama)}">${esc(x.nama)}</button><small>${fmtSaiz(x.saiz)}</small></span>`).join('')}</div></div>`).join('')
+          : '<p class="mini">Belum ada fail rujukan dimuat naik bagi kursus ini.</p>'}
+      </div>`; }).join('')}</div>`;
 }
 function menuFK(){
   const A = isAdmin();
@@ -1251,7 +1302,7 @@ function itemFolder(k, f, boleh, A){
   return `<div class="fk-item st-${v.toLowerCase()}" ${boleh ? `ondragover="seretAtas(event,this)" ondragleave="this.classList.remove('seret')" ondrop="jatuhFail(event,${k.id},'${f.key}',this)"` : ''}>
     <div class="fk-item-baris">
       <span class="fk-lbl">${esc(f.label)}</span>
-      <div class="fk-item-teks"><b>${esc(f.desc)}</b><div class="mini">${fail.length ? fail.length + ' fail' : 'Tiada fail'}</div></div>
+      <div class="fk-item-teks"><b>${esc(f.desc)}</b><div class="mini">${fail.length ? fail.length + ' fail' : 'Tiada fail'}${f.kongsi ? ` · <span class="badge b-rujukan" title="Fail item ini boleh dilihat oleh staf lain sebagai rujukan PdP">Dikongsi sebagai rujukan</span>` : ''}</div></div>
       <div class="fk-item-kawal">${kawal}${boleh ? `<label class="btn btn-ghost btn-sm">${ik('naik', 14)}Muat naik<input type="file" multiple hidden onchange="muatNaikItem(${k.id},'${f.key}',this.files,this)"></label>` : ''}</div>
     </div>
     ${fail.length ? `<div class="fk-fail">${fail.map(x => `<span class="fail-cip">${ikonFail(x.mime, x.nama)}<button class="cip-nama" onclick="lihatFail('fk',${x.id})" title="Lihat ${esc(x.nama)}">${esc(x.nama)}</button><small>${fmtSaiz(x.saiz)}</small>${boleh ? `<button class="cip-x" onclick="padamFailFK(${x.id},${k.id})" aria-label="Padam ${esc(x.nama)}" title="Padam fail">${ik('x', 12)}</button>` : ''}</span>`).join('')}</div>` : ''}
@@ -1440,10 +1491,10 @@ async function padamSesi(id){
 }
 function modalUrusFolder(){
   const sid = UI.fk.sesi, sesi = S.fk.sesi.find(s => s.id === sid); if(!sesi) return;
-  UI.folderDraf = folderSesi(sid).map(f => ({ key:f.key, label:f.label, kumpulan:f.kumpulan, desc:f.desc }));
+  UI.folderDraf = folderSesi(sid).map(f => ({ key:f.key, label:f.label, kumpulan:f.kumpulan, desc:f.desc, kongsi:!!f.kongsi }));
   bukaModal({ tajuk:'Struktur senarai semak folder', desk:'Sesi ' + sesi.nama + '. Perubahan hanya terpakai pada sesi ini.', lebar:true,
-    isi:`<div class="notis info">Setiap item mewakili satu folder dalam fail kursus. <b>Kod</b> dipaparkan pada petak status. <b>Kumpulan</b> menyusun item dalam paparan kursus.</div>
-      <div class="folder-baris mini up" style="margin-bottom:4px"><span>Kod</span><span class="fb-kump">Kumpulan</span><span>Penerangan</span><span></span></div><div id="mfIsi"></div>`,
+    isi:`<div class="notis info">Setiap item mewakili satu folder dalam fail kursus. <b>Kod</b> dipaparkan pada petak status. <b>Kumpulan</b> menyusun item dalam paparan kursus. Tandakan <b>Rujukan</b> untuk membenarkan staf lain melihat fail item itu sebagai panduan PdP. Jangan tandakan item yang mengandungi maklumat pelajar, markah atau penilaian.</div>
+      <div class="folder-baris mini up" style="margin-bottom:4px"><span>Kod</span><span class="fb-kump">Kumpulan</span><span>Penerangan</span><span>Rujukan</span><span></span></div><div id="mfIsi"></div>`,
     kaki:`<button class="btn btn-ghost" style="margin-right:auto" onclick="tambahItemFolder()">${ik('tambah')}Tambah item</button><button class="btn btn-ghost" onclick="lalaiFolder()">Set semula ke asal</button><button class="btn btn-primary" onclick="simpanFolder()">Simpan struktur</button>` });
   lukisDrafFolder();
 }
@@ -1452,9 +1503,10 @@ function lukisDrafFolder(){
     <input type="text" value="${esc(f.label)}" oninput="UI.folderDraf[${i}].label=this.value" aria-label="Kod">
     <input class="fb-kump" type="text" value="${esc(f.kumpulan)}" oninput="UI.folderDraf[${i}].kumpulan=this.value" aria-label="Kumpulan">
     <input type="text" value="${esc(f.desc)}" oninput="UI.folderDraf[${i}].desc=this.value" aria-label="Penerangan">
+    <label class="semak fb-kongsi" title="Staf lain boleh melihat fail item ini sebagai rujukan PdP"><input type="checkbox" ${f.kongsi ? 'checked' : ''} onchange="UI.folderDraf[${i}].kongsi=this.checked" aria-label="Rujukan staf bagi ${esc(f.label)}"> Rujukan</label>
     <button class="btn-ikon bahaya" onclick="UI.folderDraf.splice(${i},1);lukisDrafFolder()" aria-label="Buang item">${ik('padam', 15)}</button></div>`).join('');
 }
-function tambahItemFolder(){ const n = UI.folderDraf.length + 1; UI.folderDraf.push({ key:'', label:'F' + n, kumpulan: n + '. Folder tambahan', desc:'Folder tambahan' }); lukisDrafFolder(); }
+function tambahItemFolder(){ const n = UI.folderDraf.length + 1; UI.folderDraf.push({ key:'', label:'F' + n, kumpulan: n + '. Folder tambahan', desc:'Folder tambahan', kongsi:false }); lukisDrafFolder(); }
 async function simpanFolder(){ await cuba(async () => { await api('fkFolderSimpan', { sesi: UI.fk.sesi, folder: UI.folderDraf }); tutupModal(); lukisSemula(); }); }
 async function lalaiFolder(){
   if(!await sahkan({ tajuk:'Set semula struktur folder?', mesej:'Struktur folder sesi ini akan dikembalikan kepada 16 item standard asal.', butang:'Set semula' })) return;
