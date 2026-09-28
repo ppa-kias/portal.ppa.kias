@@ -19,6 +19,7 @@
   --amber:#C77A12; --amber-soft:#FBEFD8;
   --clay:#B23D26; --clay-soft:#F7E3DC;
   --sky:#2F5D8A; --sky-soft:#E3ECF5;
+  --plum:#6A4C93; --plum-soft:#EEE8F5;
   --line:#E5DFCE; --line-2:#EFEAD9;
   --shadow:0 1px 2px rgba(19,48,42,.05),0 8px 24px -12px rgba(19,48,42,.18);
   --r:16px;
@@ -127,8 +128,10 @@ a{color:var(--brand)}
 .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.grid-modul4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media(min-width:1560px){.grid-modul4{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:1080px){.grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:760px){.grid-2,.grid-3{grid-template-columns:minmax(0,1fr)}.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}.kepala h1{font-size:23px}}
+@media(max-width:760px){.grid-2,.grid-3,.grid-modul4{grid-template-columns:minmax(0,1fr)}.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}.kepala h1{font-size:23px}}
 @media(max-width:640px){.sm-sembunyi{display:none!important}}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:600;font-size:13.5px;border-radius:10px;padding:9px 14px;border:1px solid transparent;cursor:pointer;transition:.15s;white-space:nowrap;line-height:1.1;text-decoration:none}
@@ -407,6 +410,8 @@ tr.klik{cursor:pointer}
 .kp-k:last-child{border-bottom:none}
 .kp-k-kod{font-weight:800;font-size:13.5px}
 @media(max-width:1000px){.kp-k{grid-template-columns:1fr;gap:8px}}
+table.grid tr.baris-jumlah td{font-weight:800;background:var(--surface-2);border-top:1px solid var(--line)}
+.senarai-ralat{margin:0;padding-left:18px;line-height:1.7;font-size:13px;color:var(--ink-2);max-height:50vh;overflow:auto}
 .splash-ralat{max-width:520px;margin:0 16px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px;box-shadow:var(--shadow);font-size:13.5px;line-height:1.6}
 .splash-ralat h2{font-family:'Fraunces',Georgia,serif;font-size:20px;color:var(--clay);margin-bottom:8px}
 .splash-ralat ul{padding-left:18px;margin:8px 0}
@@ -448,11 +453,12 @@ tr.klik{cursor:pointer}
       <div>
         <div class="eyebrow" style="color:#BFDCCF">Pusat Pembangunan Akademik</div>
         <h1 class="serif login-tajuk">Portal PPA KIAS</h1>
-        <p style="opacity:.86;font-size:14px;margin-top:10px;max-width:40ch;line-height:1.6">Satu tempat untuk memantau penghantaran fail kursus, pencapaian CPD pensyarah dan dokumentasi rasmi PPA.</p>
+        <p style="opacity:.86;font-size:14px;margin-top:10px;max-width:40ch;line-height:1.6">Satu tempat untuk memantau penghantaran fail kursus, pencapaian CPD pensyarah, program akademik dan dokumentasi rasmi PPA.</p>
       </div>
       <div class="login-modul">
         <div><span class="li" data-ik="folder" data-s="18"></span><span><b>Fail Kursus</b><small>Pensyarah memuat naik fail kursus terus ke Google Drive. Kelengkapan dipantau secara automatik.</small></span></div>
         <div><span class="li" data-ik="anugerah" data-s="18"></span><span><b>CPD Pensyarah</b><small>Jam latihan, sasaran tahunan dan laporan mengikut fakulti, individu atau program.</small></span></div>
+        <div><span class="li" data-ik="topi" data-s="18"></span><span><b>Dashboard KP</b><small>Dokumentasi program, statistik pelajar dan graduan, serta pemantauan fail kursus mengikut struktur program.</small></span></div>
         <div><span class="li" data-ik="buku" data-s="18"></span><span><b>Dokumentasi</b><small>Dasar, garis panduan dan borang rasmi yang diterbitkan oleh PPA.</small></span></div>
       </div>
       <div class="login-kaki">Kolej Universiti Islam Antarabangsa Sultan Ismail Petra</div>
@@ -590,7 +596,7 @@ function keadaanKosong(){
     tetapan:{ sasaranCPD:40, stafLihatSemua:false, kategoriDokumen:[], namaInstitusi:'' },
     fakulti:[], pensyarah:[], cpd:{ rekod:[], roster:[] }, fk:{ sesi:[], folder:[], kursus:[], fail:[] },
     dokumen:[], ringkasan:null, pentadbiran:{ pengguna:[], log:[] }, paparPenuh:false, skopFakulti:'',
-    program:{ senarai:[], kursus:[], fail:[], lantikan:[], item:[] } };
+    program:{ senarai:[], kursus:[], fail:[], lantikan:[], item:[], pelajar:[] } };
 }
 let S = keadaanKosong();
 const UI = {
@@ -889,6 +895,21 @@ function ringkasDokProg(p){
   const perlu = S.program.item.length - tb;
   return { ya, tb, perlu, belum: perlu - ya, pct: perlu ? Math.round(ya / perlu * 100) : 100 };
 }
+/* ---- Statistik pelajar program ---- */
+/* Warna mengikut entiti (disahkan untuk rabun warna): graduan, pelajar aktif, tidak aktif (baki), kemasukan (siri tunggal). */
+const WP = { graduan:'#11805F', aktif:'#C08A12', tidakAktif:'#A39D8C', kemasukan:'#4A72B0' };
+function fmtNombor(n){ n = Number(n) || 0; try { return n.toLocaleString('ms-MY'); } catch(e){ return String(n); } }
+function tahunKemasukan(s){ const m = String(s || '').match(/(19|20)\d{2}/); return m ? Number(m[0]) : 0; }
+function pelajarProgram(pid){
+  return S.program.pelajar.filter(r => r.programId === pid).sort((a, b) => (tahunKemasukan(a.kemasukan) - tahunKemasukan(b.kemasukan))
+    || (a.susunan - b.susunan) || String(a.kemasukan).localeCompare(String(b.kemasukan), 'ms', { numeric:true }));
+}
+function tidakAktif(r){ return Math.max(0, (Number(r.pelajar) || 0) - (Number(r.aktif) || 0) - (Number(r.graduan) || 0)); }
+function ringkasPelajar(rows){
+  const o = { kemasukan: rows.length, pelajar:0, aktif:0, graduan:0, tidakAktif:0, terkini: rows[rows.length - 1] || null };
+  rows.forEach(r => { o.pelajar += Number(r.pelajar) || 0; o.aktif += Number(r.aktif) || 0; o.graduan += Number(r.graduan) || 0; o.tidakAktif += tidakAktif(r); });
+  return o;
+}
 function agregatProgFK(p, sid){
   const fol = folderSesi(sid), pk = kursusProgram(p.id), lihat = new Set(), fks = [];
   let ditawar = 0;
@@ -1017,6 +1038,15 @@ const garisSasaran = { id:'garisSasaran', afterDraw(c, a, o){
   ctx.save(); ctx.strokeStyle = '#13302A'; ctx.globalAlpha = .5; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.4;
   ctx.beginPath(); ctx.moveTo(c.chartArea.left, yy); ctx.lineTo(c.chartArea.right, yy); ctx.stroke(); ctx.restore();
 } };
+/* Jumlah di tengah carta donut */
+const tengahDonut = { id:'tengahDonut', afterDraw(c, a, o){
+  if(!o || o.teks == null || !c.chartArea) return;
+  const { ctx, chartArea:{ left, right, top, bottom } } = c, x = (left + right) / 2, y = (top + bottom) / 2;
+  ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#13302A'; ctx.font = "700 24px 'Plus Jakarta Sans',system-ui,sans-serif"; ctx.fillText(o.teks, x, y - 7);
+  ctx.fillStyle = '#65726A'; ctx.font = "600 11px 'Plus Jakarta Sans',system-ui,sans-serif"; ctx.fillText(o.label || '', x, y + 14);
+  ctx.restore();
+} };
 function gabungDalam(a, b){
   const o = Object.assign({}, a);
   for(const k in b){ if(b[k] && typeof b[k] === 'object' && !Array.isArray(b[k])) o[k] = gabungDalam(a[k] || {}, b[k]); else o[k] = b[k]; }
@@ -1033,7 +1063,8 @@ function carta(id, jenis, data, opsyen){
   const o = gabungDalam(asas, opsyen || {});
   const plugins = [];
   if(o._sasaran){ plugins.push(garisSasaran); o.plugins.garisSasaran = { nilai:o._sasaran }; }
-  delete o._sasaran;
+  if(o._tengah){ plugins.push(tengahDonut); o.plugins.tengahDonut = o._tengah; }
+  delete o._sasaran; delete o._tengah;
   try { CARTA[id] = new Chart(c, { type:jenis, data, options:o, plugins }); } catch(e){ console.warn('Carta gagal', e); }
 }
 function hapusCarta(){ Object.keys(CARTA).forEach(k => { try { CARTA[k].destroy(); } catch(e){ /* abaikan */ } delete CARTA[k]; }); }
@@ -1041,7 +1072,7 @@ function hapusCarta(){ Object.keys(CARTA).forEach(k => { try { CARTA[k].destroy(
 /* ============================ HALAMAN: UTAMA ============================ */
 function kadModul(o){
   const jum = (o.bar || []).reduce((a, x) => a + x[0], 0);
-  return `<div class="card kad-btn modul" style="--aksen:${o.aksen};--aksen-soft:${o.aksenSoft}" ${klik(`pergi('${o.ke}')`)}>
+  return `<div class="card kad-btn modul" style="--aksen:${o.aksen};--aksen-soft:${o.aksenSoft}" ${klik(o.js || `pergi('${o.ke}')`)}>
     <div class="modul-kepala"><span class="modul-ikon">${ik(o.ikon, 20)}</span><div><div class="modul-tajuk">${esc(o.tajuk)}</div><div class="mini">${esc(o.sub)}</div></div></div>
     <div class="modul-nilai"><span class="serif">${o.nilai}</span><span class="mini">${esc(o.nilaiLbl)}</span></div>
     ${o.bar ? `<div class="bar-tindan">${jum ? o.bar.map(x => x[0] ? `<span style="width:${x[0] / jum * 100}%;background:${x[1]}" title="${esc(x[2])}: ${x[0]}"></span>` : '').join('') : ''}</div>` : ''}
@@ -1132,7 +1163,7 @@ function lukisUtama(){
       ${!A && isKP() ? `<button class="btn btn-ghost" onclick="UI.kp.prog=null;pergi('ketuaprogram')">${ik('topi')}Dokumentasi program</button>` : ''}</div>
   </section>`;
   if(saya()) h += statusSaya(thn, sid);
-  h += `<section class="blok"><div class="seclabel"><span class="eyebrow">${fakSaya ? 'Modul portal · ' + esc(fakSaya) : 'Modul portal'}</span></div><div class="grid-3">
+  h += `<section class="blok"><div class="seclabel"><span class="eyebrow">${fakSaya ? 'Modul portal · ' + esc(fakSaya) : 'Modul portal'}</span></div><div class="${lihatKP() ? 'grid-modul4' : 'grid-3'}">
     ${kadModul({ ke:'failkursus', aksen:'var(--brand)', aksenSoft:'var(--brand-soft)', ikon:'folder', tajuk:'Laporan Penghantaran Fail Kursus',
       sub: (fakSaya ? fakSaya + ' · ' : '') + (sesi ? 'Sesi ' + sesi.nama : 'Belum ada sesi'), nilai: Fv.kadar + '%', nilaiLbl:'pensyarah lengkap semua kursus',
       bar:[[Fv.lengkap, FK_WARNA.lengkap, 'Selesai'], [Fv.proses, FK_WARNA.proses, 'Sedang proses'], [Fv.belum, FK_WARNA.belum, 'Belum hantar']],
@@ -1141,6 +1172,7 @@ function lukisUtama(){
       sub:(fakSaya ? fakSaya + ' · ' : '') + `Tahun ${thn} · sasaran ${S.tetapan.sasaranCPD} jam`, nilai: Cv.kadar + '%', nilaiLbl:'pensyarah capai sasaran',
       bar:[[Cv.capai, TIER_WARNA.capai, 'Tercapai'], [Cv.hampir, TIER_WARNA.hampir, 'Hampir'], [Cv.rendah, TIER_WARNA.rendah, 'Rendah']],
       stat:[['Tercapai', Cv.capai], ['Hampir', Cv.hampir], ['Rendah', Cv.rendah]], kaki: kakiCPD })}
+    ${lihatKP() ? kadModulKP() : ''}
     ${kadModul({ ke:'dokumentasi', aksen:'var(--sky)', aksenSoft:'var(--sky-soft)', ikon:'buku', tajuk:'Dokumentasi', sub:'Dokumen rasmi PPA',
       nilai: doks.length, nilaiLbl:'dokumen tersedia', stat: topKategori(doks),
       kaki: doks.length ? 'Terkini: ' + fmtTarikh(String(doks[0].tarikh).slice(0, 10)) : 'Belum ada dokumen' })}
@@ -1185,7 +1217,7 @@ function lukisFK(){
     UI.fk.sesi = lalai || null;
   }
   const sid = UI.fk.sesi, sesi = ss.find(s => s.id === sid), fol = folderSesi(sid);
-  let h = `<div class="kepala"><div><div class="eyebrow">Modul 1 · Fail kursus</div><h1 class="serif">Laporan Penghantaran Fail Kursus</h1>
+  let h = `<div class="kepala"><div><div class="eyebrow">Modul · Fail Kursus</div><h1 class="serif">Laporan Penghantaran Fail Kursus</h1>
       <p class="mini">Fail kursus dimuat naik terus melalui portal dan disimpan dalam Google Drive PPA mengikut sesi, fakulti, pensyarah dan kursus.</p></div>
     <div class="kepala-aksi">
       ${ss.length ? `<select class="auto" style="font-weight:700" onchange="UI.fk.sesi=+this.value;lukisFK()" aria-label="Sesi akademik">${ss.map(s => `<option value="${s.id}" ${s.id === sid ? 'selected' : ''}>${esc(s.nama)}</option>`).join('')}</select>` : ''}
@@ -1459,6 +1491,44 @@ async function muatNaikItem(kid, key, files, input){
 function bacaBase64(blob){
   return new Promise((ok, gagal) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = () => gagal(new Error('Tidak dapat membaca fail.')); r.readAsDataURL(blob); });
 }
+/* ---- Fail Excel (SheetJS dimuat hanya apabila diperlukan) ---- */
+const TERIMA_JADUAL = '.csv,.xlsx,.xls,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
+let _xlsx = null;
+function muatXLSX(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  if(!_xlsx) _xlsx = new Promise((ok, gagal) => {
+    const sk = document.createElement('script');
+    sk.src = 'https:\/\/cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    sk.onload = () => window.XLSX ? ok(window.XLSX) : gagal(new Error('Pustaka Excel gagal dimuat.'));
+    sk.onerror = () => { _xlsx = null; sk.remove(); gagal(new Error('Pustaka Excel tidak dapat dimuat. Semak sambungan internet, atau simpan fail sebagai CSV dan cuba lagi.')); };
+    document.head.appendChild(sk);
+  });
+  return _xlsx;
+}
+/** Baca fail CSV/teks, atau helaian pertama fail Excel, sebagai teks jadual. */
+async function bacaFailData(f){
+  if(!/\.(xlsx|xlsm|xls|ods)$/i.test(f.name)) return bacaTeks(f);
+  const X = await muatXLSX();
+  const wb = X.read(new Uint8Array(await f.arrayBuffer()), { type:'array' });
+  const sh = wb.Sheets[wb.SheetNames[0]];
+  if(!sh) throw new Error('Fail Excel tidak mempunyai helaian.');
+  return X.utils.sheet_to_csv(sh, { FS:'\t', blankrows:false });
+}
+/** Muat turun jadual sebagai Excel (.xlsx) atau CSV. */
+async function muatTurunJadual(nama, rows, fmt){
+  if(fmt === 'xlsx'){
+    try {
+      const X = await muatXLSX(), ws = X.utils.aoa_to_sheet(rows), wb = X.utils.book_new();
+      ws['!cols'] = rows[0].map((h, i) => ({ wch: Math.min(48, Math.max(10, ...rows.map(r => String(r[i] ?? '').length + 2))) }));
+      X.utils.book_append_sheet(wb, ws, 'Data');
+      X.writeFile(wb, nama + '.xlsx');
+      toast('Fail Excel dimuat turun.');
+      return;
+    } catch(e){ toast(e.message + ' Fail CSV dimuat turun sebagai ganti.', 'ralat'); }
+  }
+  muatTurunCSV(nama + '.csv', rows);
+  if(fmt !== 'xlsx') toast('CSV dimuat turun.');
+}
 function bacaTeks(f){
   return new Promise((ok, gagal) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => gagal(new Error('Tidak dapat membaca fail.')); r.readAsText(f); });
 }
@@ -1622,7 +1692,7 @@ function modalImportFK(){
   bukaModal({ tajuk:'Import kursus (CSV)', desk:'Sesi ' + sesi.nama + '. Tambah atau kemas kini senarai pensyarah dan kursus secara pukal.', isi:`
     <div class="notis info">Lajur: <b>Nama</b>, <b>Jawatan</b>, <b>Fakulti</b>, <b>KodKursus</b>, <b>PautanDrive</b>, satu lajur status bagi setiap item folder (tajuk lajur ialah kod seperti <b>F2.1</b>; nilai YA / TIDAK / TB), dan <b>Catatan</b>. Baris dengan Nama kosong dianggap kursus tambahan bagi pensyarah di baris sebelumnya. Templat sistem lama juga diterima.</div>
     <div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="templatFK()">${ik('turun', 14)}Muat turun templat</button></div>
-    <div class="borang"><div><label class="fld" for="fkFail">Fail CSV</label><input type="file" id="fkFail" accept=".csv,text/csv,.txt"></div>
+    <div class="borang"><div><label class="fld" for="fkFail">Fail CSV atau Excel</label><input type="file" id="fkFail" accept="${TERIMA_JADUAL}"></div>
     <div><label class="fld" for="fkTampal">atau tampal terus dari Excel / Google Sheets</label><textarea id="fkTampal" rows="5" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea></div>
     <p class="ralat" id="fkErr" hidden></p></div>`,
     kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" onclick="importFK()">Import</button>` });
@@ -1631,7 +1701,7 @@ async function importFK(){
   const err = el('fkErr'); err.hidden = true;
   try {
     const f = el('fkFail').files[0];
-    const teks = f ? await bacaTeks(f) : el('fkTampal').value;
+    const teks = f ? await bacaFailData(f) : el('fkTampal').value;
     if(!teks.trim()) throw new Error('Sila pilih fail atau tampal data.');
     const baris = parseFKCSV(teks, folderSesi(UI.fk.sesi));
     if(!baris.length) throw new Error('Tiada baris yang sah ditemui. Semak nama lajur.');
@@ -1706,7 +1776,7 @@ function lukisCPD(){
   const tahunList = tahunCPDSenarai(), A = isAdmin();
   if(!UI.cpd.tahun || !tahunList.includes(UI.cpd.tahun)) UI.cpd.tahun = (S.ringkasan && tahunList.includes(S.ringkasan.tahunCPD)) ? S.ringkasan.tahunCPD : tahunList[0];
   const thn = UI.cpd.tahun;
-  let h = `<div class="kepala"><div><div class="eyebrow">Modul 2 · CPD</div><h1 class="serif">Laporan CPD Pensyarah</h1>
+  let h = `<div class="kepala"><div><div class="eyebrow">Modul · CPD Pensyarah</div><h1 class="serif">Laporan CPD Pensyarah</h1>
       <p class="mini">Sasaran ${S.tetapan.sasaranCPD} jam CPD setahun bagi setiap pensyarah. Tahap: <b style="color:var(--brand-deep)">Tercapai</b> (sama atau melebihi sasaran), <b style="color:#7E4C0E">Hampir</b> (75% hingga bawah sasaran), <b style="color:#9C321E">Rendah</b> (bawah 75%).</p></div>
     <div class="kepala-aksi">
       <select class="auto" style="font-weight:700" onchange="UI.cpd.tahun=+this.value;UI.cpd.buka={};lukisCPD()" aria-label="Tahun">${tahunList.map(y => `<option value="${y}" ${y === thn ? 'selected' : ''}>${y}</option>`).join('')}</select>
@@ -2027,7 +2097,7 @@ function modalImportCPD(){
   bukaModal({ tajuk:'Import rekod CPD (CSV)', desk:'Setiap baris mewakili satu penyertaan, iaitu satu kursus bagi seorang pensyarah.', isi:`
     <div class="notis info">Lajur: <b>Nama</b> · <b>Fakulti</b> · <b>Jawatan</b> · <b>Status Jawatan</b> · <b>Tahun</b> · <b>Tarikh Mula</b> · <b>Tarikh Tamat</b> · <b>Kategori</b> · <b>Kursus</b> · <b>Hashtag</b> · <b>Catatan</b> · <b>Jam</b>. Lajur Nama, Tahun dan Jam wajib. Pensyarah dipadankan mengikut nama; nama baharu didaftarkan secara automatik.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="templatCPD(false)">${ik('turun', 14)}Templat kosong</button><button class="btn btn-ghost btn-sm" onclick="templatCPD(true)">${ik('turun', 14)}Templat berserta senarai pensyarah</button></div>
-    <label class="fld" for="cpdFail">Fail CSV</label><input type="file" id="cpdFail" accept=".csv,text/csv,.txt">
+    <label class="fld" for="cpdFail">Fail CSV atau Excel</label><input type="file" id="cpdFail" accept="${TERIMA_JADUAL}">
     <p class="ralat" id="cpdErr" hidden style="margin-top:10px"></p>`,
     kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" onclick="importCPD()">Import rekod</button>` });
 }
@@ -2035,7 +2105,7 @@ async function importCPD(){
   const err = el('cpdErr'); err.hidden = true;
   try {
     const f = el('cpdFail').files[0]; if(!f) throw new Error('Sila pilih fail CSV.');
-    const { idx, baris } = barisIkutPeta(await bacaTeks(f), PETA_CPD);
+    const { idx, baris } = barisIkutPeta(await bacaFailData(f), PETA_CPD);
     if(idx.nama < 0 || idx.tahun < 0 || idx.jam < 0) throw new Error('Lajur Nama, Tahun dan Jam tidak ditemui.');
     const sah = baris.filter(b => b.nama && b.tahun && Number(b.jam) > 0);
     if(!sah.length) throw new Error('Tiada baris yang lengkap (Nama, Tahun dan Jam).');
@@ -2188,7 +2258,11 @@ function lukisSenaraiProgramKP(){
       <p class="mini">Pantau dokumentasi program dan penghantaran fail kursus bagi kursus dalam struktur program. Kod kursus program ditetapkan oleh Ketua Program atau pentadbir PPA.</p></div>
     <div class="kepala-aksi">${pilihSesiKP()}
       ${ps.length ? `<div class="dd"><button class="btn btn-ghost" onclick="togolDD(event,this)">${ik('turun')}<span class="sm-sembunyi">Laporan</span></button><div class="dd-menu">
-        <button onclick="pdfSemuaProgram()">${ik('fail')}Laporan PDF semua program</button><button onclick="csvSemuaProgram()">${ik('jadual')}Muat turun CSV</button></div></div>` : ''}
+        <button onclick="pdfSemuaProgram()">${ik('fail')}Laporan PDF semua program</button><button onclick="csvSemuaProgram()">${ik('jadual')}Ringkasan program (CSV)</button>
+        <div class="dd-sep"></div><button onclick="csvPelajarSemua('xlsx')">${ik('jadual')}Statistik pelajar (Excel)</button><button onclick="csvPelajarSemua('csv')">${ik('jadual')}Statistik pelajar (CSV)</button></div></div>` : ''}
+      ${A || ps.some(p => p.bolehUrus) ? `<div class="dd"><button class="btn btn-ghost" onclick="togolDD(event,this)">${ik('naik')}<span class="sm-sembunyi">Import</span></button><div class="dd-menu">
+        ${A ? `<button onclick="modalImportProgram()">${ik('jadual')}Import senarai program (CSV / Excel)</button>` : ''}
+        ${ps.some(p => p.bolehUrus) ? `<button onclick="modalImportPelajar(0)">${ik('kumpulan')}Import data pelajar semua program</button>` : ''}</div></div>` : ''}
       ${A ? `<button class="btn btn-primary" onclick="modalProgram(0)">${ik('tambah')}<span class="sm-sembunyi">Tambah program</span></button>` : ''}</div></div>`;
   if(fak) h += `<div class="notis info">Paparan pentadbir fakulti: program di bawah <b>${esc(fak)} · ${esc(namaFak(fak))}</b>${seliaan.length ? ' serta program yang anda ketuai' : ''}. Dokumentasi dan struktur program dikemas kini oleh Ketua Program atau PPA.</div>`;
   if(!ps.length){
@@ -2202,31 +2276,33 @@ function lukisSenaraiProgramKP(){
     ${statKad('Kursus dalam struktur', nStruktur, `${nDitawar} ditawarkan sesi ini`)}
     ${statKad('Fail kursus lengkap', nFK ? kadar + '%' : '-', nFK ? `${nLengkap} daripada ${nFK} pendaftaran kursus` : 'tiada pendaftaran sepadan', nFK ? warnaPct(kadar) : '')}
   </div></section>`;
+  h += bahagianPelajarSemua();
   const fakIds = [...new Set(ps.map(p => p.fakulti).filter(Boolean))];
   h += `<section class="blok"><div class="seclabel" style="justify-content:space-between"><span class="eyebrow">Senarai program</span><span class="mini" id="kpBil"></span></div>
     <div class="card" style="overflow:hidden">
       ${ps.length > 4 ? `<div class="toolbar"><div class="cari">${ik('cari')}<input type="search" placeholder="Cari kod, nama program atau Ketua Program…" value="${esc(UI.kp.cariProg)}" oninput="UI.kp.cariProg=this.value;lukisJadualProgram()" aria-label="Cari program"></div>
         ${fakIds.length > 1 ? `<select class="auto" onchange="UI.kp.fak=this.value;lukisJadualProgram()" aria-label="Tapis fakulti"><option value="semua">Semua fakulti</option>${fakIds.map(f => `<option value="${esc(f)}" ${UI.kp.fak === f ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select>` : ''}</div>` : ''}
-      <div class="jadual-skrol"><table class="grid"><thead><tr><th>Program</th><th>Ketua Program</th><th style="min-width:150px">Dokumentasi</th><th class="kanan">Struktur</th><th style="min-width:170px">Fail kursus sesi ini</th><th></th></tr></thead><tbody id="jadualProgram"></tbody></table></div>
+      <div class="jadual-skrol"><table class="grid"><thead><tr><th>Program</th><th>Ketua Program</th><th style="min-width:150px">Dokumentasi</th><th class="kanan">Pelajar</th><th class="kanan">Struktur</th><th style="min-width:170px">Fail kursus sesi ini</th><th></th></tr></thead><tbody id="jadualProgram"></tbody></table></div>
     </div>
     <p class="mini" style="margin-top:10px;line-height:1.7">Dokumentasi = dokumen dimuat naik ÷ dokumen diperlukan (tidak termasuk item bertanda tidak berkaitan). Fail kursus lengkap = kursus berdaftar yang lengkap semua item folder bagi sesi dipilih.</p></section>`;
   el('halaman').innerHTML = h;
-  lukisJadualProgram();
+  lukisJadualProgram(); cartaPelajarSemua();
 }
 function lukisJadualProgram(){
   const box = el('jadualProgram'); if(!box) return;
   const sid = sesiKP(), q = (UI.kp.cariProg || '').toLowerCase().trim(), semua = S.program.senarai;
   const v = semua.filter(p => (UI.kp.fak === 'semua' || p.fakulti === UI.kp.fak) && (!q || (p.kod + ' ' + p.nama + ' ' + (p.kpNama || '')).toLowerCase().includes(q)));
   el('kpBil').textContent = `${v.length} daripada ${semua.length} program`;
-  box.innerHTML = v.length ? v.map(p => { const d = ringkasDokProg(p), f = agregatProgFK(p, sid);
+  box.innerHTML = v.length ? v.map(p => { const d = ringkasDokProg(p), f = agregatProgFK(p, sid), rp = ringkasPelajar(pelajarProgram(p.id));
     return `<tr class="baris klik" ${klik(`bukaProgram(${p.id})`)}>
       <td><span class="prog-kod">${esc(p.kod)}</span><div class="prog-nama" style="margin-top:5px">${esc(p.nama)}</div><div class="mini">${esc([p.fakulti, p.tahap].filter(Boolean).join(' · ') || '-')}</div></td>
       <td>${p.kpNama ? `<b style="font-weight:600">${esc(p.kpNama)}</b><div class="mini">sejak ${fmtTarikh(p.kpSejak) || '-'}</div>` : '<span class="badge b-tidak">Belum dilantik</span>'}</td>
       <td>${meterLbl(d.pct, d.ya + '/' + d.perlu)}</td>
+      <td class="kanan" style="white-space:nowrap">${rp.kemasukan ? `<b class="tnum">${fmtNombor(rp.aktif)}</b> <span class="mini">aktif</span><div class="mini tnum">${fmtNombor(rp.graduan)} graduan</div>` : '<span class="mini">Tiada data</span>'}</td>
       <td class="kanan tnum">${f.n}</td>
       <td>${f.fk ? meterLbl(f.kadar, f.lengkap + '/' + f.fk) : `<span class="mini">${f.n ? 'Tiada pendaftaran' : 'Struktur belum ditetapkan'}</span>`}<div class="mini">${f.ditawar}/${f.n} kursus ditawarkan</div></td>
       <td class="kanan"><span class="kk-buka">Buka ${ik('kanan', 13)}</span></td></tr>`; }).join('')
-    : `<tr><td colspan="6"><div class="kosong">Tiada program ditemui.</div></td></tr>`;
+    : `<tr><td colspan="7"><div class="kosong">Tiada program ditemui.</div></td></tr>`;
 }
 
 /* ---------- papan pemuka satu program ---------- */
@@ -2241,7 +2317,8 @@ function lukisProgramKP(){
       <p class="mini">${p.kpNama ? `Ketua Program: <b style="color:var(--ink-2)">${esc(p.kpNama)}</b>${p.kpSejak ? ' sejak ' + fmtTarikh(p.kpSejak) : ''}` : 'Ketua Program belum dilantik.'}${p.fakulti ? ' · ' + esc(namaFak(p.fakulti)) : ''}</p></div>
     <div class="kepala-aksi">${pilihSesiKP()}
       <div class="dd"><button class="btn btn-ghost" onclick="togolDD(event,this)">${ik('turun')}<span class="sm-sembunyi">Laporan</span></button><div class="dd-menu">
-        <button onclick="pdfProgram()">${ik('fail')}Laporan PDF program</button><button onclick="csvProgram()">${ik('jadual')}CSV fail kursus program</button></div></div>
+        <button onclick="pdfProgram()">${ik('fail')}Laporan PDF program</button><button onclick="csvProgram()">${ik('jadual')}CSV fail kursus program</button>
+        <div class="dd-sep"></div><button onclick="templatPelajar(${p.id},'xlsx')">${ik('jadual')}Data pelajar (Excel)</button><button onclick="templatPelajar(${p.id},'csv')">${ik('jadual')}Data pelajar (CSV)</button></div></div>
       ${A && p.folderId ? `<a class="btn btn-ghost" href="${URL_DRIVE}/drive/folders/${encodeURIComponent(p.folderId)}" target="_blank" rel="noopener">${ik('luar')}<span class="sm-sembunyi">Folder Drive</span></a>` : ''}
       ${A ? `<button class="btn btn-primary" onclick="modalProgram(${p.id})">${ik('tetapan')}<span class="sm-sembunyi">Tetapan program</span></button>` : ''}</div></div>`;
   if(!boleh) h += `<div class="notis info">Paparan sahaja. Dokumentasi dan struktur program ini dikemas kini oleh Ketua Program atau pentadbir PPA.</div>`;
@@ -2252,9 +2329,9 @@ function lukisProgramKP(){
     ${statKad('Ditawarkan sesi ini', f.ditawar + '/' + f.n, `${f.fk} pendaftaran fail kursus`)}
     ${statKad('Fail kursus lengkap', f.fk ? f.kadar + '%' : '-', f.fk ? `${f.lengkap} lengkap · ${f.proses} proses · ${f.belum} belum` : (sesi ? 'tiada pendaftaran sepadan' : 'belum ada sesi'), f.fk ? warnaPct(f.kadar) : '')}
   </div></section>`;
-  h += bahagianDokProgram(p, boleh) + bahagianFKProgram(p, sesi) + bahagianStrukturProgram(p, boleh) + bahagianLantikanProgram(p);
+  h += bahagianPelajarProgram(p, boleh) + bahagianDokProgram(p, boleh) + bahagianFKProgram(p, sesi) + bahagianStrukturProgram(p, boleh) + bahagianLantikanProgram(p);
   el('halaman').innerHTML = h;
-  lukisSenaraiKPFK();
+  lukisSenaraiKPFK(); cartaPelajarProgram(p);
 }
 function bahagianDokProgram(p, boleh){
   const d = ringkasDokProg(p);
@@ -2401,7 +2478,7 @@ function modalImportStruktur(pid){
   bukaModal({ tajuk:'Import struktur program', desk: p.kod + ' · ' + p.nama, isi:`
     <div class="notis info">Lajur: <b>Kod</b>, <b>Nama</b>, <b>Semester</b> dan <b>KodTerdahulu</b> (pilihan). Kursus yang kodnya atau kod terdahulunya sudah ada akan dikemas kini; kod baharu ditambah. Tiada kursus dibuang.</div>
     <div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="templatStruktur(${pid})">${ik('turun', 14)}Muat turun templat${kursusProgram(pid).length ? ' (struktur semasa)' : ''}</button></div>
-    <div class="borang"><div><label class="fld" for="isFail">Fail CSV</label><input type="file" id="isFail" accept=".csv,text/csv,.txt"></div>
+    <div class="borang"><div><label class="fld" for="isFail">Fail CSV atau Excel</label><input type="file" id="isFail" accept="${TERIMA_JADUAL}"></div>
     <div><label class="fld" for="isTampal">atau tampal terus dari Excel / Google Sheets</label><textarea id="isTampal" rows="6" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea></div>
     <p class="ralat" id="isErr" hidden></p></div>`,
     kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" onclick="importStruktur(${pid})">Import</button>` });
@@ -2420,7 +2497,7 @@ async function importStruktur(pid){
   const err = el('isErr'); err.hidden = true;
   try {
     const f = el('isFail').files[0];
-    const teks = f ? await bacaTeks(f) : el('isTampal').value;
+    const teks = f ? await bacaFailData(f) : el('isTampal').value;
     if(!teks.trim()) throw new Error('Sila pilih fail atau tampal data.');
     const baris = parseStruktur(teks);
     if(!baris.length) throw new Error('Tiada baris yang sah ditemui. Pastikan lajur pertama ialah kod kursus.');
@@ -2433,6 +2510,224 @@ function templatStruktur(pid){
   muatTurunCSV('Struktur_' + namaFailSelamat(p ? p.kod : 'Program') + '.csv', [['Kod','Nama','Semester','KodTerdahulu'],
     ...(pk.length ? pk.map(c => [c.kod, c.nama, c.semester, c.kodLama]) : [['USL1013','Akidah Islamiah','Tahun 1 Semester 1',''], ['USL1023','Ulum al-Quran','Tahun 1 Semester 1','USU1023']])]);
   toast('Templat dimuat turun.');
+}
+
+/* ---------- statistik pelajar (kemasukan, aktif, graduan) ---------- */
+function bahagianPelajarProgram(p, boleh){
+  const rows = pelajarProgram(p.id), R = ringkasPelajar(rows);
+  const aksi = boleh ? `<div class="kepala-aksi">
+      <button class="btn btn-ghost btn-sm" onclick="modalImportPelajar(${p.id})">${ik('naik', 14)}Import CSV / Excel</button>
+      <button class="btn btn-primary btn-sm" onclick="modalPelajar(${p.id},0)">${ik('tambah', 14)}Tambah kemasukan</button></div>` : '';
+  let h = `<section class="blok"><div class="seclabel" style="justify-content:space-between;align-items:center"><span class="eyebrow">Statistik pelajar</span>${aksi}</div>`;
+  if(!rows.length){
+    return h + kosong('Belum ada data pelajar', boleh ? 'Tambah bilangan pelajar bagi setiap kemasukan secara manual, atau import daripada fail CSV atau Excel.' : 'Data pelajar program ini belum dikemas kini oleh Ketua Program.') + '</section>';
+  }
+  const akhir = rows.reduce((a, r) => String(r.dikemaskini || '') > String(a.dikemaskini || '') ? r : a, rows[0]);
+  h += `<div class="grid-4">
+      ${statKad('Jumlah pelajar keseluruhan', fmtNombor(R.aktif), 'pelajar aktif semasa')}
+      ${statKad('Jumlah graduan', fmtNombor(R.graduan), `daripada ${R.kemasukan} kemasukan`)}
+      ${statKad('Pelajar diterima masuk', fmtNombor(R.pelajar), 'kumulatif semua kemasukan')}
+      ${statKad('Kemasukan terkini', R.terkini ? fmtNombor(R.terkini.pelajar) : '-', R.terkini ? esc(R.terkini.kemasukan) : '')}
+    </div>
+    <div class="grid-rumusan" style="margin-top:16px">
+      <div class="card pad"><h3 class="serif h3">Bilangan pelajar setiap kemasukan</h3><div class="mini">Status semasa pelajar bagi setiap kemasukan</div>
+        <div class="carta-kotak" style="height:290px"><canvas id="chPelajar" role="img" aria-label="Carta bilangan pelajar setiap kemasukan mengikut status"></canvas></div></div>
+      <div class="card pad"><h3 class="serif h3">Jumlah pelajar keseluruhan dan graduan</h3><div class="mini">Taburan semua pelajar yang diterima masuk</div>
+        <div class="carta-kotak" style="height:290px"><canvas id="chStatusPelajar" role="img" aria-label="Carta taburan pelajar aktif, graduan dan tidak aktif"></canvas></div></div>
+    </div>
+    <div class="card" style="overflow:hidden;margin-top:16px"><div class="jadual-skrol"><table class="grid padat"><thead><tr><th>Kemasukan</th><th class="kanan">Diterima masuk</th><th class="kanan">Aktif</th><th class="kanan">Graduan</th><th class="kanan">Tidak aktif</th><th class="sm-sembunyi">Catatan</th>${boleh ? '<th></th>' : ''}</tr></thead><tbody>
+      ${rows.map(r => `<tr class="baris"><td><b>${esc(r.kemasukan)}</b></td><td class="kanan tnum">${fmtNombor(r.pelajar)}</td><td class="kanan tnum">${fmtNombor(r.aktif)}</td><td class="kanan tnum">${fmtNombor(r.graduan)}</td><td class="kanan tnum">${fmtNombor(tidakAktif(r))}</td><td class="sm-sembunyi mini">${esc(r.catatan || '')}</td>
+        ${boleh ? `<td><div class="aksi-baris"><button class="btn-ikon" onclick="modalPelajar(${p.id},${r.id})" title="Kemas kini" aria-label="Kemas kini kemasukan ${esc(r.kemasukan)}">${ik('sunting', 15)}</button><button class="btn-ikon bahaya" onclick="padamPelajar(${r.id})" title="Buang" aria-label="Buang kemasukan ${esc(r.kemasukan)}">${ik('padam', 15)}</button></div></td>` : ''}</tr>`).join('')}
+      <tr class="baris-jumlah"><td>Jumlah</td><td class="kanan tnum">${fmtNombor(R.pelajar)}</td><td class="kanan tnum">${fmtNombor(R.aktif)}</td><td class="kanan tnum">${fmtNombor(R.graduan)}</td><td class="kanan tnum">${fmtNombor(R.tidakAktif)}</td><td class="sm-sembunyi"></td>${boleh ? '<td></td>' : ''}</tr>
+    </tbody></table></div></div>
+    <p class="mini" style="margin-top:10px;line-height:1.7">Tidak aktif = diterima masuk − aktif − graduan (berhenti, tarik diri atau dibuang). Kemas kini terakhir: ${esc(fmtMasa(akhir.dikemaskini))}${akhir.oleh ? ' oleh ' + esc(akhir.oleh) : ''}.</p></section>`;
+  return h;
+}
+function dataCartaKemasukan(rows){
+  const set = (label, data, warna) => ({ label, data, backgroundColor: warna, borderColor:'#FFFFFF', borderWidth:{ top:2 }, borderSkipped:'bottom', maxBarThickness:38 });
+  return { labels: rows.map(r => r.kemasukan), datasets:[
+    set('Graduan', rows.map(r => Number(r.graduan) || 0), WP.graduan),
+    set('Pelajar aktif', rows.map(r => Number(r.aktif) || 0), WP.aktif),
+    set('Tidak aktif', rows.map(tidakAktif), WP.tidakAktif)] };
+}
+function opsyenCartaKemasukan(rows){
+  return { plugins:{ legend: LEGENDA_BAWAH, tooltip:{ mode:'index', intersect:false, callbacks:{ footer: it => it.length ? 'Diterima masuk: ' + fmtNombor(rows[it[0].dataIndex].pelajar) : '' } } },
+    interaction:{ mode:'index', intersect:false },
+    scales:{ x:{ stacked:true, grid:{ display:false }, ticks:{ autoSkip:true, maxRotation:40 } },
+      y:{ stacked:true, beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' }, title:{ display:true, text:'Bilangan pelajar', color:'#65726A', font:{ size:11 } } } } };
+}
+function cartaPelajarProgram(p){
+  const rows = pelajarProgram(p.id); if(!rows.length) return;
+  const R = ringkasPelajar(rows);
+  carta('chPelajar', 'bar', dataCartaKemasukan(rows), opsyenCartaKemasukan(rows));
+  carta('chStatusPelajar', 'doughnut', { labels:['Pelajar aktif', 'Graduan', 'Tidak aktif'],
+    datasets:[{ data:[R.aktif, R.graduan, R.tidakAktif], backgroundColor:[WP.aktif, WP.graduan, WP.tidakAktif], borderColor:'#FFFFFF', borderWidth:2, hoverOffset:4 }] },
+    { cutout:'64%', _tengah:{ teks: fmtNombor(R.pelajar), label:'pelajar diterima masuk' },
+      plugins:{ legend: gabungDalam(LEGENDA_BAWAH, { labels:{ generateLabels: c => Chart.overrides.doughnut.plugins.legend.labels.generateLabels(c).map((l, i) => Object.assign(l, { text: l.text + ': ' + fmtNombor(c.data.datasets[0].data[i]) })) } }),
+        tooltip:{ callbacks:{ label: c => c.label + ': ' + fmtNombor(c.parsed) + ' (' + (R.pelajar ? Math.round(c.parsed / R.pelajar * 100) : 0) + '%)' } } } });
+}
+
+/* ---------- statistik pelajar semua program (paparan utama tab) ---------- */
+function bahagianPelajarSemua(){
+  const ps = S.program.senarai, ada = ps.filter(p => pelajarProgram(p.id).length), urus = ps.some(p => p.bolehUrus);
+  const R = ringkasPelajar(S.program.pelajar.filter(r => ps.some(p => p.id === r.programId)));
+  let h = `<section class="blok"><div class="seclabel" style="justify-content:space-between"><span class="eyebrow">Statistik pelajar</span><span class="mini">${ada.length} daripada ${ps.length} program mempunyai data pelajar</span></div>`;
+  if(!ada.length){
+    return h + kosong('Belum ada data pelajar', urus ? 'Kemas kini bilangan pelajar bagi setiap kemasukan di halaman program, atau import data semua program sekali gus daripada fail CSV atau Excel.' : 'Data pelajar belum dikemas kini oleh Ketua Program.',
+      urus ? `<button class="btn btn-primary" onclick="modalImportPelajar(0)">${ik('naik')}Import data pelajar</button>` : '') + '</section>';
+  }
+  const tinggi = Math.max(220, ada.length * 46 + 80);
+  return h + `<div class="grid-4">
+      ${statKad('Jumlah pelajar keseluruhan', fmtNombor(R.aktif), 'pelajar aktif semua program')}
+      ${statKad('Jumlah graduan', fmtNombor(R.graduan), `${R.kemasukan} kemasukan direkodkan`)}
+      ${statKad('Pelajar diterima masuk', fmtNombor(R.pelajar), 'kumulatif semua program')}
+      ${statKad('Tidak aktif', fmtNombor(R.tidakAktif), 'berhenti atau tarik diri')}
+    </div>
+    <div class="grid-2" style="margin-top:16px">
+      <div class="card pad"><h3 class="serif h3">Pelajar aktif dan graduan mengikut program</h3><div class="mini">Jumlah semasa bagi setiap program</div>
+        <div class="carta-kotak" style="height:${tinggi}px"><canvas id="chPelajarProg" role="img" aria-label="Carta pelajar aktif dan graduan mengikut program"></canvas></div></div>
+      <div class="card pad"><h3 class="serif h3">Bilangan pelajar setiap kemasukan</h3><div class="mini">Pelajar diterima masuk mengikut tahun kemasukan, semua program</div>
+        <div class="carta-kotak" style="height:${tinggi}px"><canvas id="chKemasukanThn" role="img" aria-label="Carta bilangan pelajar diterima masuk mengikut tahun"></canvas></div></div>
+    </div></section>`;
+}
+function cartaPelajarSemua(){
+  const ps = S.program.senarai.filter(p => pelajarProgram(p.id).length); if(!ps.length) return;
+  const R = ps.map(p => ringkasPelajar(pelajarProgram(p.id)));
+  carta('chPelajarProg', 'bar', { labels: ps.map(p => p.kod), datasets:[
+      { label:'Pelajar aktif', data: R.map(r => r.aktif), backgroundColor: WP.aktif, borderRadius:4, maxBarThickness:16, categoryPercentage:.7, barPercentage:.9 },
+      { label:'Graduan', data: R.map(r => r.graduan), backgroundColor: WP.graduan, borderRadius:4, maxBarThickness:16, categoryPercentage:.7, barPercentage:.9 }] },
+    { indexAxis:'y', plugins:{ legend: LEGENDA_BAWAH, tooltip:{ callbacks:{ title: it => { const p = ps[it[0].dataIndex]; return p.kod + ' · ' + p.nama; }, label: c => c.dataset.label + ': ' + fmtNombor(c.parsed.x) } } },
+      scales:{ x:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } }, y:{ grid:{ display:false } } } });
+  const thn = {}, ids = new Set(S.program.senarai.map(p => p.id));
+  S.program.pelajar.forEach(r => { const y = tahunKemasukan(r.kemasukan); if(y && ids.has(r.programId)) thn[y] = (thn[y] || 0) + (Number(r.pelajar) || 0); });
+  const ys = Object.keys(thn).sort();
+  carta('chKemasukanThn', 'bar', { labels: ys, datasets:[{ label:'Pelajar diterima masuk', data: ys.map(y => thn[y]), backgroundColor: WP.kemasukan, borderRadius:4, maxBarThickness:42 }] },
+    { plugins:{ tooltip:{ callbacks:{ label: c => fmtNombor(c.parsed.y) + ' pelajar diterima masuk' } } },
+      scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } }, x:{ grid:{ display:false } } } });
+}
+/** Kad modul Ketua Program di halaman Utama. */
+function kadModulKP(){
+  const ps = S.program.senarai, sid = sesiKP(), R = ringkasPelajar(S.program.pelajar.filter(r => ps.some(p => p.id === r.programId)));
+  const dokLengkap = ps.filter(p => ringkasDokProg(p).belum === 0).length;
+  let nFK = 0, nL = 0; ps.forEach(p => { const f = agregatProgFK(p, sid); nFK += f.fk; nL += f.lengkap; });
+  const seliaan = !isAdmin() && !isPtFak() && isKP();
+  return kadModul({ ke:'ketuaprogram', js:"UI.kp.prog=null;pergi('ketuaprogram')", aksen:'var(--plum)', aksenSoft:'var(--plum-soft)', ikon:'topi', tajuk:'Dashboard Ketua Program',
+    sub: ps.length + (seliaan ? ' program seliaan' : ' program') + (skopFak() ? ' · ' + skopFak() : ''), nilai: fmtNombor(R.aktif), nilaiLbl:'jumlah pelajar keseluruhan',
+    bar:[[R.graduan, WP.graduan, 'Graduan'], [R.aktif, WP.aktif, 'Pelajar aktif'], [R.tidakAktif, WP.tidakAktif, 'Tidak aktif']],
+    stat:[['Graduan', fmtNombor(R.graduan)], ['Dokumen lengkap', dokLengkap + '/' + ps.length], ['Fail kursus', nFK ? Math.round(nL / nFK * 100) + '%' : '-']],
+    kaki: R.kemasukan ? fmtNombor(R.pelajar) + ' pelajar diterima masuk' : 'Data pelajar belum dikemas kini' });
+}
+
+/* ---------- borang data pelajar ---------- */
+function modalPelajar(pid, id){
+  const p = S.program.senarai.find(x => x.id === pid), r = id ? S.program.pelajar.find(x => x.id === id) : null; if(!p) return;
+  bukaModal({ tajuk: r ? 'Kemas kini kemasukan ' + r.kemasukan : 'Tambah data kemasukan', desk: p.kod + ' · ' + p.nama, isi:`<div class="borang">
+    <div><label class="fld" for="plKem">Kemasukan (sesi atau ambilan)</label><input id="plKem" type="text" value="${r ? esc(r.kemasukan) : ''}" placeholder="cth. 2024/2025 Sem 1 atau Julai 2024" autocomplete="off"></div>
+    <div class="tiga"><div><label class="fld" for="plMasuk">Diterima masuk</label><input id="plMasuk" type="number" min="0" step="1" value="${r ? r.pelajar : ''}"></div>
+      <div><label class="fld" for="plAktif">Pelajar aktif</label><input id="plAktif" type="number" min="0" step="1" value="${r ? r.aktif : ''}" placeholder="Automatik"></div>
+      <div><label class="fld" for="plGrad">Graduan</label><input id="plGrad" type="number" min="0" step="1" value="${r ? r.graduan : ''}" placeholder="0"></div></div>
+    <div class="mini" style="line-height:1.6">Jika <b>Pelajar aktif</b> dibiarkan kosong, semua pelajar yang belum bergraduat dikira aktif. Baki (diterima masuk − aktif − graduan) dikira sebagai <b>tidak aktif</b>, iaitu berhenti, tarik diri atau dibuang.</div>
+    <div><label class="fld" for="plCat">Catatan (pilihan)</label><input id="plCat" type="text" value="${r ? esc(r.catatan || '') : ''}"></div>
+    <p class="ralat" id="plErr" hidden></p></div>`,
+    kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" onclick="simpanPelajar(${pid},${r ? r.id : 0})">${r ? 'Simpan' : 'Tambah'}</button>` });
+  fokus(r ? 'plMasuk' : 'plKem');
+}
+async function simpanPelajar(pid, id){
+  const err = el('plErr'), salah = m => { err.textContent = m; err.hidden = false; };
+  const d = { programId: pid, id, kemasukan: el('plKem').value.trim(), pelajar: el('plMasuk').value.trim(), aktif: el('plAktif').value.trim(), graduan: el('plGrad').value.trim(), catatan: el('plCat').value.trim() };
+  if(!d.kemasukan) return salah('Sila isi nama kemasukan.');
+  if(d.pelajar === '') return salah('Sila isi bilangan pelajar diterima masuk.');
+  try { await api('progPelajarSimpan', d); tutupModal(); lukisSemula(); } catch(e){ salah(e.message); }
+}
+async function padamPelajar(id){
+  const r = S.program.pelajar.find(x => x.id === id); if(!r) return;
+  if(!await sahkan({ tajuk:'Buang kemasukan ' + r.kemasukan + '?', mesej:'Rekod bilangan pelajar bagi kemasukan ini akan dibuang daripada statistik program.', butang:'Buang', bahaya:true })) return;
+  await cuba(async () => { await api('progPelajarPadam', { id }); lukisSemula(); });
+}
+
+/* ---------- import dan templat CSV / Excel ---------- */
+const LAJUR_PELAJAR = { kodProgram:['kodprogram','kodprog','program'], kemasukan:['kemasukan','sesikemasukan','ambilan','intake','kohort','sesi'],
+  pelajar:['pelajar','diterimamasuk','bilpelajar','bilanganpelajar','pelajarmasuk','bilpelajarmasuk','jumlahpelajar','enrolmen'],
+  aktif:['aktif','pelajaraktif','bilaktif','bilpelajaraktif'], graduan:['graduan','bilgraduan','jumlahgraduan','bergraduat','graduat'], catatan:['catatan','ulasan'] };
+const LAJUR_PROGRAM = { kod:['kod','kodprogram','kodprog'], nama:['nama','namaprogram','program'], fakulti:['fakulti','pusat','fakultipusat'], tahap:['tahap','peringkat'],
+  kp:['ketuaprogram','kp','emelkp','namakp','emelketuaprogram'], catatan:['catatan'] };
+function kunciLajur(h){ return String(h || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+/** Tukar teks jadual (baris pertama = tajuk lajur) kepada objek mengikut peta lajur. */
+function barisIkutLajur(teks, peta, wajib){
+  const rows = parseCSV(teks); if(rows.length < 2) return [];
+  const kep = rows[0].map(kunciLajur), idx = {};
+  Object.keys(peta).forEach(k => { idx[k] = kep.findIndex(h => peta[k].includes(h)); });
+  const hilang = wajib.filter(k => idx[k] < 0);
+  if(hilang.length) throw new Error('Lajur ' + hilang.map(k => peta[k][0]).join(', ') + ' tidak ditemui pada baris tajuk. Muat turun templat untuk format yang betul.');
+  return rows.slice(1).map((r, i) => { const o = { no: i + 2 }; Object.keys(idx).forEach(k => { if(idx[k] >= 0) o[k] = String(r[idx[k]] ?? '').trim(); }); return o; })
+    .filter(o => Object.keys(o).some(k => k !== 'no' && o[k] !== ''));
+}
+function modalImport(o){
+  UI.importFn = o;
+  bukaModal({ tajuk:o.tajuk, desk:o.desk, isi:`
+    <div class="notis info">${o.nota}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="UI.importFn.templat('xlsx')">${ik('turun', 14)}Templat Excel</button><button class="btn btn-ghost btn-sm" onclick="UI.importFn.templat('csv')">${ik('turun', 14)}Templat CSV</button></div>
+    <div class="borang"><div><label class="fld" for="imFail">Fail CSV atau Excel (.csv, .xlsx)</label><input type="file" id="imFail" accept="${TERIMA_JADUAL}"></div>
+    <div><label class="fld" for="imTampal">atau tampal terus dari Excel / Google Sheets (termasuk baris tajuk)</label><textarea id="imTampal" rows="6" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea></div>
+    <p class="ralat" id="imErr" hidden></p></div>`,
+    kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" id="imBtn" onclick="jalanImport()">Import</button>` });
+}
+async function jalanImport(){
+  const err = el('imErr'), o = UI.importFn, btn = el('imBtn'); err.hidden = true; btn.disabled = true;
+  try {
+    const f = el('imFail').files[0];
+    const teks = f ? await bacaFailData(f) : el('imTampal').value;
+    if(!teks.trim()) throw new Error('Sila pilih fail atau tampal data.');
+    const r = await o.jalan(teks);
+    tutupModal(); lukisSemula();
+    if(r && r.ralat && r.ralat.length) tunjukRalatImport(r.ralat);
+  } catch(e){ err.textContent = e.message; err.hidden = false; btn.disabled = false; }
+}
+function tunjukRalatImport(ralat){
+  bukaModal({ tajuk:'Baris yang dilangkau', desk: ralat.length + ' baris tidak diimport. Betulkan baris ini dalam fail, kemudian import semula. Baris lain telah disimpan.',
+    isi:`<ul class="senarai-ralat">${ralat.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`, kaki:`<button class="btn btn-primary" onclick="tutupModal()">Tutup</button>` });
+}
+function modalImportPelajar(pid){
+  const p = pid ? S.program.senarai.find(x => x.id === pid) : null;
+  modalImport({ tajuk:'Import data pelajar', desk: p ? p.kod + ' · ' + p.nama : 'Semua program di bawah seliaan anda',
+    nota:`Lajur: ${p ? '' : '<b>KodProgram</b>, '}<b>Kemasukan</b>, <b>Pelajar</b> (diterima masuk), <b>Aktif</b>, <b>Graduan</b> dan <b>Catatan</b> (pilihan). Kemasukan yang sudah ada dikemas kini, kemasukan baharu ditambah, dan tiada rekod dibuang. Jika lajur Aktif kosong, pelajar yang belum bergraduat dikira aktif. Muat turun templat untuk mendapatkan data semasa, sunting dalam Excel, kemudian import semula.`,
+    templat: fmt => templatPelajar(pid, fmt),
+    jalan: async teks => {
+      const baris = barisIkutLajur(teks, LAJUR_PELAJAR, p ? ['kemasukan', 'pelajar'] : ['kodProgram', 'kemasukan', 'pelajar']);
+      if(!baris.length) throw new Error('Tiada baris data ditemui selepas baris tajuk.');
+      return api('progPelajarImport', { programId: pid || '', baris });
+    } });
+}
+function templatPelajar(pid, fmt){
+  const ps = pid ? S.program.senarai.filter(p => p.id === pid) : S.program.senarai.filter(p => p.bolehUrus);
+  const rows = [[...(pid ? [] : ['KodProgram', 'NamaProgram']), 'Kemasukan', 'Pelajar', 'Aktif', 'Graduan', 'Catatan']];
+  ps.forEach(p => pelajarProgram(p.id).forEach(r => rows.push([...(pid ? [] : [p.kod, p.nama]), r.kemasukan, Number(r.pelajar) || 0, Number(r.aktif) || 0, Number(r.graduan) || 0, r.catatan || ''])));
+  if(rows.length === 1){
+    const c = pid || !ps.length ? [] : [ps[0].kod, ps[0].nama];
+    rows.push([...c, '2022/2023 Sem 1', 48, 3, 40, 'Contoh: 5 pelajar berhenti'], [...c, '2023/2024 Sem 1', 52, 50, 0, ''], [...c, '2024/2025 Sem 1', 60, '', '', 'Aktif kosong: dikira automatik']);
+  }
+  muatTurunJadual(pid && ps[0] ? 'Data_Pelajar_' + namaFailSelamat(ps[0].kod) : 'Data_Pelajar_Program', rows, fmt);
+}
+function csvPelajarSemua(fmt){
+  const rows = [['KodProgram', 'NamaProgram', 'Fakulti', 'Kemasukan', 'Pelajar', 'Aktif', 'Graduan', 'TidakAktif', 'Catatan', 'DikemasKini', 'Oleh']];
+  S.program.senarai.forEach(p => pelajarProgram(p.id).forEach(r => rows.push([p.kod, p.nama, p.fakulti, r.kemasukan, Number(r.pelajar) || 0, Number(r.aktif) || 0, Number(r.graduan) || 0, tidakAktif(r), r.catatan || '', r.dikemaskini || '', r.oleh || ''])));
+  muatTurunJadual('Statistik_Pelajar_Program' + (skopFak() ? '_' + skopFak() : ''), rows, fmt);
+}
+function modalImportProgram(){
+  modalImport({ tajuk:'Import senarai program', desk:'Tambah atau kemas kini program secara pukal',
+    nota:'Lajur: <b>Kod</b>, <b>Nama</b>, <b>Fakulti</b> (kod fakulti), <b>Tahap</b>, <b>KetuaProgram</b> (emel atau nama pensyarah) dan <b>Catatan</b>. Program dipadankan mengikut kod: program sedia ada dikemas kini dan kod baharu ditambah. Sel kosong tidak mengubah nilai sedia ada. Pertukaran Ketua Program direkod dalam sejarah lantikan.',
+    templat: fmt => templatProgram(fmt),
+    jalan: async teks => {
+      const baris = barisIkutLajur(teks, LAJUR_PROGRAM, ['kod']);
+      if(!baris.length) throw new Error('Tiada baris data ditemui selepas baris tajuk.');
+      return api('progImport', { baris });
+    } });
+}
+function templatProgram(fmt){
+  const pm = petaP(), rows = [['Kod', 'Nama', 'Fakulti', 'Tahap', 'KetuaProgram', 'Catatan']];
+  S.program.senarai.forEach(p => rows.push([p.kod, p.nama, p.fakulti || '', p.tahap || '', p.kp && pm[p.kp] ? (pm[p.kp].emel || pm[p.kp].nama) : '', p.catatan || '']));
+  if(rows.length === 1) rows.push(['BUS', 'Ijazah Sarjana Muda Usuluddin dengan Kepujian', S.fakulti[0] ? S.fakulti[0].id : 'FUQS', 'Ijazah Sarjana Muda', 'nama@kias.edu.my', '']);
+  muatTurunJadual('Senarai_Program', rows, fmt);
 }
 
 /* ---------- dokumen program ---------- */
@@ -2473,6 +2768,7 @@ function kadProgram(p, sid){
   return `<div class="card kad-btn prog-kad" ${klik(`bukaProgram(${p.id})`)}>
     <div class="prog-kad-atas"><div style="min-width:0"><span class="prog-kod">${esc(p.kod)}</span><div class="prog-nama" style="margin-top:6px">${esc(p.nama)}</div></div>${saya() && p.kp === saya() ? '<span class="badge b-kp">KP</span>' : ''}</div>
     <div class="mini">${p.kpNama ? 'Ketua Program: ' + esc(p.kpNama) : 'Ketua Program belum dilantik'}</div>
+    ${(r => r.kemasukan ? `<div style="font-size:13px"><b>${fmtNombor(r.aktif)}</b> pelajar aktif · <b>${fmtNombor(r.graduan)}</b> graduan</div>` : '<div class="mini">Data pelajar belum dikemas kini</div>')(ringkasPelajar(pelajarProgram(p.id)))}
     <div><div class="mini" style="margin-bottom:4px">Dokumentasi program</div>${meterLbl(d.pct, d.ya + '/' + d.perlu)}</div>
     <div><div class="mini" style="margin-bottom:4px">Fail kursus lengkap (sesi semasa)</div>${f.fk ? meterLbl(f.kadar, f.lengkap + '/' + f.fk) : `<span class="mini" style="color:var(--ink-2)">${f.n ? 'Tiada pendaftaran sepadan' : 'Struktur program belum ditetapkan'}</span>`}</div>
   </div>`;
@@ -2491,7 +2787,7 @@ function kategoriDok(){ const k = [...(S.tetapan.kategoriDokumen || [])]; S.doku
 function lukisDok(){
   tajukAtas('Dokumentasi', 'Dokumen rasmi Pusat Pembangunan Akademik');
   const A = isAdmin();
-  el('halaman').innerHTML = `<div class="kepala"><div><div class="eyebrow">Modul 3 · Dokumentasi</div><h1 class="serif">Dokumentasi PPA</h1>
+  el('halaman').innerHTML = `<div class="kepala"><div><div class="eyebrow">Modul · Dokumentasi</div><h1 class="serif">Dokumentasi PPA</h1>
       <p class="mini">${A ? 'Muat naik dan urus dokumen rasmi. Fail disimpan dalam folder Google Drive PPA mengikut kategori.' : 'Rujuk dan muat turun dokumen rasmi PPA. Dokumen dimuat naik oleh pentadbir PPA sahaja.'}</p></div>
     <div class="kepala-aksi">${A ? `<button class="btn btn-primary" onclick="modalDokumen(0)">${ik('naik')}Muat naik dokumen</button>` : ''}</div></div>
     <div class="card" style="overflow:hidden"><div class="toolbar" style="border-bottom:none">
@@ -2750,7 +3046,7 @@ function modalEmelPukal(){
   bukaModal({ tajuk:'Kemas kini emel pensyarah', desk:'Padankan emel dengan nama pensyarah dalam senarai induk.', isi:`
     <div class="notis info">Muat turun senarai semasa, isi lajur <b>Emel</b> dalam Excel atau Google Sheets, kemudian muat naik semula. Nama dipadankan tanpa mengambil kira gelaran seperti Dr. atau Profesor.</div>
     <div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="templatEmel()">${ik('turun', 14)}Muat turun senarai pensyarah</button></div>
-    <div class="borang"><div><label class="fld" for="emFail">Fail CSV (lajur Nama, Emel)</label><input type="file" id="emFail" accept=".csv,text/csv,.txt"></div>
+    <div class="borang"><div><label class="fld" for="emFail">Fail CSV atau Excel (lajur Nama, Emel)</label><input type="file" id="emFail" accept="${TERIMA_JADUAL}"></div>
     <div><label class="fld" for="emTampal">atau tampal dua lajur: Nama dan Emel</label><textarea id="emTampal" rows="5" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea></div>
     <p class="ralat" id="emErr" hidden></p><div id="emHasil"></div></div>`,
     kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Tutup</button><button class="btn btn-primary" onclick="simpanEmelPukal()">Kemas kini emel</button>` });
@@ -2761,7 +3057,7 @@ function templatEmel(){
 async function simpanEmelPukal(){
   const err = el('emErr'); err.hidden = true;
   try {
-    const f = el('emFail').files[0], teks = f ? await bacaTeks(f) : el('emTampal').value;
+    const f = el('emFail').files[0], teks = f ? await bacaFailData(f) : el('emTampal').value;
     if(!teks.trim()) throw new Error('Sila pilih fail atau tampal data.');
     let rows = parseCSV(teks);
     if(rows.length && /^nama$/i.test(String(rows[0][0] || '').trim())) rows = rows.slice(1);
@@ -3090,7 +3386,7 @@ function csvProgram(){
   muatTurunCSV('Program_' + namaFailSelamat(p.kod) + '_' + namaFailSelamat(sesi ? sesi.nama : 'tiada_sesi') + '.csv', rows);
   toast('CSV dimuat turun.');
 }
-function pdfProgram(){
+async function pdfProgram(){
   const p = programIni(); if(!p) return;
   const doc = pdfBaru('p'); if(!doc) return;
   const sid = sesiKP(), sesi = S.fk.sesi.find(s => s.id === sid), fol = folderSesi(sid), d = ringkasDokProg(p), f = agregatProgFK(p, sid);
@@ -3117,6 +3413,24 @@ function pdfProgram(){
     styles:{ font:'helvetica', fontSize:7.6, cellPadding:1.8, textColor:40, valign:'top' },
     columnStyles:{ 0:{ cellWidth:22 }, 1:{ cellWidth:18 }, 2:{ cellWidth:36 }, 3:{ cellWidth:40 }, 4:{ cellWidth:15, halign:'right' }, 6:{ cellWidth:20 } },
     didDrawPage: pdfKaki(doc) }));
+  const rowsP = pelajarProgram(p.id), H = doc.internal.pageSize.getHeight();
+  y = doc.lastAutoTable.finalY + 10;
+  if(y > H - (rowsP.length ? 110 : 30)){ doc.addPage(); y = 20; }
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(40); doc.text('C. Statistik pelajar', 14, y); doc.setFont('helvetica', 'normal');
+  if(!rowsP.length){ doc.setFontSize(9); doc.text('Data pelajar belum dikemas kini.', 14, y + 6); }
+  else {
+    const R = ringkasPelajar(rowsP);
+    doc.setFontSize(9); doc.text('Jumlah pelajar keseluruhan (aktif): ' + fmtNombor(R.aktif) + ' · Jumlah graduan: ' + fmtNombor(R.graduan) + ' · Diterima masuk (kumulatif): ' + fmtNombor(R.pelajar) + ' · Tidak aktif: ' + fmtNombor(R.tidakAktif), 14, y + 6);
+    const img = await buatCartaImej({ type:'bar', data: dataCartaKemasukan(rowsP), options: opsyenCartaKemasukan(rowsP) }, 1400, 540);
+    let yT = y + 10;
+    if(img){ const w = W - 28, h = w * 540 / 1400; doc.addImage(img, 'JPEG', 14, yT, w, h); yT += h + 4; }
+    doc.autoTable(Object.assign({}, PDF_JADUAL, { startY: yT, head:[['Kemasukan','Diterima masuk','Aktif','Graduan','Tidak aktif','Catatan']],
+      body: rowsP.map(r => [r.kemasukan, fmtNombor(r.pelajar), fmtNombor(r.aktif), fmtNombor(r.graduan), fmtNombor(tidakAktif(r)), r.catatan || ''])
+        .concat([['Jumlah', fmtNombor(R.pelajar), fmtNombor(R.aktif), fmtNombor(R.graduan), fmtNombor(R.tidakAktif), '']]),
+      columnStyles:{ 1:{ halign:'right' }, 2:{ halign:'right' }, 3:{ halign:'right' }, 4:{ halign:'right' } },
+      didParseCell: d2 => { if(d2.section === 'body' && d2.row.index === rowsP.length) d2.cell.styles.fontStyle = 'bold'; },
+      didDrawPage: pdfKaki(doc) }));
+  }
   doc.save('Laporan_Program_' + namaFailSelamat(p.kod) + (sesi ? '_' + namaFailSelamat(sesi.nama) : '') + '.pdf'); toast('Laporan PDF dijana.');
 }
 function barisSemuaProgram(sid){
@@ -3125,9 +3439,10 @@ function barisSemuaProgram(sid){
 function csvSemuaProgram(){
   const sid = sesiKP(), sesi = S.fk.sesi.find(s => s.id === sid), it = S.program.item;
   const rows = [['Kod Program','Nama Program','Fakulti','Tahap','Ketua Program','KP Sejak','Dokumen Lengkap','Dokumen Diperlukan', ...it.map((x, i) => (i + 1) + '. ' + x.label),
-    'Kursus Struktur','Ditawarkan Sesi','Pendaftaran Fail Kursus','Fail Kursus Lengkap','Kadar Lengkap (%)']];
+    'Kursus Struktur','Ditawarkan Sesi','Pendaftaran Fail Kursus','Fail Kursus Lengkap','Kadar Lengkap (%)','Bil. Kemasukan','Pelajar Diterima Masuk','Pelajar Aktif','Graduan','Tidak Aktif']];
   barisSemuaProgram(sid).forEach(({ p, d, f }) => rows.push([p.kod, p.nama, p.fakulti, p.tahap, p.kpNama || '', fmtTarikh(p.kpSejak), d.ya, d.perlu,
-    ...it.map(x => ({ YA:'YA', TIDAK:'TIDAK', TB:'TB' })[statusItemProg(p, x.key)]), f.n, f.ditawar, f.fk, f.lengkap, f.fk ? f.kadar : '']));
+    ...it.map(x => ({ YA:'YA', TIDAK:'TIDAK', TB:'TB' })[statusItemProg(p, x.key)]), f.n, f.ditawar, f.fk, f.lengkap, f.fk ? f.kadar : '',
+    ...(r => [r.kemasukan, r.pelajar, r.aktif, r.graduan, r.tidakAktif])(ringkasPelajar(pelajarProgram(p.id)))]));
   muatTurunCSV('Pemantauan_Program_' + (skopFak() ? skopFak() + '_' : '') + namaFailSelamat(sesi ? sesi.nama : 'tiada_sesi') + '.csv', rows);
   toast('CSV dimuat turun.');
 }
@@ -3136,13 +3451,15 @@ function pdfSemuaProgram(){
   const sid = sesiKP(), sesi = S.fk.sesi.find(s => s.id === sid), R = barisSemuaProgram(sid);
   const nFK = R.reduce((a, r) => a + r.f.fk, 0), nL = R.reduce((a, r) => a + r.f.lengkap, 0);
   pdfKepala(doc, 'Laporan Pemantauan Program', (sesi ? 'Fail kursus sesi ' + sesi.nama : 'Belum ada sesi') + (skopFak() ? ' · ' + namaFak(skopFak()) : ''));
-  pdfKad(doc, [['Program', R.length], ['Dokumentasi lengkap', R.filter(r => r.d.belum === 0).length + '/' + R.length], ['Kursus struktur', R.reduce((a, r) => a + r.f.n, 0)], ['Fail kursus lengkap', nFK ? Math.round(nL / nFK * 100) + '%' : '-']], 36);
-  doc.autoTable(Object.assign({}, PDF_JADUAL, { startY: 58, head:[['Bil','Kod','Program','Fakulti','Ketua Program','Dokumentasi','Dokumen belum','Struktur','Ditawarkan','Fail kursus lengkap']],
+  const RP = ringkasPelajar(S.program.pelajar.filter(r => S.program.senarai.some(p => p.id === r.programId)));
+  pdfKad(doc, [['Program', R.length], ['Dokumentasi lengkap', R.filter(r => r.d.belum === 0).length + '/' + R.length], ['Pelajar aktif', fmtNombor(RP.aktif)], ['Graduan', fmtNombor(RP.graduan)], ['Fail kursus lengkap', nFK ? Math.round(nL / nFK * 100) + '%' : '-']], 36);
+  doc.autoTable(Object.assign({}, PDF_JADUAL, { startY: 58, head:[['Bil','Kod','Program','Fakulti','Ketua Program','Dokumentasi','Dokumen belum','Pelajar aktif','Graduan','Struktur','Ditawarkan','Fail kursus lengkap']],
     body: R.map(({ p, d, f }, i) => [i + 1, p.kod, p.nama + (p.tahap ? '\n' + p.tahap : ''), p.fakulti || '-', p.kpNama ? p.kpNama + (p.kpSejak ? '\nsejak ' + fmtTarikh(p.kpSejak) : '') : 'Belum dilantik',
       d.ya + '/' + d.perlu + ' (' + d.pct + '%)', S.program.item.map((x, j) => statusItemProg(p, x.key) === 'TIDAK' ? String(j + 1) : '').filter(Boolean).join(', ') || '-',
+      ...(r => r.kemasukan ? [fmtNombor(r.aktif), fmtNombor(r.graduan)] : ['-', '-'])(ringkasPelajar(pelajarProgram(p.id))),
       f.n, f.ditawar + '/' + f.n, f.fk ? f.lengkap + '/' + f.fk + ' (' + f.kadar + '%)' : '-']),
     styles:{ font:'helvetica', fontSize:7.8, cellPadding:2, textColor:40, valign:'top' },
-    columnStyles:{ 0:{ cellWidth:10, halign:'center' }, 1:{ cellWidth:18 }, 2:{ cellWidth:62 }, 3:{ cellWidth:16 }, 4:{ cellWidth:48 } },
+    columnStyles:{ 0:{ cellWidth:9, halign:'center' }, 1:{ cellWidth:16 }, 2:{ cellWidth:54 }, 3:{ cellWidth:15 }, 4:{ cellWidth:42 }, 7:{ halign:'right' }, 8:{ halign:'right' } },
     didDrawPage: pdfKaki(doc) }));
   let y = doc.lastAutoTable.finalY + 6;
   if(y > doc.internal.pageSize.getHeight() - 25){ doc.addPage(); y = 20; }
