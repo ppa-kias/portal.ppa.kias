@@ -67,6 +67,7 @@ a{color:var(--brand)}
 .lg-langkah span.aktif{border-color:var(--brand);color:var(--brand-deep)}
 .lg-ok{background:var(--brand-soft);color:var(--brand-deep);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;line-height:1.5}
 .lg-kod{letter-spacing:.45em;font-size:20px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums}
+.lg-cara{margin:14px 0 0;padding-left:18px;font-size:12.5px;color:var(--ink-2);line-height:1.55;display:grid;gap:4px}
 .lg-semula{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px}
 .pemisah{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--muted);font-size:12px}
 .pemisah::before,.pemisah::after{content:'';flex:1;height:1px;background:var(--line)}
@@ -528,55 +529,47 @@ table.grid tr.baris-jumlah td{font-weight:800;background:var(--surface-2);border
           <span>Log masuk sebagai <b id="googleEmel"></b></span>
         </button>
       </div>
-      <div class="lg-pautan" id="lgDaftarWrap"><span>Staf KIAS belum mempunyai akaun?</span><button type="button" class="btn-teks" onclick="panelLogin('daftar')">Daftar akaun</button></div>
+      <div class="lg-pautan" id="lgDaftarWrap"><span>Staf akademik belum mempunyai akaun?</span><button type="button" class="btn-teks" onclick="panelLogin('daftar')">Daftar akaun</button></div>
      </div>
 
      <div id="pnlDaftar" hidden>
       <button type="button" class="btn-teks lg-balik" onclick="panelLogin('login')">&larr; Kembali ke log masuk</button>
       <h2 class="serif">Daftar akaun</h2>
-      <p class="mini">Untuk staf KIAS yang mempunyai emel rasmi <b>@kias.edu.my</b>. Kod pengesahan akan dihantar ke emel tersebut.</p>
-      <div class="lg-langkah" aria-hidden="true"><span class="aktif">1. Emel dan nama</span><span>2. Kod dan kata laluan</span></div>
-      <form id="dfBorang1" class="borang" onsubmit="return daftarMintaKod(event)" novalidate>
+      <p class="mini">Untuk staf akademik KIAS yang mempunyai emel rasmi <b>@kias.edu.my</b>.</p>
+      <ol class="lg-cara">
+        <li>Isi emel rasmi anda dan <b>kata laluan lalai</b> yang dimaklumkan oleh PPA.</li>
+        <li>Akaun dicipta serta-merta. Jika emel anda tersenarai dalam rekod pensyarah PPA, akaun dipautkan secara automatik.</li>
+        <li>Tetapkan kata laluan peribadi anda sebelum mula menggunakan portal.</li>
+      </ol>
+      <form id="dfBorang" class="borang" onsubmit="return daftarAkaun(event)" novalidate>
         <div>
           <label class="fld" for="dfEmel">Emel rasmi KIAS</label>
-          <input id="dfEmel" type="email" autocomplete="email" placeholder="nama@kias.edu.my" required>
+          <input id="dfEmel" type="email" autocomplete="username" placeholder="nama@kias.edu.my" required>
         </div>
         <div>
-          <label class="fld" for="dfNama">Nama penuh</label>
-          <input id="dfNama" type="text" autocomplete="name" maxlength="120" required>
-          <div class="mini" style="margin-top:5px">Jika emel anda tersenarai dalam rekod pensyarah PPA, akaun dipautkan secara automatik dan nama dalam rekod itu digunakan.</div>
-        </div>
-        <p class="ralat" id="dfErr1" role="alert" hidden></p>
-        <button class="btn btn-primary btn-besar" id="dfBtn1" type="submit">Hantar kod pengesahan</button>
-      </form>
-      <form id="dfBorang2" class="borang" onsubmit="return daftarSahkan(event)" hidden novalidate>
-        <div class="notis info" style="margin:0">Kod 6 digit telah dihantar ke <b id="dfKe"></b>. Semak peti masuk dan folder spam. Kod sah selama 15 minit.<span id="dfPautan"></span></div>
-        <div>
-          <label class="fld" for="dfKod">Kod pengesahan</label>
-          <input id="dfKod" class="lg-kod" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
-        </div>
-        <div>
-          <label class="fld" for="dfKata">Kata laluan (sekurang-kurangnya 8 aksara)</label>
+          <label class="fld" for="dfKata">Kata laluan lalai</label>
           <div class="kata-wrap">
-            <input id="dfKata" type="password" autocomplete="new-password" minlength="8" required>
+            <input id="dfKata" type="password" autocomplete="off" required>
             <button type="button" class="btn-ikon" onclick="togolKata('dfKata')" aria-label="Papar atau sembunyi kata laluan" data-ik="mata"></button>
           </div>
         </div>
         <div>
-          <label class="fld" for="dfKata2">Sahkan kata laluan</label>
-          <input id="dfKata2" type="password" autocomplete="new-password" required>
+          <label class="fld" for="dfNama">Nama penuh (pilihan)</label>
+          <input id="dfNama" type="text" autocomplete="name" maxlength="120">
+          <div class="mini" style="margin-top:5px">Hanya digunakan jika emel anda tiada dalam rekod pensyarah PPA.</div>
         </div>
-        <p class="ralat" id="dfErr2" role="alert" hidden></p>
-        <button class="btn btn-primary btn-besar" id="dfBtn2" type="submit">Sahkan dan daftar</button>
-        <div class="lg-semula"><button type="button" class="btn-teks" onclick="langkahLg('df', 1)">Tukar emel</button><button type="button" class="btn-teks" id="dfSemula" onclick="hantarSemulaKod('df')">Hantar semula kod</button></div>
+        <p class="ralat" id="dfErr" role="alert" hidden></p>
+        <button class="btn btn-primary btn-besar" id="dfBtn" type="submit">Daftar dan log masuk</button>
       </form>
+      <p class="mini" style="margin-top:14px">Anda juga boleh terus log masuk di skrin log masuk dengan emel @kias.edu.my dan kata laluan lalai. Akaun dicipta secara automatik pada log masuk pertama.</p>
      </div>
 
      <div id="pnlLupa" hidden>
       <button type="button" class="btn-teks lg-balik" onclick="panelLogin('login')">&larr; Kembali ke log masuk</button>
       <h2 class="serif">Lupa kata laluan</h2>
       <p class="mini">Masukkan emel akaun portal anda. Kod untuk menetapkan kata laluan baharu akan dihantar ke emel tersebut.</p>
-      <div class="lg-langkah" aria-hidden="true"><span class="aktif">1. Emel akaun</span><span>2. Kata laluan baharu</span></div>
+      <div class="notis" id="lpTiadaEmel" style="margin:16px 0 0" hidden>Tetapan semula kata laluan melalui emel belum diaktifkan. Sila hubungi Pusat Pembangunan Akademik (PPA) untuk menetapkan semula kata laluan anda.</div>
+      <div class="lg-langkah" id="lpLangkah" aria-hidden="true"><span class="aktif">1. Emel akaun</span><span>2. Kata laluan baharu</span></div>
       <form id="lpBorang1" class="borang" onsubmit="return lupaMintaKod(event)" novalidate>
         <div>
           <label class="fld" for="lpEmel">Emel akaun</label>
@@ -604,7 +597,7 @@ table.grid tr.baris-jumlah td{font-weight:800;background:var(--surface-2);border
         </div>
         <p class="ralat" id="lpErr2" role="alert" hidden></p>
         <button class="btn btn-primary btn-besar" id="lpBtn2" type="submit">Tetapkan kata laluan</button>
-        <div class="lg-semula"><button type="button" class="btn-teks" onclick="langkahLg('lp', 1)">Tukar emel</button><button type="button" class="btn-teks" id="lpSemula" onclick="hantarSemulaKod('lp')">Hantar semula kod</button></div>
+        <div class="lg-semula"><button type="button" class="btn-teks" onclick="langkahLg('lp', 1)">Tukar emel</button><button type="button" class="btn-teks" id="lpSemula" onclick="hantarSemulaKod()">Hantar semula kod</button></div>
       </form>
      </div>
     </div>
@@ -789,7 +782,7 @@ function modGAS(){ return typeof google !== 'undefined' && google.script && goog
 function urlApi(){ return CONFIG.API_URL || simpan.get('ppa_api_url') || ''; }
 
 /* Had masa panggilan pelayan (ms). Tindakan berat seperti migrasi dan muat naik diberi had Apps Script (6 minit). */
-const HAD_MASA = { ping:20000, login:60000, loginGoogle:60000, bootstrap:90000, logout:20000, daftarKod:60000, daftarSahkan:90000, lupaKod:60000, lupaSet:60000 };
+const HAD_MASA = { ping:20000, login:60000, loginGoogle:60000, bootstrap:90000, logout:20000, daftarAkaun:90000, lupaKod:60000, lupaSet:60000 };
 /** Tukar ralat teknikal Google kepada arahan yang boleh diikuti pengguna. */
 function terjemahRalat(m){
   m = String(m || '');
@@ -1054,6 +1047,7 @@ function tunjukLogin(mesej){
   if(!gas && !CONFIG.API_URL) el('lgUrl').value = simpan.get('ppa_api_url') || '';
   el('googleWrap').hidden = true;
   el('lgOk').hidden = true;
+  LG.klSemasa = '';
   panelLogin('login', true);
   el('lgDaftarWrap').hidden = !LG.daftarBuka;
   if(gas || urlApi()){
@@ -1062,6 +1056,7 @@ function tunjukLogin(mesej){
         if(r.sedia === false && err.hidden){ err.textContent = 'Pangkalan data belum disediakan. Pentadbir perlu menjalankan fungsi setup() dalam editor Apps Script.'; err.hidden = false; }
         if(gas && r.emelGoogle){ el('googleEmel').textContent = r.emelGoogle; el('googleWrap').hidden = false; }
         LG.daftarBuka = r.daftarKendiri !== false; el('lgDaftarWrap').hidden = !LG.daftarBuka;
+        LG.emelAktif = r.emelAktif !== false;
       })
       .catch(e => { if(gas && err.hidden){ err.textContent = e.message; err.hidden = false; } });
   }
@@ -1071,15 +1066,17 @@ function tunjukLogin(mesej){
 function sediaUrlApi(){ if(!modGAS() && !CONFIG.API_URL){ const u = el('lgUrl').value.trim(); if(u) simpan.set('ppa_api_url', u); } }
 
 /* ---------- Daftar akaun kendiri & lupa kata laluan ---------- */
-const LG = { daftarBuka: true, emel: { df:'', lp:'' }, pemasa: null };
+const LG = { daftarBuka: true, emelAktif: true, emel: { lp:'' }, pemasa: null, klSemasa: '' };
 const PANEL_LG = { login:'pnlLogin', daftar:'pnlDaftar', lupa:'pnlLupa' };
 function panelLogin(p, tanpaFokus){
   Object.keys(PANEL_LG).forEach(k => { el(PANEL_LG[k]).hidden = k !== p; });
   hentiPemasaKod();
   if(p === 'login'){ if(!tanpaFokus) fokus(el('lgEmel').value ? 'lgKata' : 'lgEmel'); return false; }
   const x = p === 'daftar' ? 'df' : 'lp', e = el('lgEmel').value.trim();
-  if(!el(x + 'Emel').value && /@/.test(e)) el(x + 'Emel').value = e;
-  langkahLg(x, 1);
+  if(!el(x + 'Emel').value && (p === 'daftar' ? /@kias[.]edu[.]my$/i : /@[^@\s]+[.][^@\s]+$/).test(e)) el(x + 'Emel').value = e;
+  if(p === 'daftar'){ el('dfErr').hidden = true; fokus(el('dfEmel').value ? 'dfKata' : 'dfEmel'); return false; }
+  langkahLg('lp', 1);
+  el('lpTiadaEmel').hidden = LG.emelAktif; el('lpLangkah').hidden = !LG.emelAktif; el('lpBorang1').hidden = !LG.emelAktif;
   return false;
 }
 function langkahLg(x, n){
@@ -1107,11 +1104,11 @@ function mulaPemasaKod(id){
 }
 function hentiPemasaKod(){
   if(LG.pemasa){ clearInterval(LG.pemasa); LG.pemasa = null; }
-  ['dfSemula','lpSemula'].forEach(id => { const b = el(id); if(b){ b.disabled = false; b.textContent = 'Hantar semula kod'; } });
+  const b = el('lpSemula'); if(b){ b.disabled = false; b.textContent = 'Hantar semula kod'; }
 }
 function kosongLg(){
-  ['dfEmel','dfNama','dfKod','dfKata','dfKata2','lpEmel','lpKod','lpKata','lpKata2'].forEach(id => { el(id).value = ''; });
-  LG.emel = { df:'', lp:'' };
+  ['dfEmel','dfNama','dfKata','lpEmel','lpKod','lpKata','lpKata2'].forEach(id => { el(id).value = ''; });
+  LG.emel = { lp:'' };
 }
 function semakKataBaru(x){
   const kl = el(x + 'Kata').value;
@@ -1120,29 +1117,17 @@ function semakKataBaru(x){
   if(kl !== el(x + 'Kata2').value) return ralatLg(x + 'Err2', 'Pengesahan kata laluan tidak sepadan.');
   return true;
 }
-function daftarMintaKod(ev){
+/** Daftar akaun: emel @kias.edu.my + kata laluan lalai. Akaun dicipta dan pengguna terus diminta menetapkan kata laluan peribadi. */
+function daftarAkaun(ev){
   if(ev) ev.preventDefault();
   sediaUrlApi();
-  const emel = el('dfEmel').value.trim().toLowerCase(), nama = el('dfNama').value.trim();
-  if(!/^[a-z0-9._%+-]+@kias\.edu\.my$/.test(emel)) return ralatLg('dfErr1', 'Pendaftaran hanya untuk emel rasmi @kias.edu.my.');
-  if(!nama) return ralatLg('dfErr1', 'Sila isi nama penuh.');
-  tugasLg('dfBtn1', 'dfErr1', 'Menghantar kod…', async () => {
-    const r = await panggil('daftarKod', { emel, nama });
-    LG.emel.df = emel;
-    el('dfKe').textContent = emel;
-    el('dfPautan').innerHTML = r.dipautkan ? ' Akaun akan dipautkan kepada rekod pensyarah <b>' + esc(r.nama) + '</b>.' : '';
-    langkahLg('df', 2); mulaPemasaKod('dfSemula');
-  });
-  return false;
-}
-function daftarSahkan(ev){
-  if(ev) ev.preventDefault();
-  if(semakKataBaru('df') !== true) return false;
-  tugasLg('dfBtn2', 'dfErr2', 'Mendaftar…', async () => {
-    const r = await panggil('daftarSahkan', { emel: LG.emel.df, kod: el('dfKod').value.trim(), nama: el('dfNama').value.trim(), kataLaluan: el('dfKata').value });
+  const emel = el('dfEmel').value.trim().toLowerCase(), kl = el('dfKata').value;
+  if(!/^[a-z0-9._%+-]+@kias\.edu\.my$/.test(emel)) return ralatLg('dfErr', 'Pendaftaran hanya untuk emel rasmi @kias.edu.my.');
+  if(!kl) return ralatLg('dfErr', 'Sila isi kata laluan lalai yang dimaklumkan oleh PPA.');
+  tugasLg('dfBtn', 'dfErr', 'Mendaftar…', async () => {
+    const r = await panggil('daftarAkaun', { emel, kataLaluan: kl, nama: el('dfNama').value.trim() });
     kosongLg(); panelLogin('login', true);
-    masukApp(r);
-    toast('Akaun berjaya didaftarkan. Selamat datang, ' + r.pengguna.nama + '.');
+    masukApp(r, kl);
   });
   return false;
 }
@@ -1172,21 +1157,22 @@ function lupaTetapkan(ev){
   });
   return false;
 }
-async function hantarSemulaKod(x){
-  const df = x === 'df', emel = LG.emel[x];
-  const jadi = await tugasLg(x + 'Semula', x + 'Err2', 'Menghantar…', async () => {
-    const r = await panggil(df ? 'daftarKod' : 'lupaKod', df ? { emel, nama: el('dfNama').value.trim() } : { emel });
-    el(x + 'Kod').value = ''; fokus(x + 'Kod');
-    toast(df ? 'Kod baharu telah dihantar ke ' + emel + '.' : r.mesej);
+async function hantarSemulaKod(){
+  const emel = LG.emel.lp;
+  const jadi = await tugasLg('lpSemula', 'lpErr2', 'Menghantar…', async () => {
+    const r = await panggil('lupaKod', { emel });
+    el('lpKod').value = ''; fokus('lpKod');
+    toast(r.mesej);
   });
-  if(jadi) mulaPemasaKod(x + 'Semula');
+  if(jadi) mulaPemasaKod('lpSemula');
 }
 async function logMasuk(ev){
   ev.preventDefault();
   sediaUrlApi();
   const btn = el('lgBtn'), err = el('lgErr');
   btn.disabled = true; btn.textContent = 'Sedang log masuk…'; err.hidden = true; el('lgOk').hidden = true;
-  try { masukApp(await panggil('login', { emel: el('lgEmel').value.trim(), kataLaluan: el('lgKata').value })); }
+  const kl = el('lgKata').value;
+  try { masukApp(await panggil('login', { emel: el('lgEmel').value.trim(), kataLaluan: kl }), kl); }
   catch(e){ err.textContent = e.message; err.hidden = false; }
   finally { btn.disabled = false; btn.textContent = 'Log Masuk'; }
   return false;
@@ -1197,14 +1183,17 @@ async function logMasukGoogle(){
   catch(e){ err.textContent = e.message; err.hidden = false; }
   finally { tamatMuat(); }
 }
-function masukApp(res){
+function masukApp(res, kl){
   S.token = res.token; simpan.set('ppa_token', res.token);
+  /* Kata laluan yang baru ditaip disimpan dalam memori sahaja supaya pengguna tidak perlu menaipnya semula ketika wajib menukar kata laluan. */
+  LG.klSemasa = res.pengguna && res.pengguna.mestiTukar ? (kl || '') : '';
   S.pengguna = res.pengguna; gabung(res.data);
   el('lgKata').value = '';
   el('splash').hidden = true; el('skrinLogin').hidden = true; el('skrinApp').hidden = false;
   let h = ''; try { h = (location.hash || '').replace('#', ''); } catch(e){ h = ''; }
   if(['utama','failkursus','cpd','ketuaprogram','dokumentasi','pentadbiran'].includes(h)) UI.halaman = h;
   lukis();
+  if(res.akaunBaharu) toast('Akaun anda telah didaftarkan. Sila tetapkan kata laluan peribadi anda.');
   if(S.pengguna.mestiTukar) modalProfil(true);
 }
 async function logKeluar(){
@@ -4886,7 +4875,7 @@ function tabTetapan(){
     <div class="card pad"><h3 class="serif h3" style="margin-bottom:14px">Tetapan portal</h3><div class="borang">
       <div><label class="fld" for="tSasaran">Sasaran jam CPD setahun</label><input id="tSasaran" type="number" min="1" step="1" value="${t.sasaranCPD}"></div>
       <label class="semak"><input type="checkbox" id="tLihat" ${t.stafLihatSemua ? 'checked' : ''}><span><b>Staf boleh melihat senarai penuh</b><br><span class="mini">Jika ditandakan, staf boleh melihat jadual CPD dan status fail kursus semua pensyarah (paparan sahaja). Jika tidak, staf hanya melihat rekod sendiri serta rumusan agregat.</span></span></label>
-      <label class="semak"><input type="checkbox" id="tDaftar" ${t.daftarKendiri !== false ? 'checked' : ''}><span><b>Benarkan pendaftaran akaun kendiri</b><br><span class="mini">Staf yang mempunyai emel rasmi @kias.edu.my boleh mendaftar akaun sendiri di skrin log masuk selepas mengesahkan kod yang dihantar ke emel mereka. Akaun baharu diberi peranan Staf dan dipautkan secara automatik kepada rekod pensyarah yang mempunyai emel yang sama. Fungsi lupa kata laluan sentiasa tersedia.</span></span></label>
+      <label class="semak"><input type="checkbox" id="tDaftar" ${t.daftarKendiri !== false ? 'checked' : ''}><span><b>Benarkan pendaftaran akaun kendiri</b><br><span class="mini">Staf yang mempunyai emel rasmi @kias.edu.my boleh mendaftar sendiri dengan log masuk kali pertama menggunakan kata laluan lalai portal (ditetapkan dalam Code.gs, <code>APP.KATA_LALAI_STAF</code>), kemudian wajib menukar kata laluan. Akaun baharu diberi peranan Staf dan dipautkan secara automatik kepada rekod pensyarah yang mempunyai emel yang sama. Tutup tetapan ini selepas semua staf mendaftar supaya kata laluan lalai tidak lagi boleh digunakan untuk mencipta akaun.</span></span></label>
       <div><label class="fld" for="tKat">Kategori dokumen (satu setiap baris)</label><textarea id="tKat" rows="7">${esc((t.kategoriDokumen || []).join('\n'))}</textarea></div>
       <div><label class="fld" for="tInst">Nama institusi (untuk laporan PDF)</label><input id="tInst" type="text" value="${esc(t.namaInstitusi || '')}"></div>
       <div><button class="btn btn-primary" onclick="simpanTetapanAdmin()">Simpan tetapan</button></div></div></div>
@@ -4973,24 +4962,24 @@ function lukisJadualLog(){
 
 /* ============================ PROFIL & KATA LALUAN ============================ */
 function modalProfil(paksa){
-  const u = S.pengguna, p = saya() ? petaP()[saya()] : null;
+  const u = S.pengguna, p = saya() ? petaP()[saya()] : null, minta = u.adaKataLaluan && !(paksa && LG.klSemasa);
   bukaModal({ tajuk: paksa ? 'Tetapkan kata laluan baharu' : 'Profil saya', desk: paksa ? 'Demi keselamatan, sila tetapkan kata laluan baharu sebelum meneruskan.' : '', kunci: !!paksa, kecil: !!paksa,
     isi:`${paksa ? '' : `<div class="profil"><span class="avatar besar">${esc(inisial(u.nama))}</span><div><b style="font-size:15px">${esc(u.nama)}</b><div class="mini">${esc(u.emel)} · ${esc(labelPeranan(u))}</div>${p ? `<div class="mini">${esc(p.fakulti || '')} · ${esc(p.jawatan || '')}</div>` : ''}</div></div>
       <div class="notis" style="margin:16px 0 0;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>Tandatangan digital</b>: ${u.adaTandatangan ? 'tersimpan' : 'belum disimpan'}. Diperlukan untuk menghantar atau mengesahkan dokumen PDF.</span><button class="btn btn-ghost btn-sm" onclick="tutupModal();modalTandatangan()">${u.adaTandatangan ? 'Kemas kini' : 'Tetapkan'}</button></div>
       <h3 class="h3" style="margin:20px 0 10px">Tukar kata laluan</h3>`}
-      <div class="borang">${u.adaKataLaluan ? `<div><label class="fld" for="klLama">Kata laluan semasa</label><input type="password" id="klLama" autocomplete="current-password"></div>` : ''}
+      <div class="borang">${minta ? `<div><label class="fld" for="klLama">Kata laluan semasa</label><input type="password" id="klLama" autocomplete="current-password"></div>` : ''}
         <div><label class="fld" for="klBaru">Kata laluan baharu</label><input type="password" id="klBaru" autocomplete="new-password" placeholder="Sekurang-kurangnya 8 aksara"></div>
         <div><label class="fld" for="klSah">Sahkan kata laluan baharu</label><input type="password" id="klSah" autocomplete="new-password"></div>
         <p class="ralat" id="klErr" hidden></p></div>`,
     kaki:`${paksa ? `<button class="btn btn-ghost" style="margin-right:auto" onclick="logKeluar()">Log keluar</button>` : `<button class="btn btn-ghost" onclick="tutupModal()">Tutup</button>`}<button class="btn btn-primary" onclick="simpanKataLaluan()">Simpan kata laluan</button>` });
-  fokus(u.adaKataLaluan ? 'klLama' : 'klBaru');
+  fokus(minta ? 'klLama' : 'klBaru');
 }
 async function simpanKataLaluan(){
-  const err = el('klErr'), lama = el('klLama') ? el('klLama').value : '', baru = el('klBaru').value, sah = el('klSah').value;
+  const err = el('klErr'), lama = el('klLama') ? el('klLama').value : (LG.klSemasa || ''), baru = el('klBaru').value, sah = el('klSah').value;
   const salah = m => { err.textContent = m; err.hidden = false; };
   if(baru.length < 8) return salah('Kata laluan mesti sekurang-kurangnya 8 aksara.');
   if(baru !== sah) return salah('Pengesahan kata laluan tidak sepadan.');
-  try { const r = await api('tukarKataLaluan', { lama, baru }); S.pengguna = r.pengguna; bukaKunciModal(); tutupModal(); binaNav(); }
+  try { const r = await api('tukarKataLaluan', { lama, baru }); S.pengguna = r.pengguna; LG.klSemasa = ''; bukaKunciModal(); tutupModal(); binaNav(); }
   catch(e){ salah(e.message); }
 }
 
