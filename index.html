@@ -101,6 +101,9 @@ a{color:var(--brand)}
 .nav-i{display:flex;align-items:center;gap:11px;width:100%;border:none;background:transparent;color:inherit;padding:10px 11px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13.5px;text-align:left;position:relative;transition:background .15s}
 .nav-i:hover{background:rgba(255,255,255,.07)}
 .nav-i.aktif{background:rgba(255,255,255,.13);color:#fff}
+a.nav-i{text-decoration:none}
+.nav-luar{margin-top:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1)}
+.nav-luar .ik-luar{margin-left:auto;opacity:.6;display:inline-flex}
 .nav-i.aktif::before{content:'';position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--gold)}
 .nav-i svg{flex:none}
 .sisi-kaki{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:4px}
@@ -495,7 +498,7 @@ table.grid tr.baris-jumlah td{font-weight:800;background:var(--surface-2);border
     <div class="login-kiri">
       <div>
         <div class="eyebrow" style="color:#BFDCCF">Modul portal</div>
-        <p class="login-intro" style="margin-top:8px">Sebuah platform untuk memantau penghantaran fail kursus, pencapaian CPD pensyarah, program akademik dan dokumentasi rasmi PPA.</p>
+        <p class="login-intro" style="margin-top:8px">Satu tempat untuk memantau penghantaran fail kursus, pencapaian CPD pensyarah, program akademik dan dokumentasi rasmi PPA.</p>
       </div>
       <div class="login-modul">
         <div><span class="li" data-ik="folder" data-s="18"></span><span><b>Fail Kursus</b><small>Pensyarah memuat naik fail kursus terus ke Google Drive. Kelengkapan dipantau secara automatik.</small></span></div>
@@ -653,7 +656,8 @@ const CONFIG = {
   LOGO: ['https:\/\/lh3.googleusercontent.com/d/1Z_Vcc2Ism_XGAC2dnUIL2AM6QI93zzC-',
          'https:\/\/drive.google.com/thumbnail?id=1Z_Vcc2Ism_XGAC2dnUIL2AM6QI93zzC-&sz=w400'],
   TERUS_MB: 5,
-  MAKS_MB: 100
+  MAKS_MB: 100,
+  EKIAS: 'https:\/\/ekias.my/ekias/'   /* pautan Sistem eKIAS di bahagian bawah menu */
 };
 
 /* PENTING: Apps Script membuang teks selepas dua garis condong berturut-turut dalam skrip
@@ -1236,7 +1240,8 @@ function binaNav(){
     `<button class="nav-i ${UI.halaman === n.id ? 'aktif' : ''}" onclick="${n.kp ? 'UI.kp.prog=null;' : ''}pergi('${n.id}')" ${UI.halaman === n.id ? 'aria-current="page"' : ''}>${ik(n.ikon, 18)}<span>${n.label}</span>${n.id === 'dokumentasi' && bilTugasanSah() ? `<span class="nav-bil" title="Dokumen menunggu pengesahan anda">${bilTugasanSah()}</span>` : ''}</button>`).join('');
   const u = S.pengguna;
   el('sisiKaki').innerHTML = `<button class="sisi-pengguna" onclick="modalProfil(false)" title="Profil dan kata laluan"><span class="avatar">${esc(inisial(u.nama))}</span><span class="sp-teks"><b>${esc(u.nama)}</b><small>${esc(labelPeranan(u))}</small></span></button>
-    <button class="nav-i" onclick="logKeluar()">${ik('keluar', 18)}<span>Log keluar</span></button>`;
+    <button class="nav-i" onclick="logKeluar()">${ik('keluar', 18)}<span>Log keluar</span></button>
+    <div class="nav-luar"><a class="nav-i" id="pautanEkias" href="${esc(CONFIG.EKIAS)}" target="_blank" rel="noopener" title="Buka Sistem eKIAS dalam tab baharu">${ik('pautan', 18)}<span>Sistem eKIAS</span><span class="ik-luar" aria-hidden="true">${ik('luar', 14)}</span></a></div>`;
   const b = el('atasPeranan');
   b.className = 'badge sm-sembunyi ' + (isAdmin() ? 'b-admin' : (isPtFak() ? 'b-fakulti' : (isKP() ? 'b-kp' : 'b-neutral')));
   b.textContent = isAdmin() ? 'Pentadbir PPA' : (isPtFak() ? 'Pentadbir Fakulti · ' + (skopFak() || u.fakulti || '') : (isKP() ? 'Ketua Program' : 'Paparan staf'));
