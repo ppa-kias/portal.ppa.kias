@@ -410,6 +410,24 @@ tr.klik{cursor:pointer}
 .kp-k:last-child{border-bottom:none}
 .kp-k-kod{font-weight:800;font-size:13.5px}
 @media(max-width:1000px){.kp-k{grid-template-columns:1fr;gap:8px}}
+.jana-borang{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-bottom:16px}
+.jana-borang>*{min-width:0}
+.jana-sub{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--surface-2)}
+.jadual-input td{vertical-align:top;padding:6px!important}
+.jadual-input input,.jadual-input select,.jadual-input textarea{padding:6px 8px;font-size:13px;border-radius:8px}
+.jana-bar{position:sticky;bottom:0;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px;box-shadow:0 -6px 20px -12px rgba(19,48,42,.3);margin:8px 0 12px}
+.jana-pilih{padding:18px;display:flex;flex-direction:column;gap:14px}
+.jana-pilih-kaki{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto}
+.grid-komponen{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+@media(max-width:760px){.grid-komponen{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.p2lo-sem{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+@media(max-width:900px){.p2lo-sem{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.p2lo-sem button{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px;text-align:left;cursor:pointer;font:inherit;color:inherit;min-width:0}
+.p2lo-sem button.ada{border-color:#A9D3C1;background:var(--brand-soft)}
+.p2lo-sem button:hover:not(:disabled){border-color:var(--brand)}
+.p2lo-sem button:disabled{opacity:.55;cursor:default}
+.p2lo-sem b{display:block;font-size:13px}
+.nilai-lemah{color:var(--clay);font-weight:700}
 table.grid tr.baris-jumlah td{font-weight:800;background:var(--surface-2);border-top:1px solid var(--line)}
 .senarai-ralat{margin:0;padding-left:18px;line-height:1.7;font-size:13px;color:var(--ink-2);max-height:50vh;overflow:auto}
 .splash-ralat{max-width:520px;margin:0 16px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px;box-shadow:var(--shadow);font-size:13.5px;line-height:1.6}
@@ -596,7 +614,7 @@ function keadaanKosong(){
     tetapan:{ sasaranCPD:40, stafLihatSemua:false, kategoriDokumen:[], namaInstitusi:'' },
     fakulti:[], pensyarah:[], cpd:{ rekod:[], roster:[] }, fk:{ sesi:[], folder:[], kursus:[], fail:[] },
     dokumen:[], ringkasan:null, pentadbiran:{ pengguna:[], log:[] }, paparPenuh:false, skopFakulti:'',
-    program:{ senarai:[], kursus:[], fail:[], lantikan:[], item:[], pelajar:[] } };
+    program:{ senarai:[], kursus:[], fail:[], lantikan:[], item:[], pelajar:[] }, jana:[] };
 }
 let S = keadaanKosong();
 const UI = {
@@ -604,7 +622,8 @@ const UI = {
   cpd:{ tahun:null, cari:'', fak:'semua', status:'semua', tag:'semua', sort:'jam', dir:-1, buka:{} },
   fk:{ sesi:null, cari:'', fak:'semua', status:'semua' },
   dok:{ cari:'', kat:'semua', susun:'baru' },
-  kp:{ prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua' },
+  kp:{ prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua', kohort:'' },
+  jana:null, templat:null, p2lo:{}, p2loEdit:null, importFn:null,
   admin:{ tab:'pengguna', cari:'', fak:'semua', cariLog:'' },
   sandaran:null, folderDraf:[], fakDraf:[], dokJenis:'fail', dokFail:null
 };
@@ -986,7 +1005,8 @@ function resetPenapis(){
   Object.assign(UI.cpd, { cari:'', fak:'semua', status:'semua', tag:'semua', buka:{} });
   Object.assign(UI.fk, { cari:'', fak:'semua', status:'semua', carian:null });
   Object.assign(UI.dok, { cari:'', kat:'semua' });
-  Object.assign(UI.kp, { prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua' });
+  Object.assign(UI.kp, { prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua', kohort:'' });
+  Object.assign(UI, { jana:null, templat:null, p2lo:{}, p2loEdit:null });
   Object.assign(UI.admin, { tab:'pengguna', cari:'', fak:'semua', cariLog:'' });
 }
 
@@ -1032,6 +1052,12 @@ function klik(js){ return `role="button" tabindex="0" onclick="${js}" onkeydown=
 
 /* ============================ CARTA ============================ */
 const CARTA = {};
+const garisSasaranX = { id:'garisSasaranX', afterDraw(c, a, o){
+  if(!o || !o.nilai || !c.scales.x) return;
+  const ctx = c.ctx, xx = c.scales.x.getPixelForValue(o.nilai);
+  ctx.save(); ctx.strokeStyle = '#13302A'; ctx.globalAlpha = .55; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(xx, c.chartArea.top); ctx.lineTo(xx, c.chartArea.bottom); ctx.stroke(); ctx.restore();
+} };
 const garisSasaran = { id:'garisSasaran', afterDraw(c, a, o){
   if(!o || !o.nilai || !c.scales.y) return;
   const ctx = c.ctx, yy = c.scales.y.getPixelForValue(o.nilai);
@@ -1064,7 +1090,8 @@ function carta(id, jenis, data, opsyen){
   const plugins = [];
   if(o._sasaran){ plugins.push(garisSasaran); o.plugins.garisSasaran = { nilai:o._sasaran }; }
   if(o._tengah){ plugins.push(tengahDonut); o.plugins.tengahDonut = o._tengah; }
-  delete o._sasaran; delete o._tengah;
+  if(o._sasaranX){ plugins.push(garisSasaranX); o.plugins.garisSasaranX = { nilai:o._sasaranX }; }
+  delete o._sasaran; delete o._tengah; delete o._sasaranX;
   try { CARTA[id] = new Chart(c, { type:jenis, data, options:o, plugins }); } catch(e){ console.warn('Carta gagal', e); }
 }
 function hapusCarta(){ Object.keys(CARTA).forEach(k => { try { CARTA[k].destroy(); } catch(e){ /* abaikan */ } delete CARTA[k]; }); }
@@ -1650,6 +1677,7 @@ async function susunSesi(id, arah){
   [ids[i], ids[j]] = [ids[j], ids[i]];
   await cuba(async () => { await api('fkSesiSusun', { ids }); lukisModalSesi(); lukisSemula(); });
 }
+function tajukSesi(id){ const s = S.fk.sesi.find(x => x.id === id); return s ? s.nama : ''; }
 function namaSesi(id){
   const s = S.fk.sesi.find(x => x.id === id); if(!s) return;
   bukaModal({ tajuk:'Tukar nama sesi', kecil:true, isi:`<label class="fld" for="sNamaBaru">Nama sesi</label><input id="sNamaBaru" type="text" value="${esc(s.nama)}">`,
@@ -2329,9 +2357,9 @@ function lukisProgramKP(){
     ${statKad('Ditawarkan sesi ini', f.ditawar + '/' + f.n, `${f.fk} pendaftaran fail kursus`)}
     ${statKad('Fail kursus lengkap', f.fk ? f.kadar + '%' : '-', f.fk ? `${f.lengkap} lengkap · ${f.proses} proses · ${f.belum} belum` : (sesi ? 'tiada pendaftaran sepadan' : 'belum ada sesi'), f.fk ? warnaPct(f.kadar) : '')}
   </div></section>`;
-  h += bahagianPelajarProgram(p, boleh) + bahagianDokProgram(p, boleh) + bahagianFKProgram(p, sesi) + bahagianStrukturProgram(p, boleh) + bahagianLantikanProgram(p);
+  h += bahagianPelajarProgram(p, boleh) + bahagianP2loProgram(p, boleh) + bahagianDokProgram(p, boleh) + bahagianFKProgram(p, sesi) + bahagianStrukturProgram(p, boleh) + bahagianLantikanProgram(p);
   el('halaman').innerHTML = h;
-  lukisSenaraiKPFK(); cartaPelajarProgram(p);
+  lukisSenaraiKPFK(); cartaPelajarProgram(p); cartaP2lo(p);
 }
 function bahagianDokProgram(p, boleh){
   const d = ringkasDokProg(p);
@@ -2395,10 +2423,10 @@ function bahagianStrukturProgram(p, boleh){
     <div class="card" style="overflow:hidden">
       ${boleh ? `<div class="toolbar"><span class="mini" style="flex:1;min-width:220px">Kod kursus di sini menentukan fail kursus yang dipantau. Jika kod kursus bertukar, sunting kod tersebut; kod asal disimpan sebagai <b>kod terdahulu</b> supaya rekod sesi lepas kekal dipadankan.</span>
         <button class="btn btn-ghost" onclick="modalImportStruktur(${p.id})">${ik('naik')}Import</button><button class="btn btn-primary" onclick="modalKursusProg(${p.id},0)">${ik('tambah')}Tambah kursus</button></div>` : ''}
-      <div class="jadual-skrol"><table class="grid"><thead><tr><th>Semester</th><th>Kod kursus</th><th>Nama kursus</th><th class="sm-sembunyi">Kod terdahulu</th><th class="kanan" title="Bilangan pendaftaran fail kursus yang sepadan bagi semua sesi">Padanan</th>${boleh ? '<th></th>' : ''}</tr></thead><tbody>
-      ${pk.length ? pk.map(c => `<tr class="baris"><td class="mini">${esc(c.semester || '-')}</td><td><b>${esc(c.kod)}</b></td><td>${esc(c.nama || '-')}</td><td class="sm-sembunyi mini">${esc(c.kodLama || '-')}</td><td class="kanan tnum" title="Pendaftaran fail kursus sepadan (semua sesi)">${fkBagiKursusProgram(c).length}</td>
+      <div class="jadual-skrol"><table class="grid"><thead><tr><th>Semester</th><th>Kod kursus</th><th>Nama kursus</th><th class="sm-sembunyi">Kod terdahulu</th><th class="sm-sembunyi">Kredit</th><th class="sm-sembunyi">CLO → PLO</th><th class="kanan" title="Bilangan pendaftaran fail kursus yang sepadan bagi semua sesi">Padanan</th>${boleh ? '<th></th>' : ''}</tr></thead><tbody>
+      ${pk.length ? pk.map(c => `<tr class="baris"><td class="mini">${esc(c.semester || '-')}</td><td><b>${esc(c.kod)}</b></td><td>${esc(c.nama || '-')}</td><td class="sm-sembunyi mini">${esc(c.kodLama || '-')}</td><td class="sm-sembunyi mini">${esc(c.kredit || '-')}</td><td class="sm-sembunyi mini">${(Array.isArray(c.plo) ? c.plo : []).map((pl, i) => pl ? 'CLO' + (i + 1) + '→' + pl.replace('PLO', '') : '').filter(Boolean).join(' · ') || '-'}</td><td class="kanan tnum" title="Pendaftaran fail kursus sepadan (semua sesi)">${fkBagiKursusProgram(c).length}</td>
         ${boleh ? `<td><div class="aksi-baris"><button class="btn-ikon" onclick="modalKursusProg(${p.id},${c.id})" title="Sunting atau tukar kod" aria-label="Sunting kursus ${esc(c.kod)}">${ik('sunting', 15)}</button><button class="btn-ikon bahaya" onclick="padamKursusProg(${c.id})" title="Buang daripada struktur" aria-label="Buang kursus ${esc(c.kod)}">${ik('padam', 15)}</button></div></td>` : ''}</tr>`).join('')
-        : `<tr><td colspan="${boleh ? 6 : 5}"><div class="kosong">Belum ada kursus dalam struktur program.</div></td></tr>`}
+        : `<tr><td colspan="${boleh ? 8 : 7}"><div class="kosong">Belum ada kursus dalam struktur program.</div></td></tr>`}
       </tbody></table></div></div></section>`;
 }
 function senaraiLantikan(l, denganSasaran){
@@ -2456,6 +2484,10 @@ function modalKursusProg(pid, id){
     <div class="dua"><div><label class="fld" for="pkKod">Kod kursus</label><input id="pkKod" type="text" value="${c ? esc(c.kod) : ''}" placeholder="cth. USL1013" style="text-transform:uppercase" autocomplete="off"></div>
       <div><label class="fld" for="pkSem">Semester / tahun</label><input id="pkSem" type="text" list="pkSemSenarai" value="${c ? esc(c.semester || '') : ''}" placeholder="cth. Tahun 1 Semester 1"><datalist id="pkSemSenarai">${sem.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div></div>
     <div><label class="fld" for="pkNama">Nama kursus</label><input id="pkNama" type="text" value="${c ? esc(c.nama || '') : ''}" placeholder="cth. Akidah Islamiah"></div>
+    <div class="dua"><div><label class="fld" for="pkKredit">Nilai kredit</label><input id="pkKredit" type="text" value="${c ? esc(c.kredit || '') : ''}" placeholder="cth. 3"></div>
+      <div><label class="fld" for="pkKlas">Klasifikasi</label><input id="pkKlas" type="text" list="pkKlasSenarai" value="${c ? esc(c.klasifikasi || '') : ''}" placeholder="cth. Teras Program"><datalist id="pkKlasSenarai">${['Wajib Universiti', 'Wajib Institusi', 'Teras Program', 'Teras Bidang', 'Elektif', 'Minor'].map(x => `<option value="${x}">`).join('')}</datalist></div></div>
+    <div><label class="fld">Pemetaan CLO kepada PLO</label><div class="grid-komponen">${[0, 1, 2, 3, 4].map(i => `<div><div class="mini" style="margin-bottom:3px">CLO${i + 1}</div><select id="pkPlo${i}">${PLO_PILIHAN.map(([v, l]) => `<option value="${v}" ${c && Array.isArray(c.plo) && c.plo[i] === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`).join('')}</div>
+      <div class="mini" style="margin-top:5px">Digunakan untuk mengisi RP, S3P dan analisis P2LO secara automatik.</div></div>
     <div><label class="fld" for="pkLama">Kod terdahulu (pilihan)</label><input id="pkLama" type="text" value="${c ? esc(c.kodLama || '') : ''}" placeholder="Pisahkan dengan koma, cth. USL1013, USU1013" autocomplete="off">
       <div class="mini" style="margin-top:5px">${c ? `Jika kod kursus ditukar, kod <b>${esc(c.kod)}</b> ditambah ke kod terdahulu secara automatik. ` : 'Isi jika kursus ini pernah menggunakan kod lain. '}Fail kursus yang menggunakan kod semasa atau kod terdahulu dipadankan kepada kursus ini.</div></div>
     <p class="ralat" id="pkErr" hidden></p></div>`,
@@ -2463,7 +2495,8 @@ function modalKursusProg(pid, id){
   fokus('pkKod');
 }
 async function simpanKursusProg(pid, id){
-  const err = el('pkErr'), d = { programId: pid, id, kod: normKod(el('pkKod').value), nama: el('pkNama').value.trim(), semester: el('pkSem').value.trim(), kodLama: el('pkLama').value.trim() };
+  const err = el('pkErr'), d = { programId: pid, id, kod: normKod(el('pkKod').value), nama: el('pkNama').value.trim(), semester: el('pkSem').value.trim(), kodLama: el('pkLama').value.trim(),
+    kredit: el('pkKredit').value.trim(), klasifikasi: el('pkKlas').value.trim(), plo: [0, 1, 2, 3, 4].map(i => el('pkPlo' + i).value) };
   if(!/^[A-Z0-9-]{2,15}$/.test(d.kod)){ err.textContent = 'Kod kursus tidak sah. Gunakan huruf dan nombor sahaja, contohnya USL1013.'; err.hidden = false; return; }
   try { await api('progKursusSimpan', d); tutupModal(); lukisSemula(); }
   catch(e){ err.textContent = e.message; err.hidden = false; }
@@ -2476,7 +2509,7 @@ async function padamKursusProg(id){
 function modalImportStruktur(pid){
   const p = S.program.senarai.find(x => x.id === pid); if(!p) return;
   bukaModal({ tajuk:'Import struktur program', desk: p.kod + ' · ' + p.nama, isi:`
-    <div class="notis info">Lajur: <b>Kod</b>, <b>Nama</b>, <b>Semester</b> dan <b>KodTerdahulu</b> (pilihan). Kursus yang kodnya atau kod terdahulunya sudah ada akan dikemas kini; kod baharu ditambah. Tiada kursus dibuang.</div>
+    <div class="notis info">Lajur: <b>Kod</b>, <b>Nama</b>, <b>Semester</b>, dan pilihan <b>KodTerdahulu</b>, <b>Kredit</b>, <b>Klasifikasi</b> serta <b>PLO</b> (pemetaan CLO1, CLO2, … mengikut susunan, cth. PLO1, PLO5, PLO4). Kursus yang kodnya atau kod terdahulunya sudah ada akan dikemas kini; kod baharu ditambah. Tiada kursus dibuang.</div>
     <div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="templatStruktur(${pid})">${ik('turun', 14)}Muat turun templat${kursusProgram(pid).length ? ' (struktur semasa)' : ''}</button></div>
     <div class="borang"><div><label class="fld" for="isFail">Fail CSV atau Excel</label><input type="file" id="isFail" accept="${TERIMA_JADUAL}"></div>
     <div><label class="fld" for="isTampal">atau tampal terus dari Excel / Google Sheets</label><textarea id="isTampal" rows="6" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea></div>
@@ -2488,9 +2521,11 @@ function parseStruktur(teks){
   const lc = rows[0].map(h => String(h).trim().toLowerCase().replace(/[\s_]+/g, ''));
   const cari = (...n) => { for(const x of n){ const i = lc.indexOf(x); if(i >= 0) return i; } return -1; };
   let iK = cari('kod', 'kodkursus', 'kursus', 'code'), iN = cari('nama', 'namakursus', 'tajuk', 'tajukkursus'), iS = cari('semester', 'sem', 'tahun'), iL = cari('kodterdahulu', 'kodlama', 'kodasal');
+  let iKr = cari('kredit', 'nilaikredit'), iKl = cari('klasifikasi'), iP = cari('plo', 'pemetaanplo', 'cloplo');
   let data = rows.slice(1);
-  if(iK < 0){ iK = 0; iN = 1; iS = 2; iL = 3; data = rows; }
-  return data.map(r => ({ kod: String(r[iK] || '').trim(), nama: iN >= 0 ? String(r[iN] || '').trim() : '', semester: iS >= 0 ? String(r[iS] || '').trim() : '', kodLama: iL >= 0 ? String(r[iL] || '').trim() : '' }))
+  if(iK < 0){ iK = 0; iN = 1; iS = 2; iL = 3; iKr = iKl = iP = -1; data = rows; }
+  const sel = (r, i) => i >= 0 ? String(r[i] || '').trim() : '';
+  return data.map(r => ({ kod: sel(r, iK), nama: sel(r, iN), semester: sel(r, iS), kodLama: sel(r, iL), kredit: sel(r, iKr), klasifikasi: sel(r, iKl), plo: sel(r, iP) }))
     .filter(b => b.kod);
 }
 async function importStruktur(pid){
@@ -2507,8 +2542,9 @@ async function importStruktur(pid){
 }
 function templatStruktur(pid){
   const p = S.program.senarai.find(x => x.id === pid), pk = kursusProgram(pid);
-  muatTurunCSV('Struktur_' + namaFailSelamat(p ? p.kod : 'Program') + '.csv', [['Kod','Nama','Semester','KodTerdahulu'],
-    ...(pk.length ? pk.map(c => [c.kod, c.nama, c.semester, c.kodLama]) : [['USL1013','Akidah Islamiah','Tahun 1 Semester 1',''], ['USL1023','Ulum al-Quran','Tahun 1 Semester 1','USU1023']])]);
+  muatTurunCSV('Struktur_' + namaFailSelamat(p ? p.kod : 'Program') + '.csv', [['Kod','Nama','Semester','KodTerdahulu','Kredit','Klasifikasi','PLO'],
+    ...(pk.length ? pk.map(c => [c.kod, c.nama, c.semester, c.kodLama, c.kredit || '', c.klasifikasi || '', (Array.isArray(c.plo) ? c.plo : []).join(', ')])
+      : [['USL1013','Akidah Islamiah','Tahun 1 Semester 1','','3','Teras Program','PLO1, PLO2, PLO5'], ['USL1023','Ulum al-Quran','Tahun 1 Semester 1','USU1023','3','Teras Program','PLO1, PLO4']])]);
   toast('Templat dimuat turun.');
 }
 
@@ -2730,6 +2766,260 @@ function templatProgram(fmt){
   muatTurunJadual('Senarai_Program', rows, fmt);
 }
 
+/* ---------- P2LO: analisis pencapaian CLO & PLO mengikut kohort ---------- */
+const PLO_DOMAIN = ['Pengetahuan & Kefahaman', 'Kemahiran Kognitif', 'Kemahiran Praktikal', 'Kemahiran Interpersonal', 'Kemahiran Komunikasi', 'Kemahiran Digital',
+  'Kemahiran Numerasi', 'Kepimpinan & Autonomi', 'Kemahiran Personal', 'Keusahawanan', 'Etika & Profesionalisme', 'Rabbani'];
+const P2LO_SASARAN = 60;
+const WARNA_P2LO = { semasa:'#4A72B0', kumulatif:'#11805F' };
+function adaNilai(v){ return v !== null && v !== undefined && v !== '' && isFinite(Number(v)); }
+function nilaiPLO(kursus){
+  const t = Array.from({ length:12 }, () => []);
+  (kursus || []).forEach(k => (k.clo || []).forEach((v, j) => {
+    const i = Number(String((k.plo || [])[j] || '').replace(/\D/g, '')) - 1;
+    if(adaNilai(v) && i >= 0 && i < 12) t[i].push(Number(v));
+  }));
+  return t;
+}
+function purataArr(a){ return a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length * 10) / 10 : null; }
+/** Pencapaian PLO semester n dan kumulatif (semester 1 hingga n) bagi satu kohort. */
+function analisisP2lo(rekod, n){
+  const kum = Array.from({ length:12 }, () => []);
+  for(let s = 1; s <= n; s++) nilaiPLO(((rekod[s] || {}).data || {}).kursus).forEach((a, i) => kum[i].push(...a));
+  return { semasa: nilaiPLO(((rekod[n] || {}).data || {}).kursus).map(purataArr), kumulatif: kum.map(purataArr) };
+}
+function statusKursusP2lo(k){
+  const v = (k.clo || []).filter(adaNilai).map(Number); if(!v.length) return '';
+  const c = v.filter(x => x >= P2LO_SASARAN).length;
+  return c === v.length ? 'Penuh' : (c ? 'Sebahagian' : 'Tidak');
+}
+function samaKohort(a, b){ return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase(); }
+function kohortProgram(p){
+  const set = [];
+  pelajarProgram(p.id).forEach(r => { if(!set.some(x => samaKohort(x, r.kemasukan))) set.push(r.kemasukan); });
+  (Array.isArray(UI.p2lo[p.id]) ? UI.p2lo[p.id] : []).forEach(r => { if(!set.some(x => samaKohort(x, r.kohort))) set.push(r.kohort); });
+  return set;
+}
+function rekodKohort(pid, kohort){
+  const out = {};
+  (Array.isArray(UI.p2lo[pid]) ? UI.p2lo[pid] : []).filter(r => samaKohort(r.kohort, kohort)).forEach(r => { out[r.semester] = r; });
+  return out;
+}
+async function muatP2lo(pid){
+  if(UI.p2lo[pid] === 'muat') return;
+  UI.p2lo[pid] = 'muat';
+  try { UI.p2lo[pid] = (await api('p2loSenarai', { programId: pid }, { senyap:true, tanpaMesej:true })).p2lo; }
+  catch(e){ UI.p2lo[pid] = []; toast(e.message, 'ralat'); }
+  if(UI.halaman === 'ketuaprogram' && UI.kp.prog === pid) lukisSemula();
+}
+function cadanganKekuatan(A){
+  const k = A.semasa.map((v, i) => [v, i]).filter(([v]) => v != null && v >= P2LO_SASARAN).sort((a, b) => b[0] - a[0]).slice(0, 3);
+  return k.length ? 'Kohort ini mencapai sasaran ' + P2LO_SASARAN + '% dalam ' + k.map(([v, i]) => 'PLO ' + (i + 1) + ' - ' + PLO_DOMAIN[i] + ' (' + fmt(v) + '%)').join(', ') + '.' : '';
+}
+function cadanganKelemahan(A){
+  const l = A.semasa.map((v, i) => [v, i]).filter(([v]) => v != null && v < P2LO_SASARAN).sort((a, b) => a[0] - b[0]);
+  return l.length ? 'Kohort ini belum mencapai sasaran ' + P2LO_SASARAN + '% dalam ' + l.map(([v, i]) => 'PLO ' + (i + 1) + ' - ' + PLO_DOMAIN[i] + ' (' + fmt(v) + '%)').join(', ') + '.'
+    : 'Semua PLO yang dinilai pada semester ini mencapai sasaran ' + P2LO_SASARAN + '%.';
+}
+function bahagianP2loProgram(p, boleh){
+  const rows = UI.p2lo[p.id];
+  let h = `<section class="blok" id="secP2lo"><div class="seclabel" style="justify-content:space-between;align-items:center"><span class="eyebrow">Laporan analisis pencapaian CLO & PLO (P2LO)</span>`;
+  if(rows === undefined || rows === 'muat'){ if(rows === undefined) setTimeout(() => muatP2lo(p.id), 0); return h + '</div><div class="card pad mini">Memuatkan analisis kohort…</div></section>'; }
+  const kohort = kohortProgram(p);
+  if(!kohort.length) return h + '</div>' + kosong('Belum ada kohort', 'Tambah data kemasukan dalam bahagian Statistik pelajar. Setiap kemasukan menjadi satu kohort bagi analisis CLO dan PLO.') + '</section>';
+  if(!kohort.some(x => samaKohort(x, UI.kp.kohort))){
+    const adaData = kohort.filter(k => Object.keys(rekodKohort(p.id, k)).length);
+    UI.kp.kohort = adaData.length ? adaData[adaData.length - 1] : kohort[kohort.length - 1];
+  }
+  const kh = UI.kp.kohort, rek = rekodKohort(p.id, kh), sems = Object.keys(rek).map(Number), akhir = sems.length ? Math.max(...sems) : 0;
+  h += `<div class="kepala-aksi"><select class="auto" onchange="UI.kp.kohort=this.value;lukisSemula()" aria-label="Kohort">${kohort.map(k => `<option value="${esc(k)}" ${samaKohort(k, kh) ? 'selected' : ''}>Kohort ${esc(k)}</option>`).join('')}</select>
+      <button class="btn btn-primary btn-sm" onclick="janaP2loKohort(${p.id})" ${akhir ? '' : 'disabled'}>${ik('turun', 14)}Jana laporan P2LO (Excel)</button></div></div>
+    <div class="card pad"><div class="mini" style="margin-bottom:10px">${boleh ? 'Tekan semester untuk mengisi pencapaian CLO setiap kursus. PLO semester dan kumulatif dikira secara automatik (sasaran ' + P2LO_SASARAN + '%).' : 'Paparan sahaja. Analisis diisi oleh Ketua Program.'}</div>
+      <div class="p2lo-sem">${[1, 2, 3, 4, 5, 6, 7, 8].map(n => { const r = rek[n], bil = r ? ((r.data || {}).kursus || []).length : 0;
+        return `<button class="${r ? 'ada' : ''}" onclick="modalP2lo(${p.id},${n})" ${!r && !boleh ? 'disabled' : ''}><b>Semester ${n}</b><span class="mini">${r ? bil + ' kursus' : (boleh ? 'Belum diisi' : 'Tiada data')}</span></button>`; }).join('')}</div></div>`;
+  if(akhir){
+    const A = analisisP2lo(rek, akhir), ada = A.kumulatif.map((v, i) => [v, i]).filter(([v]) => v != null);
+    h += `<div class="grid-rumusan" style="margin-top:16px">
+      <div class="card pad"><h3 class="serif h3">Pencapaian PLO kohort ${esc(kh)}</h3><div class="mini">Semester ${akhir} berbanding kumulatif semester 1 hingga ${akhir}; garisan menunjukkan sasaran ${P2LO_SASARAN}%</div>
+        <div class="carta-kotak" style="height:${Math.max(240, ada.length * 34 + 90)}px"><canvas id="chP2lo" role="img" aria-label="Carta pencapaian PLO kohort"></canvas></div></div>
+      <div class="card" style="overflow:hidden"><div class="jadual-skrol"><table class="grid padat"><thead><tr><th>PLO</th><th>Domain</th><th class="kanan">Sem ${akhir}</th><th class="kanan">Kumulatif</th></tr></thead><tbody>
+        ${ada.length ? ada.map(([v, i]) => { const s = A.semasa[i];
+          return `<tr class="baris"><td><b>PLO ${i + 1}</b></td><td class="mini">${esc(PLO_DOMAIN[i])}</td><td class="kanan tnum ${s != null && s < P2LO_SASARAN ? 'nilai-lemah' : ''}">${s == null ? '-' : fmt(s) + '%'}</td>
+            <td class="kanan tnum ${v < P2LO_SASARAN ? 'nilai-lemah' : ''}">${fmt(v)}%${v < P2LO_SASARAN ? ' <span class="badge b-tidak">Belum capai</span>' : ''}</td></tr>`; }).join('')
+          : '<tr><td colspan="4"><div class="kosong">Pemetaan CLO kepada PLO belum diisi.</div></td></tr>'}
+      </tbody></table></div></div></div>`;
+  }
+  return h + '</section>';
+}
+function cartaP2lo(p){
+  const rek = rekodKohort(p.id, UI.kp.kohort), sems = Object.keys(rek).map(Number); if(!sems.length) return;
+  const akhir = Math.max(...sems), A = analisisP2lo(rek, akhir), idx = A.kumulatif.map((v, i) => [v, i]).filter(([v]) => v != null).map(([, i]) => i);
+  if(!idx.length) return;
+  carta('chP2lo', 'bar', { labels: idx.map(i => 'PLO ' + (i + 1)), datasets:[
+      { label:'Semester ' + akhir, data: idx.map(i => A.semasa[i]), backgroundColor: WARNA_P2LO.semasa, borderRadius:4, maxBarThickness:14, categoryPercentage:.7, barPercentage:.9 },
+      { label:'Kumulatif', data: idx.map(i => A.kumulatif[i]), backgroundColor: WARNA_P2LO.kumulatif, borderRadius:4, maxBarThickness:14, categoryPercentage:.7, barPercentage:.9 }] },
+    { indexAxis:'y', _sasaranX: P2LO_SASARAN, plugins:{ legend: LEGENDA_BAWAH, tooltip:{ callbacks:{ title: it => { const i = idx[it[0].dataIndex]; return 'PLO ' + (i + 1) + ' · ' + PLO_DOMAIN[i]; }, label: c => c.dataset.label + ': ' + (c.parsed.x == null ? '-' : fmt(c.parsed.x) + '%') } } },
+      scales:{ x:{ beginAtZero:true, max:100, ticks:{ callback: v => v + '%' }, grid:{ color:'#EFEAD9' } }, y:{ grid:{ display:false } } } });
+}
+
+/* ---------- editor semester P2LO ---------- */
+function p2loKosong(p, kohort, n){
+  const pl = pelajarProgram(p.id).find(r => samaKohort(r.kemasukan, kohort));
+  return { tahunSem:'Tahun ' + Math.ceil(n / 2) + ' / Semester ' + (n % 2 ? 1 : 2), sesi:'', pelajarSemasa: pl ? pl.aktif : '', ringkasan:'', kursus:[],
+    kekuatan:'', kelemahan:'', cqi:[], mesyuarat:'', tarikhMesyuarat:'' };
+}
+function kursusP2loKosong(){ return { kod:'', nama:'', bil:'', clo:['', '', '', '', ''], plo:['', '', '', '', ''], pensyarah:'', klasifikasi:'', kredit:'' }; }
+function modalP2lo(pid, n){
+  const p = S.program.senarai.find(x => x.id === pid); if(!p) return;
+  const r = rekodKohort(pid, UI.kp.kohort)[n], boleh = !!p.bolehUrus;
+  const data = JSON.parse(JSON.stringify(r ? r.data : p2loKosong(p, UI.kp.kohort, n)));
+  (data.kursus || []).forEach(k => { k.clo = (k.clo || []).map(v => v == null ? '' : v); while(k.clo.length < 5) k.clo.push(''); k.plo = k.plo || []; while(k.plo.length < 5) k.plo.push(''); });
+  UI.p2loEdit = { pid, kohort: UI.kp.kohort, n, id: r ? r.id : 0, data, boleh };
+  bukaModal({ tajuk:'P2LO · Semester ' + n + ' · Kohort ' + UI.kp.kohort, desk: p.kod + ' · ' + p.nama, lebar:true, kunci: boleh,
+    isi:'<div id="p2loIsi"></div>',
+    kaki: boleh ? `${r ? `<button class="btn btn-danger" style="margin-right:auto" onclick="padamP2lo()">${ik('padam', 15)}Padam semester</button>` : ''}<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" onclick="simpanP2lo()">Simpan semester ${n}</button>`
+      : `<button class="btn btn-ghost" onclick="tutupModal()">Tutup</button>` });
+  lukisModalP2lo();
+}
+function lukisModalP2lo(){
+  const box = el('p2loIsi'), E = UI.p2loEdit; if(!box || !E) return;
+  const d = E.data, b = E.boleh, f = (label, path, v, o) => b ? mdn(label, path, v, o) : `<div><div class="fld">${esc(label)}</div><div style="white-space:pre-wrap">${esc(v || '-')}</div></div>`;
+  box.innerHTML = `<div oninput="p2loUbah(event)" onchange="p2loUbah(event)" class="borang">
+    <div class="tiga">${f('Tahun / semester pengajian', 'tahunSem', d.tahunSem)}${f('Sesi akademik', 'sesi', d.sesi, { ph:'2024/2025 Sem 1' })}${f('Jumlah pelajar semasa', 'pelajarSemasa', d.pelajarSemasa, { jenis:'number' })}</div>
+    ${f('1. Ringkasan pencapaian keseluruhan kohort', 'ringkasan', d.ringkasan, { textarea:true, rows:3, ph:'Ulasan prestasi kohort bagi semester ini' })}
+    <div><div class="kad-kepala" style="margin:4px 0 8px"><b>2. Analisis hasil pembelajaran kursus (CLO)</b>
+      ${b ? `<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="isiP2loStruktur()">${ik('salin', 14)}Isi daripada struktur</button><button class="btn btn-ghost btn-sm" onclick="modalImportP2lo()">${ik('naik', 14)}Import CSV / Excel</button><button class="btn btn-ghost btn-sm" onclick="ubahP2lo(d => d.kursus.push(kursusP2loKosong()))">${ik('tambah', 14)}Kursus</button></div>` : ''}</div>
+      <div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:${b ? 1000 : 760}px"><thead><tr><th style="width:110px">Kod</th><th>Nama kursus</th><th style="width:80px">Bil. pelajar</th>${[1, 2, 3, 4].map(i => `<th style="width:104px">CLO${i} (%) / PLO</th>`).join('')}<th style="width:96px">Status</th>${b ? '<th style="width:40px"></th>' : ''}</tr></thead><tbody>
+      ${(d.kursus || []).length ? d.kursus.map((k, i) => { const p = 'kursus.' + i + '.';
+        return `<tr><td>${b ? mdn(null, p + 'kod', k.kod) : '<b>' + esc(k.kod) + '</b>'}</td><td>${b ? mdn(null, p + 'nama', k.nama) : esc(k.nama)}</td><td>${b ? mdn(null, p + 'bil', k.bil, { jenis:'number' }) : esc(k.bil)}</td>
+          ${[0, 1, 2, 3].map(j => `<td>${b ? mdn(null, p + 'clo.' + j, k.clo[j], { jenis:'number' }) + '<div style="height:4px"></div>' + mdn(null, p + 'plo.' + j, k.plo[j], { pilihan: PLO_PILIHAN }) : (adaNilai(k.clo[j]) ? fmt(k.clo[j]) + '%' + (k.plo[j] ? '<div class="mini">' + esc(k.plo[j]) + '</div>' : '') : '-')}</td>`).join('')}
+          <td id="p2loSt${i}">${chipStatusP2lo(statusKursusP2lo(k))}</td>${b ? `<td><button class="btn-ikon bahaya" onclick="ubahP2lo(d => d.kursus.splice(${i},1))" aria-label="Buang kursus">${ik('x', 14)}</button></td>` : ''}</tr>`; }).join('')
+        : `<tr><td colspan="${b ? 9 : 8}"><div class="kosong" style="padding:18px">Belum ada kursus. ${b ? 'Tekan Isi daripada struktur untuk menyenaraikan kursus semester ini.' : ''}</div></td></tr>`}
+      </tbody></table></div>
+      <p class="mini" style="margin-top:6px">Pencapaian CLO kohort = purata peratus pelajar yang mencapai CLO (daripada Laporan Pencapaian CLO dalam S3P). Status Penuh jika semua CLO ≥ ${P2LO_SASARAN}%.</p></div>
+    <div><b>3. Pencapaian PLO semester semasa berbanding kumulatif</b>
+      <div class="jadual-skrol" style="margin-top:8px"><table class="grid padat"><thead><tr><th>PLO</th><th>Domain (MQF 2.0)</th><th class="kanan">Sasaran</th><th class="kanan">Semester semasa</th><th class="kanan">Kumulatif kohort</th></tr></thead><tbody id="p2loPLO"></tbody></table></div></div>
+    <div class="dua">${f('Kekuatan', 'kekuatan', d.kekuatan, { textarea:true, rows:3 })}${f('Kelemahan', 'kelemahan', d.kelemahan, { textarea:true, rows:3 })}</div>
+    ${b ? `<div><button class="btn btn-ghost btn-sm" onclick="cadangP2lo()">${ik('carta', 14)}Cadangkan kekuatan dan kelemahan daripada data PLO</button></div>` : ''}
+    <div><div class="kad-kepala" style="margin:4px 0 8px"><b>5. Pelan penambahbaikan (CQI kohort)</b>${b ? `<button class="btn btn-ghost btn-sm" onclick="ubahP2lo(d => d.cqi.push({ plo:'', aktiviti:'', tarikh:'' }))">${ik('tambah', 14)}Tindakan</button>` : ''}</div>
+      ${(d.cqi || []).length ? `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:620px"><thead><tr><th style="width:190px">PLO / domain yang lemah</th><th>Cadangan aktiviti (akademik / sokongan)</th><th style="width:150px">Tarikh pelaksanaan</th>${b ? '<th style="width:40px"></th>' : ''}</tr></thead><tbody>
+        ${d.cqi.map((c, i) => `<tr><td>${b ? mdn(null, 'cqi.' + i + '.plo', c.plo) : esc(c.plo)}</td><td>${b ? mdn(null, 'cqi.' + i + '.aktiviti', c.aktiviti, { textarea:true, rows:2 }) : esc(c.aktiviti)}</td><td>${b ? mdn(null, 'cqi.' + i + '.tarikh', c.tarikh) : esc(c.tarikh)}</td>
+          ${b ? `<td><button class="btn-ikon bahaya" onclick="ubahP2lo(d => d.cqi.splice(${i},1))" aria-label="Buang tindakan">${ik('x', 14)}</button></td>` : ''}</tr>`).join('')}</tbody></table></div>` : '<p class="mini">Tiada tindakan penambahbaikan direkodkan.</p>'}</div>
+    <div class="dua">${f('Disahkan melalui mesyuarat', 'mesyuarat', d.mesyuarat, { ph:'cth. Mesyuarat Jabatan Bil. 2/2025' })}${f('Tarikh mesyuarat', 'tarikhMesyuarat', d.tarikhMesyuarat)}</div>
+  </div>`;
+  kemasP2loPLO();
+}
+function chipStatusP2lo(s){ return s ? `<span class="badge ${s === 'Penuh' ? 'b-ya' : (s === 'Sebahagian' ? 'b-hampir' : 'b-tidak')}">${s}</span>` : '<span class="mini">-</span>'; }
+function rekodEdit(){ const E = UI.p2loEdit, rek = Object.assign({}, rekodKohort(E.pid, E.kohort)); rek[E.n] = { data: E.data }; return rek; }
+function kemasP2loPLO(){
+  const E = UI.p2loEdit, box = el('p2loPLO'); if(!E || !box) return;
+  const A = analisisP2lo(rekodEdit(), E.n);
+  box.innerHTML = PLO_DOMAIN.map((dom, i) => { const s = A.semasa[i], k = A.kumulatif[i];
+    return `<tr class="baris"><td><b>PLO ${i + 1}</b></td><td class="mini">${esc(dom)}</td><td class="kanan tnum">${P2LO_SASARAN}%</td>
+      <td class="kanan tnum ${s != null && s < P2LO_SASARAN ? 'nilai-lemah' : ''}">${s == null ? '-' : fmt(s) + '%'}</td><td class="kanan tnum ${k != null && k < P2LO_SASARAN ? 'nilai-lemah' : ''}">${k == null ? '-' : fmt(k) + '%'}</td></tr>`; }).join('');
+  (E.data.kursus || []).forEach((k, i) => { const e = el('p2loSt' + i); if(e) e.innerHTML = chipStatusP2lo(statusKursusP2lo(k)); });
+}
+function p2loUbah(e){
+  const t = e.target; if(!t.dataset || !t.dataset.p || !UI.p2loEdit) return;
+  setLaluan(UI.p2loEdit.data, t.dataset.p, t.value);
+  if(/^kursus\./.test(t.dataset.p)) kemasP2loPLO();
+}
+function ubahP2lo(fn){ fn(UI.p2loEdit.data); lukisModalP2lo(); }
+function cadangP2lo(){
+  const A = analisisP2lo(rekodEdit(), UI.p2loEdit.n), d = UI.p2loEdit.data;
+  d.kekuatan = cadanganKekuatan(A) || d.kekuatan; d.kelemahan = cadanganKelemahan(A);
+  const lemah = A.semasa.map((v, i) => [v, i]).filter(([v]) => v != null && v < P2LO_SASARAN);
+  lemah.forEach(([, i]) => { if(!d.cqi.some(c => new RegExp('PLO\\s*' + (i + 1) + '\\b').test(c.plo))) d.cqi.push({ plo:'PLO ' + (i + 1) + ' - ' + PLO_DOMAIN[i], aktiviti:'', tarikh:'' }); });
+  lukisModalP2lo();
+}
+/** Kursus bagi semester ke-n kohort mengikut kumpulan semester dalam struktur program. */
+function kursusSemesterStruktur(pid, n){
+  const ks = kursusProgram(pid), label = [...new Set(ks.map(k => k.semester).filter(Boolean))];
+  return label.length ? ks.filter(k => k.semester === label[n - 1]) : [];
+}
+function pensyarahKursusProgram(c){
+  const pm = petaP(), nama = [];
+  fkBagiKursusProgram(c).sort((a, b) => b.sesi - a.sesi).forEach(k => { const p = pm[k.pid]; if(p && !nama.includes(p.nama)) nama.push(p.nama); });
+  return nama.slice(0, 3).join(', ');
+}
+function isiP2loStruktur(){
+  const E = UI.p2loEdit, ks = kursusSemesterStruktur(E.pid, E.n);
+  if(!ks.length){ toast('Tiada kursus bagi semester ' + E.n + ' dalam struktur program. Pastikan medan semester diisi dalam Struktur program.', 'ralat'); return; }
+  let baru = 0;
+  ks.forEach(c => {
+    let k = E.data.kursus.find(x => normKod(x.kod) === normKod(c.kod));
+    if(!k){ k = kursusP2loKosong(); k.kod = c.kod; E.data.kursus.push(k); baru++; }
+    k.nama = k.nama || c.nama; k.klasifikasi = k.klasifikasi || c.klasifikasi || ''; k.kredit = k.kredit || c.kredit || '';
+    k.pensyarah = k.pensyarah || pensyarahKursusProgram(c);
+    if(k.bil === '' && E.data.pelajarSemasa !== '') k.bil = E.data.pelajarSemasa;
+    (Array.isArray(c.plo) ? c.plo : []).forEach((pl, j) => { if(pl && !k.plo[j]) k.plo[j] = pl; });
+  });
+  lukisModalP2lo();
+  toast(baru + ' kursus ditambah daripada struktur (' + (ks[0].semester || '') + ').');
+}
+const LAJUR_P2LO = { kod:['kodkursus', 'kod'], nama:['namakursus', 'nama', 'kursus'], bil:['bilpelajar', 'bil', 'pelajar'], pensyarah:['pensyarah', 'namapensyarah'],
+  klasifikasi:['klasifikasi'], kredit:['kredit', 'nilaikredit'] };
+[1, 2, 3, 4, 5].forEach(i => { LAJUR_P2LO['clo' + i] = ['clo' + i]; LAJUR_P2LO['plo' + i] = ['ploclo' + i, 'plo' + i + 'clo', 'pemetaanclo' + i]; });
+function modalImportP2lo(){
+  const E = UI.p2loEdit;
+  modalImport({ tajuk:'Import pencapaian CLO', desk:'Semester ' + E.n + ' · Kohort ' + E.kohort,
+    nota:'Lajur: <b>KodKursus</b>, <b>NamaKursus</b>, <b>BilPelajar</b>, <b>CLO1</b> hingga <b>CLO5</b> (peratus pencapaian) dan pilihan <b>PLO_CLO1</b> hingga <b>PLO_CLO5</b> (cth. PLO1), <b>Pensyarah</b>. Kursus dipadankan mengikut kod: kursus sedia ada dikemas kini, kursus baharu ditambah. Jika lajur PLO kosong, pemetaan daripada struktur program digunakan.',
+    templat: fmt => templatP2lo(fmt),
+    jalan: async teks => {
+      const baris = barisIkutLajur(teks, LAJUR_P2LO, ['kod']), ralat = [], ks = kursusProgram(E.pid);
+      if(!baris.length) throw new Error('Tiada baris data ditemui selepas baris tajuk.');
+      baris.forEach(b => {
+        const kod = normKod(b.kod); if(!kod){ ralat.push('Baris ' + b.no + ': kod kursus kosong.'); return; }
+        let k = E.data.kursus.find(x => normKod(x.kod) === kod);
+        if(!k){ k = kursusP2loKosong(); k.kod = kod; E.data.kursus.push(k); }
+        ['nama', 'bil', 'pensyarah', 'klasifikasi', 'kredit'].forEach(x => { if(b[x] !== undefined && b[x] !== '') k[x] = b[x]; });
+        const st = ks.find(c => normKod(c.kod) === kod || pecahKod(c.kodLama).includes(kod));
+        [1, 2, 3, 4, 5].forEach(i => {
+          const v = b['clo' + i];
+          if(v !== undefined && v !== ''){ const n = Number(String(v).replace('%', '').replace(',', '.')); if(!isFinite(n) || n < 0 || n > 100) ralat.push('Baris ' + b.no + ': CLO' + i + ' "' + v + '" bukan peratus 0 hingga 100.'); else k.clo[i - 1] = n; }
+          const pl = String(b['plo' + i] || '').replace(/\s+/g, '').toUpperCase();
+          if(/^PLO(1[0-2]|[1-9])$/.test(pl)) k.plo[i - 1] = pl;
+          else if(!k.plo[i - 1] && st && Array.isArray(st.plo) && st.plo[i - 1]) k.plo[i - 1] = st.plo[i - 1];
+        });
+      });
+      lukisModalP2lo();
+      toast(baris.length + ' baris diimport. Tekan Simpan untuk menyimpan semester ini.');
+      return { ralat };
+    } });
+}
+function templatP2lo(fmt){
+  const E = UI.p2loEdit, kep = ['KodKursus', 'NamaKursus', 'BilPelajar', 'CLO1', 'CLO2', 'CLO3', 'CLO4', 'PLO_CLO1', 'PLO_CLO2', 'PLO_CLO3', 'PLO_CLO4', 'Pensyarah'];
+  const ks = E.data.kursus.length ? E.data.kursus : kursusSemesterStruktur(E.pid, E.n).map(c => Object.assign(kursusP2loKosong(), { kod:c.kod, nama:c.nama, plo: (Array.isArray(c.plo) ? c.plo : []).concat(['', '', '', '', '']).slice(0, 5), pensyarah: pensyarahKursusProgram(c) }));
+  const p = S.program.senarai.find(x => x.id === E.pid);
+  muatTurunJadual('P2LO_' + namaFailSelamat(p ? p.kod : '') + '_Sem' + E.n, [kep].concat(ks.map(k => [k.kod, k.nama, k.bil, ...[0, 1, 2, 3].map(j => adaNilai(k.clo[j]) ? Number(k.clo[j]) : ''), ...[0, 1, 2, 3].map(j => k.plo[j] || ''), k.pensyarah])), fmt);
+}
+async function simpanP2lo(){
+  const E = UI.p2loEdit;
+  const bersih = JSON.parse(JSON.stringify(E.data));
+  bersih.kursus = (bersih.kursus || []).filter(k => k.kod || k.nama).map(k => Object.assign(k, { clo: k.clo.map(v => adaNilai(v) ? Number(v) : null) }));
+  await cuba(async () => {
+    const r = await api('p2loSimpan', { programId: E.pid, kohort: E.kohort, semester: E.n, data: bersih });
+    UI.p2lo[E.pid] = r.p2lo;
+    bukaKunciModal(); tutupModal(); lukisSemula();
+  });
+}
+async function padamP2lo(){
+  const E = UI.p2loEdit; if(!E.id) return;
+  if(!await sahkan({ tajuk:'Padam analisis semester ' + E.n + '?', mesej:'Data CLO dan PLO semester ini bagi kohort ' + E.kohort + ' akan dipadam.', butang:'Padam', bahaya:true })) return;
+  await cuba(async () => { const r = await api('p2loPadam', { id: E.id }); UI.p2lo[E.pid] = r.p2lo; bukaKunciModal(); tutupModal(); lukisSemula(); });
+}
+async function janaP2loKohort(pid){
+  const p = S.program.senarai.find(x => x.id === pid), kohort = UI.kp.kohort, rekod = rekodKohort(pid, kohort);
+  if(!p || !Object.keys(rekod).length){ toast('Tiada data P2LO bagi kohort ini.', 'ralat'); return; }
+  const pl = pelajarProgram(pid).find(r => samaKohort(r.kemasukan, kohort));
+  mulaMuat();
+  try {
+    const blob = await janaP2LO(p, kohort, rekod, { asal: pl ? pl.pelajar : '', tamat: pl ? (Number(pl.aktif) || 0) + (Number(pl.graduan) || 0) : '' });
+    const nama = 'P2LO_' + namaFailSelamat(p.kod) + '_' + namaFailSelamat(kohort) + '.xlsx';
+    muatTurunBlob(blob, nama); toast('Laporan P2LO dijana: ' + nama);
+  } catch(e){ toast(e.message || String(e), 'ralat'); }
+  finally { tamatMuat(); }
+}
+
 /* ---------- dokumen program ---------- */
 async function setItemProg(pid, key, nilai){ await cuba(async () => { await api('progItemSet', { programId: pid, key, nilai }); lukisSemula(); }); }
 async function muatNaikProg(pid, key, files, input){
@@ -2785,11 +3075,14 @@ function bahagianProgramUtama(){
 /* ============================ HALAMAN: DOKUMENTASI ============================ */
 function kategoriDok(){ const k = [...(S.tetapan.kategoriDokumen || [])]; S.dokumen.forEach(d => { if(d.kategori && !k.includes(d.kategori)) k.push(d.kategori); }); return k; }
 function lukisDok(){
+  if(UI.jana) return lukisJana();
   tajukAtas('Dokumentasi', 'Dokumen rasmi Pusat Pembangunan Akademik');
   const A = isAdmin();
   el('halaman').innerHTML = `<div class="kepala"><div><div class="eyebrow">Modul · Dokumentasi</div><h1 class="serif">Dokumentasi PPA</h1>
       <p class="mini">${A ? 'Muat naik dan urus dokumen rasmi. Fail disimpan dalam folder Google Drive PPA mengikut kategori.' : 'Rujuk dan muat turun dokumen rasmi PPA. Dokumen dimuat naik oleh pentadbir PPA sahaja.'}</p></div>
     <div class="kepala-aksi">${A ? `<button class="btn btn-primary" onclick="modalDokumen(0)">${ik('naik')}Muat naik dokumen</button>` : ''}</div></div>
+    ${bahagianJanaDok()}
+    <div class="seclabel"><span class="eyebrow">Dokumen rasmi PPA</span></div>
     <div class="card" style="overflow:hidden"><div class="toolbar" style="border-bottom:none">
       <div class="cari">${ik('cari')}<input type="search" placeholder="Cari tajuk, keterangan atau hashtag…" value="${esc(UI.dok.cari)}" oninput="UI.dok.cari=this.value;lukisSenaraiDok()" aria-label="Cari dokumen"></div>
       <select class="auto" onchange="UI.dok.susun=this.value;lukisSenaraiDok()" aria-label="Susunan"><option value="baru" ${UI.dok.susun === 'baru' ? 'selected' : ''}>Terkini dahulu</option><option value="lama" ${UI.dok.susun === 'lama' ? 'selected' : ''}>Terlama dahulu</option><option value="tajuk" ${UI.dok.susun === 'tajuk' ? 'selected' : ''}>Tajuk (A-Z)</option></select>
@@ -2797,6 +3090,7 @@ function lukisDok(){
     <div class="kat-cip" id="dokKat"></div>
     <div id="dokGrid"></div>`;
   lukisSenaraiDok();
+  muatStatusTemplat().then(() => Object.keys(JANA_INFO).forEach(j => { const e = el('stTemplat-' + j); if(e) e.innerHTML = statusTemplatJana(j); }));
 }
 function pilihKatDok(i){ UI.dok.kat = ['semua', ...kategoriDok()][i] || 'semua'; lukisSenaraiDok(); }
 function lukisSenaraiDok(){
@@ -2893,14 +3187,946 @@ async function padamDok(id){
   await cuba(async () => { await api('dokPadam', { id }); lukisSemula(); });
 }
 
+/* ============================ PENJANA DOKUMEN: OOXML (Word & Excel) ============================ */
+/* Templat rasmi diisi terus di pelayar menggunakan JSZip. Format, formula, imej dan makro templat dikekalkan. */
+const NS_W = 'http:\/\/schemas.openxmlformats.org/wordprocessingml/2006/main';
+const NS_S = 'http:\/\/schemas.openxmlformats.org/spreadsheetml/2006/main';
+const NS_R = 'http:\/\/schemas.openxmlformats.org/officeDocument/2006/relationships';
+const NS_XML = 'http:\/\/www.w3.org/XML/1998/namespace';
+const MIME_OOXML = { docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xlsm:'application/vnd.ms-excel.sheet.macroEnabled.12' };
+let _jszip = null;
+function muatJSZip(){
+  if(window.JSZip) return Promise.resolve(window.JSZip);
+  if(!_jszip) _jszip = new Promise((ok, gagal) => {
+    const sk = document.createElement('script');
+    sk.src = 'https:\/\/cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    sk.onload = () => window.JSZip ? ok(window.JSZip) : gagal(new Error('Pustaka JSZip gagal dimuat.'));
+    sk.onerror = () => { _jszip = null; sk.remove(); gagal(new Error('Penjana dokumen memerlukan sambungan internet (pustaka JSZip tidak dapat dimuat).')); };
+    document.head.appendChild(sk);
+  });
+  return _jszip;
+}
+function bersihXml(s){ return String(s ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, ''); }
+function huraiXml(teks, nama){
+  const d = new DOMParser().parseFromString(teks, 'application/xml');
+  if(d.getElementsByTagName('parsererror').length) throw new Error('Templat rosak (' + nama + ').');
+  return d;
+}
+function sirikanXml(doc){
+  const x = new XMLSerializer().serializeToString(doc);
+  return /^<\?xml/.test(x) ? x : '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + x;
+}
+function anakNS(el, nama){ return [...el.childNodes].filter(n => n.nodeType === 1 && n.localName === nama); }
+
+const _cacheTemplat = {};
+async function ambilTemplat(key){
+  if(_cacheTemplat[key]) return _cacheTemplat[key];
+  const r = await api('templatAmbil', { key }, { tanpaMesej:true });
+  const bin = atob(r.kandungan || ''), arr = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return (_cacheTemplat[key] = { nama: r.nama, bait: arr });
+}
+async function bukaZip(bait){ const JSZip = await muatJSZip(); return JSZip.loadAsync(bait); }
+async function bacaZipXml(zip, laluan){
+  const f = zip.file(laluan);
+  if(!f) throw new Error('Templat tidak lengkap: ' + laluan + ' tiada.');
+  return huraiXml(await f.async('string'), laluan);
+}
+
+/* ---------- Excel ---------- */
+async function bukaXlsx(bait){
+  const zip = await bukaZip(bait), wb = await bacaZipXml(zip, 'xl/workbook.xml'), rels = await bacaZipXml(zip, 'xl/_rels/workbook.xml.rels');
+  let ss = [];
+  if(zip.file('xl/sharedStrings.xml')){
+    const d = await bacaZipXml(zip, 'xl/sharedStrings.xml');
+    ss = [...d.getElementsByTagNameNS(NS_S, 'si')].map(si => [...si.getElementsByTagNameNS(NS_S, 't')].map(t => t.textContent).join(''));
+  }
+  const sasaran = {};
+  [...rels.getElementsByTagName('Relationship')].forEach(r => { sasaran[r.getAttribute('Id')] = r.getAttribute('Target'); });
+  const helaian = {};
+  [...wb.getElementsByTagNameNS(NS_S, 'sheet')].forEach((el, i) => {
+    let t = String(sasaran[el.getAttributeNS(NS_R, 'id') || el.getAttribute('r:id')] || '').replace(/^[/]/, '');
+    if(!/^xl[/]/.test(t)) t = 'xl/' + t;
+    helaian[el.getAttribute('name')] = { nama: el.getAttribute('name'), el, laluan: t, doc: null, indeks: i, petaBaris: null };
+  });
+  return { zip, wb, ss, helaian, gaya: null, ubah: new Set(), _merah: {} };
+}
+async function helaianX(X, nama){
+  const h = X.helaian[nama];
+  if(!h) throw new Error('Helaian "' + nama + '" tiada dalam templat. Pastikan templat rasmi yang betul dimuat naik.');
+  if(!h.doc) h.doc = await bacaZipXml(X.zip, h.laluan);
+  X.ubah.add(h);
+  return h;
+}
+function kolKeNo(s){ let c = 0; for(const ch of s) c = c * 26 + ch.charCodeAt(0) - 64; return c; }
+function noKeKol(c){ let s = ''; while(c > 0){ const m = (c - 1) % 26; s = String.fromCharCode(65 + m) + s; c = Math.floor((c - 1) / 26); } return s; }
+function pecahRef(ref){ const m = /^\$?([A-Z]+)\$?(\d+)$/.exec(ref); if(!m) throw new Error('Rujukan sel tidak sah: ' + ref); return { c: kolKeNo(m[1]), r: Number(m[2]) }; }
+function barisX(h, r, cipta){
+  const sd = h.doc.getElementsByTagNameNS(NS_S, 'sheetData')[0];
+  if(!h.petaBaris){ h.petaBaris = new Map(); anakNS(sd, 'row').forEach(x => h.petaBaris.set(Number(x.getAttribute('r')), x)); }
+  let row = h.petaBaris.get(r);
+  if(row || !cipta) return row || null;
+  row = h.doc.createElementNS(NS_S, 'row'); row.setAttribute('r', r);
+  sd.insertBefore(row, anakNS(sd, 'row').find(x => Number(x.getAttribute('r')) > r) || null);
+  h.petaBaris.set(r, row);
+  return row;
+}
+function selX(h, ref, cipta){
+  const { c, r } = pecahRef(ref), row = barisX(h, r, cipta); if(!row) return null;
+  let seterus = null;
+  for(const cel of anakNS(row, 'c')){ const k = pecahRef(cel.getAttribute('r')).c; if(k === c) return cel; if(k > c){ seterus = cel; break; } }
+  if(!cipta) return null;
+  const b = h.doc.createElementNS(NS_S, 'c'); b.setAttribute('r', ref);
+  if(row.getAttribute('customFormat') === '1' && row.getAttribute('s')) b.setAttribute('s', row.getAttribute('s'));
+  row.insertBefore(b, seterus);
+  return b;
+}
+/** Tulis nilai ke sel (nombor atau teks). Gaya sel templat dikekalkan. Sel formula dilindungi. */
+function tulisX(h, ref, v, o){
+  o = o || {};
+  const cel = selX(h, ref, true);
+  if(anakNS(cel, 'f').length && !o.formula) throw new Error('Sel ' + h.nama + '!' + ref + ' mengandungi formula templat.');
+  anakNS(cel, 'f').concat(anakNS(cel, 'v'), anakNS(cel, 'is')).forEach(e => cel.removeChild(e));
+  cel.removeAttribute('t');
+  if(o.gaya != null) cel.setAttribute('s', o.gaya);
+  if(v === null || v === undefined || v === '' || (typeof v === 'number' && !isFinite(v))) return cel;
+  if(typeof v === 'number'){ const e = h.doc.createElementNS(NS_S, 'v'); e.textContent = String(v); cel.appendChild(e); return cel; }
+  cel.setAttribute('t', 'inlineStr');
+  const is = h.doc.createElementNS(NS_S, 'is'), t = h.doc.createElementNS(NS_S, 't');
+  t.setAttributeNS(NS_XML, 'xml:space', 'preserve'); t.textContent = bersihXml(String(v));
+  is.appendChild(t); cel.appendChild(is);
+  return cel;
+}
+/** Kosongkan nilai sel input (formula tidak disentuh). */
+function kosongX(h, ref){
+  const cel = selX(h, ref, false);
+  if(!cel || anakNS(cel, 'f').length) return;
+  anakNS(cel, 'v').concat(anakNS(cel, 'is')).forEach(e => cel.removeChild(e));
+  cel.removeAttribute('t');
+}
+function kosongJulatX(h, kolMula, kolAkhir, barisMula, barisAkhir){
+  for(let r = barisMula; r <= barisAkhir; r++) for(let c = kolKeNo(kolMula); c <= kolKeNo(kolAkhir); c++) kosongX(h, noKeKol(c) + r);
+}
+function bacaX(X, h, ref){
+  const cel = selX(h, ref, false); if(!cel) return '';
+  const t = cel.getAttribute('t'), v = anakNS(cel, 'v')[0];
+  if(t === 's') return v ? (X.ss[Number(v.textContent)] || '') : '';
+  if(t === 'inlineStr') return [...cel.getElementsByTagNameNS(NS_S, 't')].map(x => x.textContent).join('');
+  return v ? v.textContent : '';
+}
+function gayaX(h, ref){ const cel = selX(h, ref, false); return cel ? cel.getAttribute('s') : null; }
+/** Pastikan templat sepadan dengan struktur yang dijangka sebelum diisi. */
+function semakTemplatX(X, h, semakan){
+  semakan.forEach(([ref, corak]) => {
+    if(!corak.test(bacaX(X, h, ref).trim())) throw new Error('Struktur templat "' + h.nama + '" berbeza daripada jangkaan (sel ' + ref + '). Muat naik templat rasmi PPA yang terkini.');
+  });
+}
+function mergeCellsX(h){ return h.doc.getElementsByTagNameNS(NS_S, 'mergeCells')[0] || null; }
+function kiraMergeX(mc){ mc.setAttribute('count', anakNS(mc, 'mergeCell').length); }
+function buangMergeX(h, penapis){
+  const mc = mergeCellsX(h); if(!mc) return;
+  anakNS(mc, 'mergeCell').filter(m => penapis(m.getAttribute('ref'))).forEach(m => mc.removeChild(m));
+  kiraMergeX(mc);
+}
+function tambahMergeX(h, ref){
+  const mc = mergeCellsX(h); if(!mc) return;
+  const m = h.doc.createElementNS(NS_S, 'mergeCell'); m.setAttribute('ref', ref); mc.appendChild(m); kiraMergeX(mc);
+}
+function julatRef(ref){ const [a, b] = ref.split(':'); const x = pecahRef(a), y = pecahRef(b || a); return { c1:x.c, r1:x.r, c2:y.c, r2:y.r }; }
+function anjakJulat(sq, selepas, n){
+  return String(sq).split(' ').map(j => j.split(':').map(ref => {
+    const m = /^(\$?[A-Z]+\$?)(\d+)$/.exec(ref); if(!m) return ref;
+    const r = Number(m[2]); return m[1] + (r > selepas ? r + n : r);
+  }).join(':')).join(' ');
+}
+/** Anjak rujukan baris (> selepas) dalam formula yang merujuk helaian yang sama. */
+function anjakFormula(f, selepas, n, namaHelaian){
+  return f.replace(/("[^"]*")|((?:'[^']+'|[A-Za-z_][\w.]*)!)?(\$?)([A-Z]{1,3})(\$?)(\d+)(?![\w(])/g, (m, str, hel, d1, kol, d2, bar, off, penuh) => {
+    if(str) return m;
+    if(hel && hel.slice(0, -1).replace(/^'|'$/g, '') !== namaHelaian) return m;
+    if(!hel && off > 0 && /[A-Za-z0-9_.$]/.test(penuh[off - 1])) return m;
+    const r = Number(bar);
+    return (hel || '') + d1 + kol + d2 + (r > selepas ? r + n : r);
+  });
+}
+/** Sisip n baris selepas baris `selepas` (gaya disalin daripada baris itu). Formula, gabungan sel dan julat dianjak. */
+function sisipBarisX(h, selepas, n){
+  if(!(n > 0)) return;
+  const doc = h.doc, sd = doc.getElementsByTagNameNS(NS_S, 'sheetData')[0], rows = anakNS(sd, 'row');
+  rows.forEach(row => {
+    const r = Number(row.getAttribute('r'));
+    if(r > selepas){ row.setAttribute('r', r + n); anakNS(row, 'c').forEach(c => { const p = pecahRef(c.getAttribute('r')); c.setAttribute('r', noKeKol(p.c) + (p.r + n)); }); }
+  });
+  [...doc.getElementsByTagNameNS(NS_S, 'f')].forEach(f => {
+    if(f.textContent) f.textContent = anjakFormula(f.textContent, selepas, n, h.nama);
+    if(f.getAttribute('ref')) f.setAttribute('ref', anjakJulat(f.getAttribute('ref'), selepas, n));
+  });
+  const mc = mergeCellsX(h), satuBaris = [];
+  if(mc) anakNS(mc, 'mergeCell').forEach(m => {
+    const j = julatRef(m.getAttribute('ref'));
+    if(j.r1 === selepas && j.r2 === selepas) satuBaris.push(j);
+    m.setAttribute('ref', anjakJulat(m.getAttribute('ref'), selepas, n));
+  });
+  [...doc.getElementsByTagNameNS(NS_S, 'dimension')].forEach(d => d.setAttribute('ref', anjakJulat(d.getAttribute('ref'), selepas, n)));
+  ['conditionalFormatting', 'dataValidation'].forEach(t => [...doc.getElementsByTagNameNS(NS_S, t)].forEach(e => { if(e.getAttribute('sqref')) e.setAttribute('sqref', anjakJulat(e.getAttribute('sqref'), selepas, n)); }));
+  [...doc.getElementsByTagNameNS(NS_S, 'hyperlink')].forEach(e => { if(e.getAttribute('ref')) e.setAttribute('ref', anjakJulat(e.getAttribute('ref'), selepas, n)); });
+  const asal = rows.find(x => Number(x.getAttribute('r')) === selepas), rujuk = asal ? asal.nextSibling : (rows.find(x => Number(x.getAttribute('r')) > selepas + n) || null);
+  for(let i = 1; i <= n; i++){
+    const b = asal ? asal.cloneNode(false) : doc.createElementNS(NS_S, 'row');
+    b.setAttribute('r', selepas + i);
+    if(asal) anakNS(asal, 'c').forEach(c => {
+      const x = doc.createElementNS(NS_S, 'c'); x.setAttribute('r', noKeKol(pecahRef(c.getAttribute('r')).c) + (selepas + i));
+      if(c.getAttribute('s')) x.setAttribute('s', c.getAttribute('s'));
+      b.appendChild(x);
+    });
+    sd.insertBefore(b, rujuk);
+    satuBaris.forEach(j => tambahMergeX(h, noKeKol(j.c1) + (selepas + i) + ':' + noKeKol(j.c2) + (selepas + i)));
+  }
+  h.petaBaris = null;
+}
+/** Gaya salinan dengan fon merah tebal (nilai di bawah sasaran). */
+async function gayaMerahX(X, s){
+  const k = String(s || 0); if(X._merah[k]) return X._merah[k];
+  if(!X.gaya) X.gaya = await bacaZipXml(X.zip, 'xl/styles.xml');
+  const G = X.gaya, fonts = G.getElementsByTagNameNS(NS_S, 'fonts')[0], xfs = G.getElementsByTagNameNS(NS_S, 'cellXfs')[0];
+  const xfAsal = anakNS(xfs, 'xf')[Number(s) || 0], xf = xfAsal.cloneNode(true);
+  const font = anakNS(fonts, 'font')[Number(xfAsal.getAttribute('fontId')) || 0].cloneNode(true);
+  anakNS(font, 'color').concat(anakNS(font, 'b')).forEach(e => font.removeChild(e));
+  font.insertBefore(G.createElementNS(NS_S, 'b'), font.firstChild);
+  const warna = G.createElementNS(NS_S, 'color'); warna.setAttribute('rgb', 'FFC00000');
+  font.insertBefore(warna, [...font.childNodes].find(n => n.nodeType === 1 && ['name', 'family', 'charset', 'scheme'].includes(n.localName)) || null);
+  fonts.appendChild(font); fonts.setAttribute('count', anakNS(fonts, 'font').length);
+  xf.setAttribute('fontId', anakNS(fonts, 'font').length - 1); xf.setAttribute('applyFont', '1');
+  xfs.appendChild(xf); xfs.setAttribute('count', anakNS(xfs, 'xf').length);
+  return (X._merah[k] = String(anakNS(xfs, 'xf').length - 1));
+}
+async function sembunyiHelaianX(X, nama){
+  const h = X.helaian[nama]; if(!h) return;
+  h.el.setAttribute('state', 'hidden');
+  await helaianX(X, nama);
+  [...h.doc.getElementsByTagNameNS(NS_S, 'sheetView')].forEach(v => v.removeAttribute('tabSelected'));
+}
+async function simpanXlsx(X, jenis){
+  const cp = X.wb.getElementsByTagNameNS(NS_S, 'calcPr')[0];
+  if(cp) cp.setAttribute('fullCalcOnLoad', '1');
+  /* Buang nilai formula tercache (hasil data contoh templat). Excel dan Google Sheets mengira semula semasa fail dibuka;
+     pratonton tanpa enjin kiraan memaparkan sel kosong, bukan angka lama yang mengelirukan. */
+  for(const h of Object.values(X.helaian)){
+    await helaianX(X, h.nama);
+    [...h.doc.getElementsByTagNameNS(NS_S, 'f')].forEach(f => {
+      const c = f.parentNode; if(!c || c.localName !== 'c') return;
+      anakNS(c, 'v').forEach(v => c.removeChild(v));
+      if(c.getAttribute('t') && c.getAttribute('t') !== 'inlineStr') c.removeAttribute('t');
+    });
+  }
+  const nampak = Object.values(X.helaian).filter(h => h.el.getAttribute('state') !== 'hidden' && h.el.getAttribute('state') !== 'veryHidden').sort((a, b) => a.indeks - b.indeks);
+  const wv = X.wb.getElementsByTagNameNS(NS_S, 'workbookView')[0];
+  if(wv && nampak.length){
+    const aktif = Number(wv.getAttribute('activeTab') || 0), hAktif = Object.values(X.helaian).find(h => h.indeks === aktif);
+    if(!hAktif || !nampak.includes(hAktif)) wv.setAttribute('activeTab', nampak[0].indeks);
+    if(Number(wv.getAttribute('firstSheet') || 0) > nampak[0].indeks) wv.setAttribute('firstSheet', nampak[0].indeks);
+  }
+  X.zip.file('xl/workbook.xml', sirikanXml(X.wb));
+  X.ubah.forEach(h => { if(h.doc) X.zip.file(h.laluan, sirikanXml(h.doc)); });
+  if(X.gaya) X.zip.file('xl/styles.xml', sirikanXml(X.gaya));
+  return X.zip.generateAsync({ type:'blob', mimeType: MIME_OOXML[jenis], compression:'DEFLATE', compressionOptions:{ level:6 } });
+}
+
+/* ---------- Word ---------- */
+async function bukaDocx(bait){
+  const zip = await bukaZip(bait), doc = await bacaZipXml(zip, 'word/document.xml');
+  return { zip, doc, body: doc.getElementsByTagNameNS(NS_W, 'body')[0] };
+}
+function wEl(D, nama){ return D.doc.createElementNS(NS_W, 'w:' + nama); }
+function teksW(el){ return [...el.getElementsByTagNameNS(NS_W, 't')].map(t => t.textContent).join(''); }
+function dalamJadualW(el){ let p = el.parentNode; while(p && p.nodeType === 1){ if(p.localName === 'tbl') return true; p = p.parentNode; } return false; }
+function perengganBodyW(D){ return [...D.doc.getElementsByTagNameNS(NS_W, 'p')].filter(p => !dalamJadualW(p)); }
+function cariPW(D, corak){ return perengganBodyW(D).find(p => corak.test(teksW(p).trim())) || null; }
+function jadualW(D){ return [...D.doc.getElementsByTagNameNS(NS_W, 'tbl')]; }
+function barisW(tbl){ return anakNS(tbl, 'tr'); }
+function selW(tr){ return anakNS(tr, 'tc'); }
+function bersihRPrW(rPr, o){
+  if(!rPr) return rPr;
+  ['color', 'highlight', 'i', 'iCs', 'shd'].forEach(n => anakNS(rPr, n).forEach(e => rPr.removeChild(e)));
+  if(o && o.tebal === false) ['b', 'bCs'].forEach(n => anakNS(rPr, n).forEach(e => rPr.removeChild(e)));
+  return rPr;
+}
+function larianW(D, rPr, teks, o){
+  const r = wEl(D, 'r');
+  if(rPr) r.appendChild(bersihRPrW(rPr.cloneNode(true), o));
+  const t = wEl(D, 't'); t.setAttributeNS(NS_XML, 'xml:space', 'preserve'); t.textContent = bersihXml(teks);
+  r.appendChild(t);
+  return r;
+}
+function pPrW(p){ return p ? anakNS(p, 'pPr')[0] || null : null; }
+function rPrPertamaW(p){
+  if(!p) return null;
+  const r = p.getElementsByTagNameNS(NS_W, 'r')[0], x = r && anakNS(r, 'rPr')[0];
+  if(x) return x;
+  const pp = pPrW(p); return pp ? anakNS(pp, 'rPr')[0] || null : null;
+}
+function perengganW(D, pPr, rPr, teks, o){
+  const p = wEl(D, 'p');
+  if(pPr){ const x = pPr.cloneNode(true); anakNS(x, 'rPr').forEach(r => bersihRPrW(r, o)); p.appendChild(x); }
+  if(teks !== '') p.appendChild(larianW(D, rPr, teks, o));
+  return p;
+}
+/** Isi sel jadual Word: format perenggan pertama dikekalkan; setiap baris teks menjadi satu perenggan. */
+function isiSelW(D, tc, teks, o){
+  const ps = anakNS(tc, 'p'), proto = ps[0], pPr = pPrW(proto), rPr = rPrPertamaW(proto);
+  anakNS(tc, 'p').concat(anakNS(tc, 'sdt')).forEach(p => tc.removeChild(p));
+  String(teks ?? '').split('\n').forEach(b => tc.appendChild(perengganW(D, pPr, rPr, b, o)));
+}
+/** Tambah teks pada hujung perenggan (cth. "Nama :" → "Nama : Ali"). */
+function sambungPW(D, p, teks, o){
+  if(!p || teks === '' || teks == null) return;
+  const r = [...p.getElementsByTagNameNS(NS_W, 'r')].pop(), rPr = r ? anakNS(r, 'rPr')[0] : rPrPertamaW(p);
+  p.appendChild(larianW(D, rPr, teks, o));
+}
+/** Gantikan perenggan arahan (teks kelabu) dengan kandungan sebenar. */
+function gantiPW(D, p, teks, o){
+  if(!p) return;
+  const pPr = pPrW(p), rPr = rPrPertamaW(p), induk = p.parentNode;
+  String(teks ?? '').split('\n').forEach(b => induk.insertBefore(perengganW(D, pPr, rPr, b, o), p));
+  induk.removeChild(p);
+}
+function buangW(el){ if(el && el.parentNode) el.parentNode.removeChild(el); }
+/** Buang jadual (termasuk kawalan kandungan yang membungkusnya). */
+function buangJadualW(tbl){ let x = tbl; while(x.parentNode && x.parentNode.localName === 'sdtContent') x = x.parentNode.parentNode; buangW(x); }
+async function simpanDocx(D){
+  D.zip.file('word/document.xml', sirikanXml(D.doc));
+  return D.zip.generateAsync({ type:'blob', mimeType: MIME_OOXML.docx, compression:'DEFLATE', compressionOptions:{ level:6 } });
+}
+function muatTurunBlob(blob, nama){ const url = URL.createObjectURL(blob); muatTurunURL(url, nama); setTimeout(() => URL.revokeObjectURL(url), 5000); }
+
+/* ============================ PENJANA: RANCANGAN PENGAJARAN (RP) ============================ */
+function jumlahNo(arr, k){ return arr.reduce((a, x) => a + (Number(x && x[k]) || 0), 0); }
+async function janaRP(d){
+  const T = await ambilTemplat('rp'), D = await bukaDocx(T.bait), J = jadualW(D);
+  if(J.length < 9 || !/NAMA KURSUS/i.test(teksW(J[0])) || !/Minggu/i.test(teksW(J[2])) || !/Kategori/i.test(teksW(J[5])))
+    throw new Error('Struktur templat RP berbeza daripada jangkaan. Muat naik templat rasmi PPA yang terkini.');
+  const [tInfo, tCA, tMinggu, tRubA, tRubB, tStrategi, , , tRujukan] = J;
+  /* 1. Maklumat kursus */
+  const bi = barisW(tInfo), pens = (d.pensyarah || []).filter(Boolean);
+  [d.nama, d.kod, d.kredit, d.sesi, pens.map((n, i) => (pens.length > 1 ? (i + 1) + '. ' : '') + n).join('\n')].forEach((v, i) => { if(bi[i]) isiSelW(D, selW(bi[i])[1], v || '-'); });
+  sambungPW(D, cariPW(D, /^Nama\s*:$/), ' ' + (d.disediakan || ''), { tebal:false });
+  sambungPW(D, cariPW(D, /^No\.\s*Tel\s*:$/), ' ' + (d.tel || ''), { tebal:false });
+  /* 2. Sinopsis */
+  gantiPW(D, cariPW(D, /^\(Sila masukkan sinopsis/), d.sinopsis || '-');
+  /* 3. CLO */
+  const clo = (d.clo || []).slice(0, 4), adaClo4 = !!(clo[3] && clo[3].teks);
+  [1, 2, 3].forEach(i => sambungPW(D, cariPW(D, new RegExp('^CLO' + i + ':$')), ' ' + ((clo[i - 1] && clo[i - 1].teks) || '-'), { tebal:false }));
+  const p4 = cariPW(D, /^CLO4:/);
+  if(p4){
+    if(adaClo4){ const r = [...p4.getElementsByTagNameNS(NS_W, 'r')]; r.slice(1).forEach(buangW); sambungPW(D, p4, ' ' + clo[3].teks, { tebal:false }); anakNS(p4, 'pPr').forEach(pp => anakNS(pp, 'rPr').forEach(x => bersihRPrW(x))); }
+    else buangW(p4);
+  }
+  /* 4. Penjajaran konstruktif */
+  const bCA = barisW(tCA);
+  [0, 1, 2, 3].forEach(i => {
+    const tr = bCA[i + 1]; if(!tr) return;
+    if(i === 3 && !adaClo4){ buangW(tr); return; }
+    const c = clo[i] || {}, s = selW(tr);
+    isiSelW(D, s[0], String(i + 1)); isiSelW(D, s[1], c.plo || ''); isiSelW(D, s[2], c.pengajaran || ''); isiSelW(D, s[3], c.penilaian || '');
+  });
+  if(!adaClo4) buangW(cariPW(D, /^\* Sila abaikan sekiranya jumlah CLO/));
+  /* 5. Rancangan pengajaran mingguan (14 minggu x 3 baris) */
+  const bM = barisW(tMinggu), buang = [];
+  let f2f = 0, nf2f = 0;
+  for(let w = 0; w < 14; w++){
+    const ent = ((d.minggu || [])[w] || {}).baris || [];
+    for(let k = 0; k < 3; k++){
+      const tr = bM[2 + w * 3 + k]; if(!tr) continue;
+      const e = ent[k];
+      if(!e){ if(k > 0) buang.push(tr); continue; }
+      const s = selW(tr).slice(1);
+      [e.tarikh, e.topik, e.kuliah, e.tutorial, e.f2f, e.nf2f, e.aktiviti].forEach((v, i) => { if(s[i]) isiSelW(D, s[i], v == null ? '' : String(v)); });
+      f2f += Number(e.f2f) || 0; nf2f += Number(e.nf2f) || 0;
+    }
+  }
+  buang.forEach(buangW);
+  const bJum = barisW(tMinggu).pop(), sJum = selW(bJum);
+  if(sJum[1]) isiSelW(D, sJum[1], fmt(f2f)); if(sJum[2]) isiSelW(D, sJum[2], fmt(nf2f));
+  /* 6. Rubrik penilaian berterusan */
+  const rub = (d.rubrik || []).filter(r => r && (r.nama || (r.atribut || []).some(a => a.atribut)));
+  [[tRubA, /^a\)\s*Kemahiran/], [tRubB, /^b\)\s*Kemahiran/]].forEach(([tbl, re], i) => {
+    const hp = cariPW(D, re), r = rub[i];
+    if(!r){ if(i === 0 && !rub.length) gantiPW(D, hp, 'Tiada rubrik penilaian berterusan bagi kursus ini.', { tebal:false }); else buangW(hp); buangJadualW(tbl); return; }
+    if(hp){ [...hp.getElementsByTagNameNS(NS_W, 'r')].forEach(buangW); sambungPW(D, hp, (i === 0 ? 'a' : 'b') + ') Kemahiran ' + (r.nama || '')); }
+    const rows = barisW(tbl), proto = rows[1], attrs = (r.atribut || []).filter(a => a.atribut || a.definisi);
+    (attrs.length ? attrs : [{}]).forEach(a => {
+      const tr = proto.cloneNode(true), s = selW(tr);
+      [a.atribut, a.definisi, a.t5, a.t4, a.t3, a.t2, a.t1].forEach((v, j) => { if(s[j]) isiSelW(D, s[j], v || ''); });
+      tbl.insertBefore(tr, proto);
+    });
+    rows.slice(1).forEach(buangW);
+  });
+  /* 7. Strategi penilaian */
+  const bS = barisW(tStrategi), ber = (d.berterusan || []).filter(x => x.nama), akhir = (d.akhir || []).filter(x => x.nama);
+  const isiItem = (tr, no, x) => { const s = selW(tr); isiSelW(D, s[1], no + ' ' + x.nama); isiSelW(D, s[2], x.pemberat === '' || x.pemberat == null ? '' : x.pemberat + '%'); isiSelW(D, s[3], x.clo || ''); isiSelW(D, s[4], x.f2f == null ? '' : String(x.f2f)); isiSelW(D, s[5], x.nf2f == null ? '' : String(x.nf2f)); };
+  const protoB = bS[2], protoA = bS[7];
+  ber.forEach((x, i) => { const tr = protoB.cloneNode(true); isiItem(tr, '1.' + (i + 1), x); tStrategi.insertBefore(tr, protoB); });
+  bS.slice(2, 6).forEach(buangW);
+  akhir.forEach((x, i) => { const tr = protoA.cloneNode(true); isiItem(tr, '2.' + (i + 1), x); tStrategi.insertBefore(tr, protoA); });
+  if(akhir.length) buangW(protoA);
+  const jB = jumlahNo(ber, 'pemberat'), jA = jumlahNo(akhir, 'pemberat');
+  isiSelW(D, selW(bS[1])[2], fmt(jB) + '%'); isiSelW(D, selW(bS[6])[2], fmt(jA) + '%');
+  const sJ = selW(bS[8]);
+  isiSelW(D, sJ[1], fmt(jB + jA) + '%'); isiSelW(D, sJ[3], fmt(jumlahNo(ber, 'f2f') + jumlahNo(akhir, 'f2f'))); isiSelW(D, sJ[4], fmt(jumlahNo(ber, 'nf2f') + jumlahNo(akhir, 'nf2f')));
+  /* 8. Rujukan */
+  barisW(tRujukan).forEach((tr, i) => {
+    const tc = selW(tr)[0], ps = anakNS(tc, 'p'), proto = ps[1] || ps[0], pPr = pPrW(proto), rPr = rPrPertamaW(proto);
+    ps.slice(1).forEach(buangW);
+    const senarai = String([d.rujukanUtama, d.rujukanTambahan, d.rujukanBaharu][i] || '').split('\n').map(s => s.trim()).filter(Boolean);
+    (senarai.length ? senarai : ['-']).forEach(b => tc.appendChild(perengganW(D, pPr, rPr, b)));
+  });
+  /* Buang semua arahan pengisian yang berbaki */
+  perengganBodyW(D).filter(p => /^\(Sila\s/.test(teksW(p).trim())).forEach(buangW);
+  return simpanDocx(D);
+}
+
+/* ============================ PENJANA: JADUAL SPESIFIKASI UJIAN (JSU) ============================ */
+const BLOOM = ['C1','C2','C3','C4','C5','C6'];
+async function janaJSU(d){
+  const diploma = d.tahap === 'diploma', T = await ambilTemplat(diploma ? 'jsuDiploma' : 'jsuIjazah'), X = await bukaXlsx(T.bait);
+  const h = await helaianX(X, 'PEPERIKSAAN AKHIR');
+  const L = diploma ? { A:[29, 68], B:[72, 91], C:[95, 99], tajuk:27 } : { A:[30, 69], B:[73, 92], C:[96, 100], tajuk:28 };
+  semakTemplatX(X, h, [['A3', /^SESI$/i], ['A6', /^KOD KURSUS$/i], ['A13', /^TOPIK 1$/i], ['A' + L.tajuk, /^Bahagian$/i]].concat(diploma ? [] : [['T12', /^SLT$/i]]));
+  tulisX(h, 'D3', d.sesi || ''); tulisX(h, 'D4', d.program || ''); tulisX(h, 'D5', d.nama || ''); tulisX(h, 'D6', d.kod || ''); tulisX(h, 'D7', d.semTahun || '');
+  [0, 1, 2].forEach(i => tulisX(h, 'C' + (9 + i), ((d.clo || [])[i] || {}).teks || ''));
+  const topik = (d.topik || []).slice(0, 14), jumSLT = jumlahNo(topik, 'slt');
+  for(let i = 0; i < 14; i++){
+    const t = topik[i] || {};
+    tulisX(h, 'B' + (13 + i), t.nama || '');
+    if(!diploma){ tulisX(h, 'T' + (13 + i), t.slt === '' || t.slt == null ? '' : Number(t.slt)); tulisX(h, 'W' + (13 + i), jumSLT && Number(t.slt) ? Math.round(Number(t.slt) / jumSLT * 1000) / 10 : ''); }
+  }
+  const TOPIK_KOL = 'DEFGHIJKLMNOPQ', BLOOM_KOL = 'STUVWX';
+  ['A', 'B', 'C'].forEach(b => {
+    const [m, a] = L[b], sek = (d.bahagian || {})[b] || {}, soal = (sek.soalan || []).slice(0, a - m + 1);
+    tulisX(h, 'B' + m, sek.jenis || ({ A:'OBJEKTIF', B:'STRUKTUR', C:'ESEI' })[b]);
+    kosongJulatX(h, 'D', 'Q', m, a); kosongJulatX(h, 'S', 'X', m, a);
+    for(let r = m; r <= a; r++){
+      const q = soal[r - m];
+      tulisX(h, 'C' + r, q ? (q.no || String(r - m + 1)) : '');
+      if(!q) continue;
+      String(q.topik || '').split(/[,;\s]+/).map(Number).filter(n => n >= 1 && n <= 14).forEach(n => tulisX(h, TOPIK_KOL[n - 1] + r, '/'));
+      const bi = BLOOM.indexOf(q.aras);
+      if(bi >= 0) tulisX(h, BLOOM_KOL[bi] + r, Number(q.markah) || 0);
+    }
+  });
+  return simpanXlsx(X, 'xlsx');
+}
+
+/* ============================ PENJANA: BORANG S3P ============================ */
+async function janaS3P(d){
+  const key = { asasi:'s3pAsasi', diploma:'s3pDiploma' }[d.tahap] || 's3pIjazah';
+  const T = await ambilTemplat(key), X = await bukaXlsx(T.bait);
+  const hMan = await helaianX(X, 'Manual S3P'), hCLO = await helaianX(X, 'Maklumat CLO'), hM = await helaianX(X, 'Masukan Markah');
+  semakTemplatX(X, hCLO, [['A19', /^CLO\s*1$/i], ['A26', /^CLO$/i], ['E26', /Pemberat/i]]);
+  semakTemplatX(X, hM, [['C5', /No Matrik/i], ['D5', /^Nama$/i], ['E7', /^M1$/i], ['I7', /^PA$/i]]);
+  tulisX(hMan, 'D5', '  ' + (d.program || ''));
+  [['C8', d.program], ['C9', d.kod], ['C10', d.nama], ['C11', d.pensyarah], ['C12', d.pemeriksa || 'TIADA'], ['C13', d.tahunKemasukan], ['C14', d.sesi]].forEach(([r, v]) => tulisX(hCLO, r, v || ''));
+  [0, 1, 2].forEach(i => {
+    const c = (d.clo || [])[i] || {}, r = 27 + i;
+    tulisX(hCLO, 'B' + (19 + i), c.teks || '');
+    tulisX(hCLO, 'A' + r, 'CLO' + (i + 1)); tulisX(hCLO, 'B' + r, c.item || ''); tulisX(hCLO, 'C' + r, c.deskripsi || '');
+    tulisX(hCLO, 'D' + r, c.plo ? String(c.plo).replace(/^PLO\s*/i, 'PLO ') : ''); tulisX(hCLO, 'E' + r, c.pemberat === '' || c.pemberat == null ? '' : Number(c.pemberat));
+  });
+  const lbl = d.komponen || [];
+  [['F3', 0], ['I3', 1], ['L3', 2], ['O3', 3], ['R3', 4]].forEach(([r, i]) => tulisX(hM, r, lbl[i] || ['Markah 1', 'Markah 2', 'Markah 3', 'Markah 4', 'Markah Peperiksaan Akhir'][i]));
+  kosongJulatX(hM, 'B', 'D', 8, 307); kosongJulatX(hM, 'E', 'I', 8, 307); kosongJulatX(hM, 'K', 'O', 8, 307); kosongJulatX(hM, 'Q', 'U', 8, 307);
+  const KOL = 'EFGHIKLMNOQRSTU';
+  (d.pelajar || []).slice(0, 300).forEach((p, i) => {
+    const r = 8 + i;
+    tulisX(hM, 'B' + r, p.kump || ''); tulisX(hM, 'C' + r, /^\d+$/.test(String(p.matrik || '')) ? Number(p.matrik) : (p.matrik || '')); tulisX(hM, 'D' + r, p.nama || '');
+    (p.markah || []).slice(0, 15).forEach((m, j) => { if(m !== '' && m != null && isFinite(Number(m))) tulisX(hM, KOL[j] + r, Number(m)); });
+  });
+  return simpanXlsx(X, 'xlsm');
+}
+
+/* ============================ PENJANA: LAPORAN P2LO (KOHORT) ============================ */
+async function janaP2LO(p, kohort, rekod, info){
+  const T = await ambilTemplat('p2lo'), X = await bukaXlsx(T.bait), sas = P2LO_SASARAN;
+  const hC = await helaianX(X, 'Cover');
+  semakTemplatX(X, hC, [['A3', /NAMA PROGRAM/i], ['A4', /KEMASUKAN/i]]);
+  tulisX(hC, 'B3', p.nama); tulisX(hC, 'B4', kohort); tulisX(hC, 'B5', info.asal === '' ? '' : Number(info.asal)); tulisX(hC, 'B6', info.tamat === '' ? '' : Number(info.tamat));
+  if(/^Nama/i.test(bacaX(X, hC, 'A15'))) tulisX(hC, 'A15', 'Nama\t: ' + (p.kpNama || ''));
+  for(let n = 1; n <= 8; n++){
+    const nama = 'Laporan Sem ' + n, r = rekod[n];
+    if(!X.helaian[nama]) continue;
+    if(!r){ await sembunyiHelaianX(X, nama); continue; }
+    const h = await helaianX(X, nama), dt = r.data || {};
+    semakTemplatX(X, h, [['A12', /^Bil$/i], ['A26', /^PLO$/i], ['A49', /PLO/i]]);
+    tulisX(h, 'C2', (dt.tahunSem || ('Semester ' + n)) + (dt.sesi ? ' (' + dt.sesi + ')' : ''));
+    tulisX(h, 'C3', info.asal === '' ? '' : Number(info.asal)); tulisX(h, 'C4', dt.pelajarSemasa === '' || dt.pelajarSemasa == null ? '' : Number(dt.pelajarSemasa));
+    tulisX(h, 'A7', dt.ringkasan || '');
+    /* Jadual CLO: 7 baris templat (13-19), baris ditambah jika perlu */
+    const ks = dt.kursus || [], tambahK = Math.max(0, ks.length - 7);
+    if(tambahK) sisipBarisX(h, 18, tambahK);
+    const off = tambahK;
+    for(let i = 0; i < Math.max(7, ks.length); i++){
+      const k = ks[i], r = 13 + i;
+      tulisX(h, 'A' + r, i + 1);
+      if(!k){ ['B', 'C', 'D', 'E'].forEach(c => tulisX(h, c + r, c === 'D' ? 'CLO1:\nCLO2:\nCLO3:' : '')); continue; }
+      tulisX(h, 'B' + r, (k.kod ? k.kod + ' ' : '') + (k.nama || ''));
+      tulisX(h, 'C' + r, k.bil === '' || k.bil == null ? '' : Number(k.bil));
+      tulisX(h, 'D' + r, (k.clo || []).map((v, j) => v == null ? null : 'CLO' + (j + 1) + ': ' + fmt(v) + '%' + (k.plo && k.plo[j] ? ' (' + k.plo[j].replace('PLO', 'PLO ') + ')' : '')).filter(Boolean).join('\n'));
+      tulisX(h, 'E' + r, statusKursusP2lo(k));
+    }
+    /* Jadual PLO: semasa & kumulatif */
+    const A = analisisP2lo(rekod, n), sPct = gayaX(h, 'C' + (27 + off)), sMerah = await gayaMerahX(X, sPct);
+    PLO_DOMAIN.forEach((dom, i) => {
+      const r = 27 + off + i, sem = A.semasa[i], kum = A.kumulatif[i];
+      tulisX(h, 'C' + r, sas / 100, { gaya:sPct });
+      tulisX(h, 'D' + r, sem == null ? '' : sem / 100, { gaya: sem != null && sem < sas ? sMerah : sPct });
+      tulisX(h, 'E' + r, kum == null ? '' : kum / 100, { gaya: kum != null && kum < sas ? sMerah : sPct });
+    });
+    tulisX(h, 'B' + (43 + off), dt.kekuatan || ''); tulisX(h, 'B' + (44 + off), dt.kelemahan || '');
+    /* Pelan CQI: 3 baris templat (50-52) */
+    const cq = dt.cqi || [], tambahQ = Math.max(0, cq.length - 3);
+    if(tambahQ) sisipBarisX(h, 51 + off, tambahQ);
+    for(let i = 0; i < Math.max(3, cq.length); i++){
+      const c = cq[i] || {}, r = 50 + off + i;
+      tulisX(h, 'A' + r, c.plo || ''); tulisX(h, 'B' + r, c.aktiviti || ''); tulisX(h, 'E' + r, c.tarikh || '');
+    }
+    const o2 = off + tambahQ;
+    tulisX(h, 'A' + (55 + o2), 'Laporan ini dilaporkan dan disahkan melalui Mesyuarat ' + (dt.mesyuarat || '…………....................................................'));
+    tulisX(h, 'A' + (56 + o2), 'Bertarikh: ' + (dt.tarikhMesyuarat || '……….'));
+    tulisX(h, 'A' + (61 + o2), 'Nama\t: ' + (p.kpNama || ''));
+  }
+  /* Table3: senarai kursus dan pemetaan PLO (80 baris templat) */
+  const h3 = await helaianX(X, 'Table3');
+  tulisX(h3, 'A3', p.nama);
+  const semuaK = [];
+  for(let n = 1; n <= 8; n++) ((rekod[n] || {}).data || {}).kursus && rekod[n].data.kursus.forEach(k => semuaK.push({ n, sesi: rekod[n].data.sesi, tahunSem: rekod[n].data.tahunSem, k }));
+  const PLO_KOL3 = 'FGHIJKLMNOPQ';
+  for(let i = 0; i < 80; i++){
+    const r = 7 + i, x = semuaK[i];
+    ['B', 'C', 'D', 'E', 'R', 'S'].concat(PLO_KOL3.split('')).forEach(c => tulisX(h3, c + r, ''));
+    if(!x) continue;
+    tulisX(h3, 'B' + r, x.tahunSem || ('Semester ' + x.n)); tulisX(h3, 'C' + r, (x.k.kod ? x.k.kod + ' ' : '') + (x.k.nama || ''));
+    tulisX(h3, 'D' + r, x.k.klasifikasi || ''); tulisX(h3, 'E' + r, x.k.kredit || ''); tulisX(h3, 'S' + r, x.k.pensyarah || '');
+    [...new Set((x.k.plo || []).filter(Boolean))].forEach(pl => { const j = Number(pl.replace('PLO', '')) - 1; if(j >= 0 && j < 12) tulisX(h3, PLO_KOL3[j] + r, '✓'); });
+  }
+  /* Sheet4: pencapaian PLO setiap kursus (32 baris templat; ditambah jika perlu) */
+  const h4 = await helaianX(X, 'Sheet4');
+  semakTemplatX(X, h4, [['A8', /^No$/i], ['E9', /^PLO\s*1$/i]]);
+  tulisX(h4, 'A2', 'Analisis Pencapaian PLO Program ' + p.nama);
+  tulisX(h4, 'A3', 'Tahun Mula Kohort : ' + kohort);
+  const sesiAda = [1, 2, 3, 4, 5, 6, 7, 8].map(n => rekod[n] && rekod[n].data && rekod[n].data.sesi).filter(Boolean);
+  tulisX(h4, 'A4', 'Sesi Semester Pertama : ' + (sesiAda[0] || '')); tulisX(h4, 'A5', 'Sesi Semester Terakhir : ' + (sesiAda[sesiAda.length - 1] || ''));
+  const tambah4 = Math.max(0, semuaK.length - 32);
+  if(tambah4) sisipBarisX(h4, 40, tambah4);
+  buangMergeX(h4, ref => { const j = julatRef(ref); return j.c1 === 2 && j.c2 === 2 && j.r1 >= 10 && j.r2 <= 41 + tambah4; });
+  const PLO_KOL4 = 'EFGHIJKLMNOP';
+  let kumpMula = 10;
+  for(let i = 0; i < 32 + tambah4; i++){
+    const r = 10 + i, x = semuaK[i];
+    ['B', 'C', 'D', 'Q'].concat(PLO_KOL4.split('')).forEach(c => tulisX(h4, c + r, ''));
+    tulisX(h4, 'A' + r, i + 1);
+    if(!x) continue;
+    const baru = i === 0 || semuaK[i - 1].n !== x.n;
+    if(baru){ tulisX(h4, 'B' + r, (x.tahunSem || ('Semester ' + x.n)) + (x.sesi ? '\n(' + x.sesi + ')' : '')); kumpMula = r; }
+    const akhir = i === semuaK.length - 1 || semuaK[i + 1].n !== x.n;
+    if(akhir && r > kumpMula) tambahMergeX(h4, 'B' + kumpMula + ':B' + r);
+    tulisX(h4, 'C' + r, (x.k.kod ? x.k.kod + ' ' : '') + (x.k.nama || '')); tulisX(h4, 'D' + r, x.k.klasifikasi || ''); tulisX(h4, 'Q' + r, x.k.pensyarah || '');
+    const ploNilai = {};
+    (x.k.clo || []).forEach((v, j) => { const pl = (x.k.plo || [])[j]; if(v != null && pl) (ploNilai[pl] = ploNilai[pl] || []).push(v); });
+    Object.keys(ploNilai).forEach(pl => { const j = Number(pl.replace('PLO', '')) - 1; if(j >= 0 && j < 12) tulisX(h4, PLO_KOL4[j] + r, Math.round(ploNilai[pl].reduce((a, b) => a + b, 0) / ploNilai[pl].length * 100) / 100); });
+  }
+  return simpanXlsx(X, 'xlsx');
+}
+
+/* ============================ JANA DOKUMEN KURSUS: ANTARA MUKA ============================ */
+const JANA_INFO = {
+  rp:{ tajuk:'Rancangan Pengajaran (RP)', pendek:'RP', ikon:'buku', ext:'docx', templat:['rp'],
+    desk:'Maklumat kursus, sinopsis, CLO, penjajaran konstruktif, rancangan 14 minggu, rubrik, strategi penilaian dan rujukan.' },
+  jsu:{ tajuk:'Jadual Spesifikasi Ujian (JSU)', pendek:'JSU', ikon:'jadual', ext:'xlsx', templat:['jsuIjazah', 'jsuDiploma'],
+    desk:'Agihan soalan peperiksaan akhir mengikut topik dan aras Taksonomi Bloom, mengikut templat Asasi/Ijazah atau Diploma.' },
+  s3p:{ tajuk:'Sistem Pengukuran Penilaian Pelajar (S3P)', pendek:'S3P', ikon:'carta', ext:'xlsm', templat:['s3pAsasi', 's3pDiploma', 's3pIjazah'],
+    desk:'Borang S3P lengkap dengan maklumat CLO, pemberat penilaian dan senarai pelajar. Markah boleh diisi atau ditampal, dan makro borang dikekalkan.' }
+};
+const TAHAP_JANA = [['asasi', 'Asasi'], ['diploma', 'Diploma'], ['ijazah', 'Ijazah Sarjana Muda']];
+const PLO_PILIHAN = [['', '-']].concat(Array.from({ length:12 }, (x, i) => ['PLO' + (i + 1), 'PLO ' + (i + 1)]));
+function barisMingguKosong(){ return { tarikh:'', topik:'', kuliah:'', tutorial:'', f2f:'', nf2f:'', aktiviti:'' }; }
+function janaKosong(jenis){
+  const u = S.pengguna || {}, nama = (petaP()[saya()] || {}).nama || u.nama || '';
+  if(jenis === 'rp') return { kod:'', nama:'', kredit:'', sesi:'', pensyarah: nama, disediakan: nama, tel:'', sinopsis:'',
+    clo:[0, 1, 2, 3].map(() => ({ teks:'', plo:'', pengajaran:'', penilaian:'' })),
+    minggu: Array.from({ length:14 }, () => ({ baris:[barisMingguKosong()] })), rubrik:[],
+    berterusan:[{ nama:'', pemberat:'', clo:'', f2f:'', nf2f:'' }], akhir:[{ nama:'Peperiksaan Akhir', pemberat:'', clo:'', f2f:'', nf2f:'' }],
+    rujukanUtama:'', rujukanTambahan:'', rujukanBaharu:'' };
+  if(jenis === 'jsu') return { tahap:'ijazah', sesi:'', program:'', kod:'', nama:'', semTahun:'', clo:[{ teks:'' }, { teks:'' }, { teks:'' }],
+    topik: Array.from({ length:14 }, () => ({ nama:'', slt:'' })),
+    bahagian:{ A:{ jenis:'OBJEKTIF', soalan:[] }, B:{ jenis:'STRUKTUR', soalan:[] }, C:{ jenis:'ESEI', soalan:[] } } };
+  return { tahap:'ijazah', program:'', kod:'', nama:'', pensyarah: nama, pemeriksa:'TIADA', tahunKemasukan:'', sesi:'',
+    clo:[0, 1, 2].map(() => ({ teks:'', item:'', deskripsi:'', plo:'', pemberat:'' })),
+    komponen:['Kuiz', 'Tugasan', 'Pembentangan', 'Projek', 'Peperiksaan Akhir'], pelajarTeks:'' };
+}
+function ambilLaluan(o, p){ return String(p).split('.').reduce((a, k) => a == null ? a : a[k], o); }
+function setLaluan(o, p, v){
+  const k = String(p).split('.'); let x = o;
+  for(let i = 0; i < k.length - 1; i++){ if(x[k[i]] == null) x[k[i]] = /^\d+$/.test(k[i + 1]) ? [] : {}; x = x[k[i]]; }
+  x[k[k.length - 1]] = v;
+}
+/** Medan borang yang terikat pada laluan data (data-p). */
+function mdn(label, p, v, o){
+  o = o || {};
+  const id = 'j_' + String(p).replace(/\W/g, '_'), ph = o.ph ? ` placeholder="${esc(o.ph)}"` : '';
+  const tag = o.textarea ? `<textarea id="${id}" data-p="${p}" rows="${o.rows || 3}"${ph}>${esc(v ?? '')}</textarea>`
+    : o.pilihan ? `<select id="${id}" data-p="${p}">${o.pilihan.map(([val, l]) => `<option value="${esc(val)}" ${String(v ?? '') === String(val) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`
+    : `<input id="${id}" data-p="${p}" type="${o.jenis || 'text'}" value="${esc(v ?? '')}"${ph}${o.jenis === 'number' ? ' min="0" step="any" inputmode="decimal"' : ''}${o.list ? ` list="${o.list}"` : ''} autocomplete="off">`;
+  return label === null ? tag : `<div class="${o.cls || ''}"><label class="fld" for="${id}">${esc(label)}</label>${tag}${o.nota ? `<div class="mini" style="margin-top:4px;line-height:1.5">${o.nota}</div>` : ''}</div>`;
+}
+function kadJana(tajuk, isi, o){
+  o = o || {};
+  return `<section class="card pad jana-kad" ${o.id ? `id="${o.id}"` : ''}><div class="kad-kepala" style="margin-bottom:12px"><h3 class="serif h3">${esc(tajuk)}</h3>${o.aksi || ''}</div>${o.nota ? `<p class="mini" style="margin:-4px 0 12px;line-height:1.6">${o.nota}</p>` : ''}${isi}</section>`;
+}
+
+/* ---------- senarai templat dan draf di halaman Dokumentasi ---------- */
+async function muatStatusTemplat(paksa){
+  if(UI.templat && !paksa) return UI.templat;
+  try { UI.templat = (await api('templatSenarai', {}, { senyap:true, tanpaMesej:true })).templat; } catch(e){ UI.templat = null; }
+  return UI.templat;
+}
+function statusTemplatJana(jenis){
+  if(!UI.templat) return '';
+  const ada = JANA_INFO[jenis].templat.map(k => UI.templat.find(t => t.key === k)).filter(Boolean);
+  const siap = ada.filter(t => t.ada).length;
+  return siap === ada.length ? `<span class="badge b-ya">Templat tersedia</span>` : (siap ? `<span class="badge b-hampir">${siap}/${ada.length} templat tersedia</span>` : `<span class="badge b-tidak">Templat belum dimuat naik</span>`);
+}
+function bahagianJanaDok(){
+  const draf = S.jana || [];
+  return `<section class="blok"><div class="seclabel" style="justify-content:space-between"><span class="eyebrow">Jana dokumen kursus</span><span class="mini">Dokumen dijana daripada templat rasmi PPA dalam folder Google Drive "Portal PPA KIAS/Dokumen"</span></div>
+    <div class="grid-3">${Object.keys(JANA_INFO).map(j => { const I = JANA_INFO[j];
+      return `<div class="card kad-btn jana-pilih" ${klik(`bukaJana('${j}',0)`)}><div class="modul-kepala"><span class="modul-ikon" style="background:var(--brand-soft);color:var(--brand)">${ik(I.ikon, 20)}</span>
+        <div><div class="modul-tajuk">Jana ${esc(I.tajuk)}</div><div class="mini" style="margin-top:4px;line-height:1.5">${esc(I.desk)}</div></div></div>
+        <div class="jana-pilih-kaki"><span id="stTemplat-${j}">${statusTemplatJana(j)}</span><span class="kk-buka">Mula ${ik('kanan', 13)}</span></div></div>`; }).join('')}</div>
+    ${draf.length ? `<div class="card" style="overflow:hidden;margin-top:16px"><div class="jadual-skrol"><table class="grid padat"><thead><tr><th>Draf saya</th><th>Kod</th><th>Nama kursus</th><th class="sm-sembunyi">Sesi</th><th class="sm-sembunyi">Dikemas kini</th><th></th></tr></thead><tbody>
+      ${draf.map(x => `<tr class="baris klik" ${klik(`bukaJana('${x.jenis}',${x.id})`)}><td><span class="badge b-neutral">${esc((JANA_INFO[x.jenis] || {}).pendek || x.jenis)}</span></td><td><b>${esc(x.kod || '-')}</b></td><td>${esc(x.nama || '-')}</td>
+        <td class="sm-sembunyi mini">${esc(x.sesi || '-')}</td><td class="sm-sembunyi mini">${esc(fmtMasa(x.dikemaskini))}</td>
+        <td><div class="aksi-baris"><button class="btn-ikon bahaya" onclick="event.stopPropagation();padamDrafJana(${x.id})" title="Padam draf" aria-label="Padam draf">${ik('padam', 15)}</button></div></td></tr>`).join('')}
+    </tbody></table></div></div>` : ''}</section>`;
+}
+async function bukaJana(jenis, id){
+  let data = janaKosong(jenis);
+  if(id){
+    const r = await cuba(() => api('dokJanaAmbil', { id }, { tanpaMesej:true }));
+    if(!r) return;
+    data = Object.assign(janaKosong(jenis), r.draf.data || {});
+  }
+  UI.jana = { jenis, id: id || 0, data, ubah:false };
+  window.scrollTo(0, 0);
+  lukisDok();
+}
+async function tutupJana(){
+  if(UI.jana && UI.jana.ubah && !await sahkan({ tajuk:'Tutup tanpa menyimpan?', mesej:'Perubahan pada borang ini belum disimpan sebagai draf.', butang:'Tutup' })) return;
+  UI.jana = null; lukisDok(); window.scrollTo(0, 0);
+}
+async function padamDrafJana(id){
+  const x = (S.jana || []).find(y => y.id === id); if(!x) return;
+  if(!await sahkan({ tajuk:'Padam draf ' + ((JANA_INFO[x.jenis] || {}).pendek || '') + ' ' + (x.kod || '') + '?', mesej:'Data borang yang disimpan akan dipadam. Dokumen yang telah dimuat turun tidak terjejas.', butang:'Padam draf', bahaya:true })) return;
+  await cuba(async () => { await api('dokJanaPadam', { id }); lukisDok(); });
+}
+
+/* ---------- halaman borang penjana ---------- */
+function lukisJana(){
+  const J = UI.jana, I = JANA_INFO[J.jenis], d = J.data;
+  tajukAtas('Jana ' + I.pendek, I.tajuk);
+  const borang = J.jenis === 'rp' ? borangRP(d) : (J.jenis === 'jsu' ? borangJSU(d) : borangS3P(d));
+  el('halaman').innerHTML = `<div class="kepala"><div>
+      <button class="btn-teks" style="margin:0 0 6px -6px;display:inline-flex;align-items:center;gap:4px" onclick="tutupJana()">${ik('kiri', 14)}Dokumentasi</button>
+      <div class="eyebrow">Jana dokumen kursus${J.id ? ' · draf disimpan' : ''}</div><h1 class="serif">${esc(I.tajuk)}</h1>
+      <p class="mini">Isi borang di bawah, kemudian tekan <b>Jana</b> untuk memuat turun dokumen (.${I.ext}) berasaskan templat rasmi PPA. Simpan draf untuk menyunting semula kemudian.</p></div>
+    <div class="kepala-aksi">${sumberIsiJana()}</div></div>
+    <datalist id="dlPLO">${PLO_PILIHAN.slice(1).map(([v]) => `<option value="${v}">`).join('')}</datalist>
+    <div id="janaBorang" class="jana-borang" oninput="janaUbah(event)" onchange="janaUbah(event)">${borang}</div>
+    <div class="jana-bar"><span class="mini" id="janaStatus">${J.ubah ? 'Perubahan belum disimpan' : (J.id ? 'Draf disimpan' : 'Draf baharu')}</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="simpanDrafJana()">${ik('semak')}Simpan draf</button>
+      <button class="btn btn-primary" id="janaBtn" onclick="janaDokumen()">${ik('turun')}Jana ${esc(I.pendek)} (.${I.ext})</button></div></div>`;
+  kemasRingkasanJana();
+}
+function lukisSemulaJana(){ const y = window.scrollY; lukisJana(); window.scrollTo(0, y); }
+function sumberIsiJana(){
+  const ks = S.fk.kursus.filter(k => k.pid === saya());
+  const rp = (S.jana || []).filter(x => x.jenis === 'rp' && !(UI.jana.jenis === 'rp' && x.id === UI.jana.id));
+  return `<div class="dd"><button class="btn btn-ghost" onclick="togolDD(event,this)">${ik('salin')}<span>Isi automatik</span></button><div class="dd-menu" style="max-height:60vh;overflow:auto">
+    <button onclick="isiDaripadaStruktur()">${ik('cari')}Daripada struktur program (ikut kod kursus)</button>
+    ${ks.length ? '<div class="dd-sep"></div>' + ks.slice(0, 12).map(k => `<button onclick="isiDaripadaKursusFK(${k.id})">${ik('folder')}${esc(k.kod)} · ${esc(tajukSesi(k.sesi))}</button>`).join('') : ''}
+    ${UI.jana.jenis !== 'rp' && rp.length ? '<div class="dd-sep"></div>' + rp.slice(0, 10).map(x => `<button onclick="salinDaripadaRP(${x.id})">${ik('buku')}Salin daripada RP ${esc(x.kod || '')} ${esc(x.sesi || '')}</button>`).join('') : ''}
+  </div></div>`;
+}
+function janaUbah(e){
+  const t = e.target; if(!t.dataset || !t.dataset.p) return;
+  setLaluan(UI.jana.data, t.dataset.p, t.value);
+  if(!UI.jana.ubah){ UI.jana.ubah = true; const s = el('janaStatus'); if(s) s.textContent = 'Perubahan belum disimpan'; }
+  if(t.dataset.p === 'tahap' && UI.jana.jenis === 'jsu') lukisSemulaJana(); else kemasRingkasanJana();
+}
+function ubahStrukturJana(fn){ fn(UI.jana.data); UI.jana.ubah = true; lukisSemulaJana(); }
+function kodDaripadaFK(k){ const b = String(k.kod || '').split(/\s*[:\-–]\s*/); return { kod: normKod(b[0]), nama: b.slice(1).join(' ').trim() }; }
+function isiDaripadaKursusFK(kid){
+  const k = S.fk.kursus.find(x => x.id === kid); if(!k) return;
+  const x = kodDaripadaFK(k), d = UI.jana.data, sesi = tajukSesi(k.sesi);
+  d.kod = x.kod; if(x.nama) d.nama = x.nama;
+  if(UI.jana.jenis === 'rp') d.sesi = d.sesi || sesi; else d.sesi = d.sesi || sesi;
+  UI.jana.ubah = true; lukisSemulaJana(); toast('Maklumat kursus ' + x.kod + ' diisi.');
+  if(x.kod) isiDaripadaStruktur(true);
+}
+async function isiDaripadaStruktur(senyap){
+  const d = UI.jana.data;
+  if(!normKod(d.kod)){ if(!senyap) toast('Isi kod kursus dahulu.', 'ralat'); return; }
+  const r = await cuba(() => api('rujukKursus', { kod: d.kod }, { tanpaMesej:true })); if(!r) return;
+  const k = r.kursus[0];
+  if(!k){ if(!senyap) toast('Kod ' + normKod(d.kod) + ' tiada dalam struktur mana-mana program.', 'ralat'); return; }
+  if(!d.nama) d.nama = k.nama;
+  if(UI.jana.jenis === 'rp' && !d.kredit) d.kredit = k.kredit || '';
+  if(UI.jana.jenis !== 'rp'){ d.program = d.program || k.program; if(/diploma/i.test(k.tahap || '')) d.tahap = 'diploma'; else if(/asasi/i.test(k.tahap || '')) d.tahap = 'asasi'; else if(k.tahap) d.tahap = 'ijazah'; }
+  if(UI.jana.jenis === 'jsu' && d.tahap === 'asasi') d.tahap = 'ijazah';
+  (k.plo || []).forEach((pl, i) => { if(d.clo && d.clo[i] && pl && !d.clo[i].plo && UI.jana.jenis !== 'jsu') d.clo[i].plo = pl; });
+  UI.jana.ubah = true; lukisSemulaJana();
+  toast('Diisi daripada struktur program ' + k.programKod + (r.kursus.length > 1 ? ' (' + r.kursus.length + ' program menggunakan kod ini)' : '') + '.');
+}
+async function salinDaripadaRP(id){
+  const r = await cuba(() => api('dokJanaAmbil', { id }, { tanpaMesej:true })); if(!r) return;
+  const s = r.draf.data || {}, d = UI.jana.data;
+  ['kod', 'nama', 'sesi'].forEach(k => { if(s[k]) d[k] = s[k]; });
+  (s.clo || []).slice(0, 3).forEach((c, i) => { if(d.clo[i]){ d.clo[i].teks = c.teks || d.clo[i].teks; if(UI.jana.jenis === 's3p' && c.plo) d.clo[i].plo = c.plo; } });
+  if(UI.jana.jenis === 'jsu'){
+    const topik = [];
+    (s.minggu || []).forEach(m => (m.baris || []).forEach(b => { const t = String(b.topik || '').split('\n')[0].trim(); if(t && !topik.includes(t)) topik.push(t); }));
+    topik.slice(0, 14).forEach((t, i) => { d.topik[i].nama = t; });
+  }
+  if(UI.jana.jenis === 's3p'){
+    d.pensyarah = String(s.pensyarah || d.pensyarah).split('\n')[0];
+    const nilai = (s.berterusan || []).concat(s.akhir || []);
+    [0, 1, 2].forEach(i => {
+      const ada = nilai.filter(x => new RegExp('CLO\\s*' + (i + 1) + '\\b', 'i').test(x.clo || ''));
+      if(ada.length && !d.clo[i].item) d.clo[i].item = ada.map(x => x.nama).join('\n');
+    });
+  }
+  UI.jana.ubah = true; lukisSemulaJana(); toast('Maklumat disalin daripada draf RP.');
+}
+
+/* ---------- borang RP ---------- */
+function borangRP(d){
+  const minggu = d.minggu || [];
+  let h = kadJana('Maklumat kursus', `<div class="borang">
+      <div class="tiga">${mdn('Kod kursus', 'kod', d.kod, { ph:'USL1013' })}${mdn('Nilai kredit', 'kredit', d.kredit, { ph:'3' })}${mdn('Sesi pengajian', 'sesi', d.sesi, { ph:'SEM I SESI 2025/2026' })}</div>
+      ${mdn('Nama kursus', 'nama', d.nama)}
+      ${mdn('Nama pensyarah (satu nama setiap baris)', 'pensyarah', d.pensyarah, { textarea:true, rows:2 })}
+      <div class="dua">${mdn('Disediakan oleh (nama)', 'disediakan', d.disediakan)}${mdn('No. telefon', 'tel', d.tel)}</div></div>`);
+  h += kadJana('1. Sinopsis kursus', mdn(null, 'sinopsis', d.sinopsis, { textarea:true, rows:5, ph:'Sinopsis sebagaimana dalam maklumat kursus (Table 4)' }));
+  h += kadJana('2 & 3. Hasil pembelajaran kursus (CLO) dan penjajaran konstruktif', `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:860px"><thead><tr><th style="width:52px">CLO</th><th>Pernyataan CLO</th><th style="width:110px">PLO</th><th style="width:190px">Kaedah pengajaran</th><th style="width:190px">Kaedah penilaian</th></tr></thead><tbody>
+    ${(d.clo || []).map((c, i) => `<tr><td><b>CLO${i + 1}</b>${i === 3 ? '<div class="mini">pilihan</div>' : ''}</td><td>${mdn(null, 'clo.' + i + '.teks', c.teks, { textarea:true, rows:2 })}</td><td>${mdn(null, 'clo.' + i + '.plo', c.plo, { list:'dlPLO', ph:'PLO1' })}</td>
+      <td>${mdn(null, 'clo.' + i + '.pengajaran', c.pengajaran, { textarea:true, rows:2, ph:'Kuliah, tutorial' })}</td><td>${mdn(null, 'clo.' + i + '.penilaian', c.penilaian, { textarea:true, rows:2, ph:'Kuiz, peperiksaan akhir' })}</td></tr>`).join('')}
+    </tbody></table></div>`, { nota:'CLO4 hanya dimasukkan dalam RP jika diisi. PLO: PLO1/C1 Pengetahuan & Kefahaman, PLO2/C2 Kognitif, PLO3/C3A Praktikal, PLO4/C3B Interpersonal, PLO5/C3C Komunikasi dan seterusnya.' });
+  h += kadJana('4. Rancangan pengajaran mingguan', `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:1080px"><thead><tr><th style="width:62px">Minggu</th><th style="width:110px">Tarikh</th><th>Topik</th><th>Rancangan kuliah</th><th>Rancangan tutorial</th><th style="width:64px">F2F</th><th style="width:64px">NF2F</th><th>Aktiviti & penilaian</th><th style="width:40px"></th></tr></thead><tbody>
+    ${minggu.map((m, w) => (m.baris || []).map((b, k) => { const p = 'minggu.' + w + '.baris.' + k + '.';
+      return `<tr>${k === 0 ? `<td rowspan="${m.baris.length}" style="vertical-align:top"><b>${w + 1}</b>${m.baris.length < 3 ? `<div><button class="btn-teks" style="padding:2px 0" onclick="ubahStrukturJana(d => d.minggu[${w}].baris.push(barisMingguKosong()))" title="Tambah baris minggu ${w + 1}">+ baris</button></div>` : ''}</td>` : ''}
+        <td>${mdn(null, p + 'tarikh', b.tarikh, { ph:'dd/mm' })}</td><td>${mdn(null, p + 'topik', b.topik, { textarea:true, rows:2 })}</td><td>${mdn(null, p + 'kuliah', b.kuliah, { textarea:true, rows:2 })}</td>
+        <td>${mdn(null, p + 'tutorial', b.tutorial, { textarea:true, rows:2 })}</td><td>${mdn(null, p + 'f2f', b.f2f, { jenis:'number' })}</td><td>${mdn(null, p + 'nf2f', b.nf2f, { jenis:'number' })}</td>
+        <td>${mdn(null, p + 'aktiviti', b.aktiviti, { textarea:true, rows:2 })}</td>
+        <td>${k > 0 ? `<button class="btn-ikon bahaya" onclick="ubahStrukturJana(d => d.minggu[${w}].baris.splice(${k},1))" aria-label="Buang baris">${ik('x', 14)}</button>` : ''}</td></tr>`; }).join('')).join('')}
+    <tr class="baris-jumlah"><td colspan="5">Jumlah SLT</td><td class="tnum" id="jSltF2F">0</td><td class="tnum" id="jSltNF2F">0</td><td colspan="2"></td></tr></tbody></table></div>`,
+    { nota:'Setiap minggu boleh mempunyai sehingga tiga baris (contohnya kuliah dan tutorial berasingan). F2F dan NF2F ialah jam SLT bersemuka dan tidak bersemuka.' });
+  h += kadJana('5. Rubrik penilaian berterusan', (d.rubrik || []).map((r, i) => `<div class="jana-sub"><div class="kad-kepala"><b>${i === 0 ? 'a' : 'b'}) Kemahiran</b><button class="btn-teks" onclick="ubahStrukturJana(d => d.rubrik.splice(${i},1))">Buang rubrik</button></div>
+      ${mdn('Nama kemahiran', 'rubrik.' + i + '.nama', r.nama, { ph:'cth. Komunikasi (Pembentangan)' })}
+      <div class="jadual-skrol" style="margin-top:10px"><table class="grid padat jadual-input" style="min-width:1040px"><thead><tr><th>Atribut</th><th>Definisi</th><th>Sangat baik (5)</th><th>Baik (4)</th><th>Memuaskan (3)</th><th>Lemah (2)</th><th>Sangat lemah (1)</th><th style="width:40px"></th></tr></thead><tbody>
+      ${(r.atribut || []).map((a, j) => `<tr>${['atribut', 'definisi', 't5', 't4', 't3', 't2', 't1'].map(k => `<td>${mdn(null, 'rubrik.' + i + '.atribut.' + j + '.' + k, a[k], { textarea:true, rows:2 })}</td>`).join('')}
+        <td><button class="btn-ikon bahaya" onclick="ubahStrukturJana(d => d.rubrik[${i}].atribut.splice(${j},1))" aria-label="Buang atribut">${ik('x', 14)}</button></td></tr>`).join('')}
+      </tbody></table></div><button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="ubahStrukturJana(d => d.rubrik[${i}].atribut.push({}))">${ik('tambah', 14)}Tambah atribut</button></div>`).join('')
+    + ((d.rubrik || []).length < 2 ? `<button class="btn btn-ghost" onclick="ubahStrukturJana(d => (d.rubrik = d.rubrik || []).push({ nama:'', atribut:[{}, {}] }))">${ik('tambah')}Tambah rubrik kemahiran</button>` : ''),
+    { nota:'Rubrik bagi CLO yang mewakili domain afektif atau psikomotor (maksimum dua kemahiran). Jika tiada, RP akan menyatakan tiada rubrik penilaian berterusan.' });
+  const jadualNilai = (k, tajuk) => `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:760px"><thead><tr><th>${tajuk}</th><th style="width:100px">Pemberat (%)</th><th style="width:150px">CLO dinilai</th><th style="width:80px">SLT F2F</th><th style="width:80px">SLT NF2F</th><th style="width:40px"></th></tr></thead><tbody>
+    ${(d[k] || []).map((x, i) => `<tr><td>${mdn(null, k + '.' + i + '.nama', x.nama, { ph: k === 'akhir' ? 'Peperiksaan Akhir' : 'cth. Kuiz' })}</td><td>${mdn(null, k + '.' + i + '.pemberat', x.pemberat, { jenis:'number' })}</td>
+      <td>${mdn(null, k + '.' + i + '.clo', x.clo, { ph:'CLO1, CLO2' })}</td><td>${mdn(null, k + '.' + i + '.f2f', x.f2f, { jenis:'number' })}</td><td>${mdn(null, k + '.' + i + '.nf2f', x.nf2f, { jenis:'number' })}</td>
+      <td><button class="btn-ikon bahaya" onclick="ubahStrukturJana(d => d.${k}.splice(${i},1))" aria-label="Buang">${ik('x', 14)}</button></td></tr>`).join('')}
+    </tbody></table></div><button class="btn btn-ghost btn-sm" style="margin:8px 0 14px" onclick="ubahStrukturJana(d => (d.${k} = d.${k} || []).push({ nama:'', pemberat:'', clo:'', f2f:'', nf2f:'' }))">${ik('tambah', 14)}Tambah item</button>`;
+  h += kadJana('6. Strategi penilaian', jadualNilai('berterusan', 'Penilaian berterusan') + jadualNilai('akhir', 'Penilaian akhir') + `<div class="notis info" id="jPemberat" style="margin:0"></div>`);
+  h += kadJana('8. Rujukan', `<div class="borang">${mdn('Rujukan utama (satu rujukan setiap baris, format APA)', 'rujukanUtama', d.rujukanUtama, { textarea:true, rows:3 })}
+    ${mdn('Rujukan tambahan', 'rujukanTambahan', d.rujukanTambahan, { textarea:true, rows:3 })}${mdn('Rujukan baharu terkini', 'rujukanBaharu', d.rujukanBaharu, { textarea:true, rows:2 })}</div>`,
+    { nota:'Bahagian 7 (gred pemarkahan) dan 9 (peringatan) dikekalkan seperti dalam templat rasmi.' });
+  return h;
+}
+
+/* ---------- borang JSU ---------- */
+const HAD_JSU = { A:40, B:20, C:5 };
+function borangJSU(d){
+  const diploma = d.tahap === 'diploma';
+  let h = kadJana('Maklumat kursus', `<div class="borang">
+    <div class="tiga">${mdn('Templat', 'tahap', d.tahap, { pilihan:[['ijazah', 'Asasi dan Ijazah Sarjana Muda'], ['diploma', 'Diploma']] })}${mdn('Sesi', 'sesi', d.sesi, { ph:'SEMESTER I SESI 2025/2026' })}${mdn('Sem & tahun semasa pelajar', 'semTahun', d.semTahun, { ph:'Tahun 1 Semester 1' })}</div>
+    ${mdn('Program', 'program', d.program)}
+    <div class="dua">${mdn('Kod kursus', 'kod', d.kod)}${mdn('Nama kursus', 'nama', d.nama)}</div></div>`);
+  h += kadJana('Hasil pembelajaran kursus (CLO)', `<div class="borang">${[0, 1, 2].map(i => mdn('CLO' + (i + 1), 'clo.' + i + '.teks', (d.clo[i] || {}).teks, { textarea:true, rows:2 })).join('')}</div>`);
+  h += kadJana('Topik / kandungan kursus', `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:${diploma ? 520 : 640}px"><thead><tr><th style="width:74px">Topik</th><th>Topik / kandungan (yang terlibat dengan peperiksaan akhir)</th>${diploma ? '' : '<th style="width:90px">SLT</th><th style="width:70px" class="kanan">%</th>'}</tr></thead><tbody>
+    ${d.topik.map((t, i) => `<tr><td><b>${i + 1}</b></td><td>${mdn(null, 'topik.' + i + '.nama', t.nama)}</td>${diploma ? '' : `<td>${mdn(null, 'topik.' + i + '.slt', t.slt, { jenis:'number' })}</td><td class="kanan tnum" id="jPct${i}"></td>`}</tr>`).join('')}
+    ${diploma ? '' : '<tr class="baris-jumlah"><td colspan="2">Jumlah</td><td class="tnum" id="jSltJum">0</td><td></td></tr>'}</tbody></table></div>`);
+  ['A', 'B', 'C'].forEach(b => {
+    const sek = d.bahagian[b], soal = sek.soalan || [];
+    h += kadJana('Bahagian ' + b, `<div class="dua" style="margin-bottom:10px">${mdn('Item soalan', 'bahagian.' + b + '.jenis', sek.jenis, { pilihan:[['OBJEKTIF', 'Objektif'], ['STRUKTUR', 'Struktur'], ['ESEI', 'Esei']] })}<div class="mini" style="align-self:end">Maksimum ${HAD_JSU[b]} baris soalan. Topik: nombor topik 1 hingga 14 (pisahkan dengan koma jika lebih daripada satu).</div></div>
+      ${soal.length ? `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:520px"><thead><tr><th style="width:110px">No. soalan</th><th>Topik</th><th style="width:150px">Aras Bloom</th><th style="width:100px">Markah</th><th style="width:40px"></th></tr></thead><tbody>
+      ${soal.map((q, i) => { const p = 'bahagian.' + b + '.soalan.' + i + '.';
+        return `<tr><td>${mdn(null, p + 'no', q.no)}</td><td>${mdn(null, p + 'topik', q.topik, { ph:'1' })}</td><td>${mdn(null, p + 'aras', q.aras, { pilihan:[['', '-']].concat(BLOOM.map((c, k) => [c, c + ' ' + ['Mengingat', 'Memahami', 'Mengaplikasi', 'Menganalisis', 'Menilai', 'Mencipta'][k]])) })}</td>
+          <td>${mdn(null, p + 'markah', q.markah, { jenis:'number' })}</td><td><button class="btn-ikon bahaya" onclick="ubahStrukturJana(d => d.bahagian.${b}.soalan.splice(${i},1))" aria-label="Buang soalan">${ik('x', 14)}</button></td></tr>`; }).join('')}
+      </tbody></table></div>` : '<p class="mini">Belum ada soalan dalam bahagian ini.</p>'}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${soal.length < HAD_JSU[b] ? `<button class="btn btn-ghost btn-sm" onclick="tambahSoalanJSU('${b}',1)">${ik('tambah', 14)}Tambah soalan</button>` : ''}
+        ${soal.length + 5 <= HAD_JSU[b] ? `<button class="btn btn-ghost btn-sm" onclick="tambahSoalanJSU('${b}',${b === 'A' ? 10 : 5})">${ik('tambah', 14)}Tambah ${b === 'A' ? 10 : 5} soalan</button>` : ''}</div>`);
+  });
+  h += kadJana('Ringkasan JSU', '<div id="jsuRingkas"></div>');
+  return h;
+}
+function tambahSoalanJSU(b, n){
+  ubahStrukturJana(d => {
+    const s = d.bahagian[b].soalan, akhir = s[s.length - 1] || {};
+    for(let i = 0; i < n && s.length < HAD_JSU[b]; i++){
+      const no = b === 'B' ? (Math.floor(s.length / 4) + 1) + '(' + 'abcd'[s.length % 4] + ')' : String(s.length + 1);
+      s.push({ no, topik:'', aras: akhir.aras || '', markah: akhir.markah || '' });
+    }
+  });
+}
+function ringkasanJSU(d){
+  const diploma = d.tahap === 'diploma', m = [0, 0, 0, 0, 0, 0], bil = {};
+  ['A', 'B', 'C'].forEach(b => { bil[b] = (d.bahagian[b].soalan || []).length; (d.bahagian[b].soalan || []).forEach(q => { const i = BLOOM.indexOf(q.aras); if(i >= 0) m[i] += Number(q.markah) || 0; }); });
+  const jum = m.reduce((a, x) => a + x, 0), pct = x => jum ? Math.round(x / jum * 1000) / 10 : 0;
+  const ag = diploma ? [['Rendah (C1)', m[0]], ['Sederhana (C2, C3)', m[1] + m[2]], ['Tinggi (C4)', m[3]]] : [['Rendah (C1, C2)', m[0] + m[1]], ['Sederhana (C3, C4)', m[2] + m[3]], ['Tinggi (C5, C6)', m[4] + m[5]]];
+  return `<div class="grid-4">${statKad('Jumlah soalan', bil.A + bil.B + bil.C, `A: ${bil.A} · B: ${bil.B} · C: ${bil.C}`)}${ag.map(([l, v]) => statKad(l, pct(v) + '%', fmt(v) + ' markah')).join('')}</div>
+    <p class="mini" style="margin-top:10px">Jumlah markah keseluruhan: <b>${fmt(jum)}</b>. ${diploma && (m[4] || m[5]) ? 'Templat Diploma tidak mengambil kira aras C5 dan C6 dalam agihan aras.' : ''}</p>`;
+}
+
+/* ---------- borang S3P ---------- */
+function borangS3P(d){
+  const pel = pelajarS3P(d);
+  let h = kadJana('Maklumat kursus', `<div class="borang">
+    <div class="tiga">${mdn('Templat S3P', 'tahap', d.tahap, { pilihan: TAHAP_JANA })}${mdn('Kod kursus', 'kod', d.kod)}${mdn('Sesi pengajian semasa', 'sesi', d.sesi, { ph:'SEMESTER I SESI 2025/2026' })}</div>
+    ${mdn('Nama program', 'program', d.program, { list:'dlProgram' })}<datalist id="dlProgram">${S.program.senarai.map(p => `<option value="${esc(p.nama.toUpperCase())}">`).join('')}</datalist>
+    ${mdn('Nama kursus', 'nama', d.nama)}
+    <div class="tiga">${mdn('Pensyarah', 'pensyarah', d.pensyarah)}${mdn('Pemeriksa luar', 'pemeriksa', d.pemeriksa)}${mdn('Tahun kemasukan', 'tahunKemasukan', d.tahunKemasukan, { ph:'2025' })}</div></div>`);
+  h += kadJana('CLO dan kaedah penilaian', `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:980px"><thead><tr><th style="width:56px">CLO</th><th>Pernyataan CLO</th><th style="width:170px">Item penilaian (satu setiap baris)</th><th>Deskripsi</th><th style="width:100px">PLO</th><th style="width:96px">Pemberat (%)</th></tr></thead><tbody>
+    ${[0, 1, 2].map(i => { const c = d.clo[i] || {}, p = 'clo.' + i + '.';
+      return `<tr><td><b>CLO${i + 1}</b></td><td>${mdn(null, p + 'teks', c.teks, { textarea:true, rows:3 })}</td><td>${mdn(null, p + 'item', c.item, { textarea:true, rows:3, ph:'Kuiz\nPeperiksaan Akhir' })}</td>
+        <td>${mdn(null, p + 'deskripsi', c.deskripsi, { textarea:true, rows:3, ph:'Kuiz = 20 markah / menilai kemahiran kognitif' })}</td><td>${mdn(null, p + 'plo', c.plo, { pilihan: PLO_PILIHAN })}</td><td>${mdn(null, p + 'pemberat', c.pemberat, { jenis:'number' })}</td></tr>`; }).join('')}
+    </tbody></table></div><div class="notis info" id="jPemberat" style="margin:12px 0 0"></div>`, { nota:'Templat S3P menyokong tiga CLO. Pemberat ialah markah penuh bagi setiap CLO (jumlah 100).' });
+  h += kadJana('Komponen markah', `<div class="grid-komponen">${['M1', 'M2', 'M3', 'M4', 'PA'].map((m, i) => mdn(m, 'komponen.' + i, d.komponen[i])).join('')}</div>`,
+    { nota:'Label komponen markah dalam helaian Masukan Markah. Bagi setiap CLO, markah M1 hingga M4 dan PA (peperiksaan akhir) dijumlahkan.' });
+  h += kadJana('Senarai pelajar dan markah (pilihan)', `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-ghost btn-sm" onclick="templatPelajarS3P('xlsx')">${ik('turun', 14)}Templat Excel</button><button class="btn btn-ghost btn-sm" onclick="templatPelajarS3P('csv')">${ik('turun', 14)}Templat CSV</button>
+      <label class="btn btn-ghost btn-sm">${ik('naik', 14)}Import fail CSV / Excel<input type="file" hidden accept="${TERIMA_JADUAL}" onchange="importPelajarS3P(this)"></label></div>
+    ${mdn(null, 'pelajarTeks', d.pelajarTeks, { textarea:true, rows:7, ph:'NoKump\tNoMatrik\tNama\tCLO1_M1\tCLO1_M2 …\n1\t24440143\tAHMAD BIN ALI\t14\t…' })}
+    <p class="mini" id="jPelajar" style="margin-top:8px">${pel.ralat ? esc(pel.ralat) : pel.senarai.length + ' pelajar dikesan.'}</p>`,
+    { nota:'Tampal jadual daripada Excel dengan baris tajuk: <b>NoKump</b>, <b>NoMatrik</b>, <b>Nama</b> dan, jika ada, lajur markah <b>CLO1_M1</b> hingga <b>CLO3_PA</b>. Maksimum 300 pelajar. Markah juga boleh diisi terus dalam fail S3P selepas dijana.' });
+  return h;
+}
+const LAJUR_S3P = { kump:['nokump', 'kump', 'kumpulan', 'nokumpulan'], matrik:['nomatrik', 'matrik', 'nomatriks', 'matriks'], nama:['nama', 'namapelajar'] };
+['1', '2', '3'].forEach(c => ['m1', 'm2', 'm3', 'm4', 'pa'].forEach(m => { LAJUR_S3P['clo' + c + m] = ['clo' + c + m]; }));
+function pelajarS3P(d){
+  const teks = String(d.pelajarTeks || '').trim();
+  if(!teks) return { senarai:[] };
+  try {
+    const baris = barisIkutLajur(teks, LAJUR_S3P, ['nama']);
+    const kunciM = ['1', '2', '3'].flatMap(c => ['m1', 'm2', 'm3', 'm4', 'pa'].map(m => 'clo' + c + m));
+    const senarai = baris.filter(b => b.nama).map(b => ({ kump: b.kump || '', matrik: b.matrik || '', nama: b.nama, markah: kunciM.map(k => b[k] === undefined || b[k] === '' ? '' : Number(String(b[k]).replace(',', '.'))) }));
+    return senarai.length > 300 ? { senarai: senarai.slice(0, 300), ralat:'Hanya 300 pelajar pertama akan dimasukkan (had templat S3P).' } : { senarai };
+  } catch(e){ return { senarai:[], ralat: e.message }; }
+}
+function templatPelajarS3P(fmt){
+  const kep = ['NoKump', 'NoMatrik', 'Nama'].concat(['1', '2', '3'].flatMap(c => ['M1', 'M2', 'M3', 'M4', 'PA'].map(m => 'CLO' + c + '_' + m)));
+  const sedia = pelajarS3P(UI.jana.data).senarai;
+  muatTurunJadual('Templat_Pelajar_S3P', [kep].concat(sedia.length ? sedia.map(p => [p.kump, p.matrik, p.nama].concat(p.markah)) : [[1, '24440143', 'NAMA PELAJAR', 14, '', '', '', 15, 8, 6, '', '', '', 18, '', '', '', '']]), fmt);
+}
+async function importPelajarS3P(input){
+  const f = input.files[0]; input.value = ''; if(!f) return;
+  try {
+    UI.jana.data.pelajarTeks = await bacaFailData(f);
+    UI.jana.ubah = true; lukisSemulaJana();
+    toast(pelajarS3P(UI.jana.data).senarai.length + ' pelajar diimport.');
+  } catch(e){ toast(e.message, 'ralat'); }
+}
+
+/* ---------- ringkasan langsung (jumlah SLT, pemberat) ---------- */
+function kemasRingkasanJana(){
+  const J = UI.jana; if(!J) return;
+  const d = J.data, set = (id, v) => { const e = el(id); if(e) e.innerHTML = v; };
+  if(J.jenis === 'rp'){
+    let f = 0, n = 0; (d.minggu || []).forEach(m => (m.baris || []).forEach(b => { f += Number(b.f2f) || 0; n += Number(b.nf2f) || 0; }));
+    set('jSltF2F', fmt(f)); set('jSltNF2F', fmt(n));
+    const jb = jumlahNo(d.berterusan || [], 'pemberat'), ja = jumlahNo(d.akhir || [], 'pemberat'), j = jb + ja;
+    set('jPemberat', `Penilaian berterusan <b>${fmt(jb)}%</b> + penilaian akhir <b>${fmt(ja)}%</b> = <b>${fmt(j)}%</b>${j === 100 ? '' : ' <span style="color:var(--clay);font-weight:700">(jumlah mesti 100%)</span>'}`);
+  } else if(J.jenis === 'jsu'){
+    const jum = jumlahNo(d.topik || [], 'slt');
+    set('jSltJum', fmt(jum));
+    (d.topik || []).forEach((t, i) => set('jPct' + i, jum && Number(t.slt) ? fmt(Math.round(Number(t.slt) / jum * 1000) / 10) + '%' : ''));
+    set('jsuRingkas', ringkasanJSU(d));
+  } else {
+    const j = jumlahNo(d.clo || [], 'pemberat');
+    set('jPemberat', `Jumlah pemberat CLO: <b>${fmt(j)}%</b>${j === 100 ? '' : ' <span style="color:var(--clay);font-weight:700">(jumlah mesti 100%)</span>'}`);
+    const p = pelajarS3P(d); set('jPelajar', p.ralat ? esc(p.ralat) : p.senarai.length + ' pelajar dikesan.');
+  }
+}
+
+/* ---------- simpan draf dan jana ---------- */
+function metaJana(){ const d = UI.jana.data; return { kod: normKod(d.kod), nama: d.nama || '', sesi: d.sesi || '' }; }
+async function simpanDrafJana(){
+  const J = UI.jana;
+  await cuba(async () => {
+    const r = await api('dokJanaSimpan', Object.assign({ id: J.id, jenis: J.jenis, data: J.data }, metaJana()));
+    J.id = r.id; J.ubah = false;
+    const s = el('janaStatus'); if(s) s.textContent = 'Draf disimpan';
+  });
+}
+async function janaDokumen(){
+  const J = UI.jana, d = J.data, I = JANA_INFO[J.jenis];
+  if(!normKod(d.kod) || !String(d.nama || '').trim()){ toast('Isi kod dan nama kursus dahulu.', 'ralat'); return; }
+  const btn = el('janaBtn'); if(btn) btn.disabled = true;
+  mulaMuat();
+  try {
+    let blob;
+    if(J.jenis === 'rp') blob = await janaRP(Object.assign({}, d, { pensyarah: String(d.pensyarah || '').split('\n').map(s => s.trim()).filter(Boolean) }));
+    else if(J.jenis === 'jsu') blob = await janaJSU(d);
+    else blob = await janaS3P(Object.assign({}, d, { pelajar: pelajarS3P(d).senarai }));
+    const nama = I.pendek + '_' + namaFailSelamat(normKod(d.kod)) + (d.sesi ? '_' + namaFailSelamat(d.sesi) : '') + '.' + I.ext;
+    muatTurunBlob(blob, nama);
+    toast(I.pendek + ' dijana: ' + nama);
+  } catch(e){ toast(e.message || String(e), 'ralat'); }
+  finally { tamatMuat(); if(btn) btn.disabled = false; }
+}
+
+/* ============================ PENTADBIRAN: TEMPLAT DOKUMEN ============================ */
+function tabTemplat(){
+  el('adminIsi').innerHTML = `<div class="notis info">Templat rasmi digunakan untuk menjana RP, JSU dan S3P (modul Dokumentasi) serta Laporan P2LO (modul Ketua Program).
+    Portal mengenal pasti templat secara automatik mengikut nama fail dalam folder Google Drive <b>Portal PPA KIAS/Dokumen</b>, atau anda boleh memuat naik templat terus di sini. Jangan ubah susunan baris dan lajur templat, kerana portal mengisi sel mengikut kedudukan.</div>
+    <div class="card" style="overflow:hidden"><div class="jadual-skrol"><table class="grid"><thead><tr><th>Templat</th><th>Fail semasa</th><th class="sm-sembunyi">Dikemas kini</th><th></th></tr></thead><tbody id="jadualTemplat"><tr><td colspan="4"><div class="kosong">Memuatkan…</div></td></tr></tbody></table></div></div>`;
+  muatStatusTemplat(true).then(lukisJadualTemplat);
+}
+function lukisJadualTemplat(){
+  const box = el('jadualTemplat'); if(!box) return;
+  const t = UI.templat;
+  if(!t){ box.innerHTML = '<tr><td colspan="4"><div class="kosong">Senarai templat tidak dapat dimuatkan.</div></td></tr>'; return; }
+  const ext = { rp:'.docx', jsuIjazah:'.xlsx', jsuDiploma:'.xlsx', s3pAsasi:'.xlsm', s3pDiploma:'.xlsm', s3pIjazah:'.xlsm', p2lo:'.xlsx' };
+  box.innerHTML = t.map(x => `<tr class="baris"><td><b>${esc(x.label)}</b><div class="mini">Fail ${ext[x.key]}</div></td>
+    <td>${x.ada ? `<span class="badge b-ya">Tersedia</span> <span class="mini">${esc(x.nama)} · ${fmtSaiz(x.saiz)}${x.tetap ? ' · dimuat naik melalui portal' : ''}</span>` : '<span class="badge b-tidak">Tiada</span>'}</td>
+    <td class="sm-sembunyi mini">${esc(fmtMasa(x.dikemaskini))}</td>
+    <td><div class="aksi-baris">${x.ada ? `<button class="btn-ikon" onclick="muatTurunTemplat('${x.key}')" title="Muat turun" aria-label="Muat turun templat">${ik('turun', 15)}</button>` : ''}
+      <label class="btn btn-ghost btn-sm">${ik('naik', 14)}${x.ada ? 'Ganti' : 'Muat naik'}<input type="file" hidden accept="${ext[x.key]}" onchange="muatNaikTemplat('${x.key}',this)"></label></div></td></tr>`).join('');
+}
+async function muatNaikTemplat(key, input){
+  const f = input.files[0]; input.value = ''; if(!f) return;
+  mulaMuat();
+  try { await muatNaikFail(f, { jenis:'templat', key }); delete _cacheTemplat[key]; toast('Templat dikemas kini.'); await muatStatusTemplat(true); lukisJadualTemplat(); }
+  catch(e){ toast(e.message, 'ralat'); }
+  finally { tamatMuat(); }
+}
+async function muatTurunTemplat(key){
+  await cuba(async () => { delete _cacheTemplat[key]; const t = await ambilTemplat(key); muatTurunBlob(new Blob([t.bait]), t.nama); });
+}
+
 /* ============================ HALAMAN: PENTADBIRAN ============================ */
 function lukisAdmin(){
   tajukAtas('Pentadbiran', 'Pengguna, pensyarah, tetapan dan sandaran');
-  const tabs = [['pengguna','Pengguna'],['pensyarah','Pensyarah'],['tetapan','Tetapan & fakulti'],['sandaran','Sandaran & migrasi'],['log','Log aktiviti']];
+  const tabs = [['pengguna','Pengguna'],['pensyarah','Pensyarah'],['tetapan','Tetapan & fakulti'],['templat','Templat dokumen'],['sandaran','Sandaran & migrasi'],['log','Log aktiviti']];
   el('halaman').innerHTML = `<div class="kepala"><div><div class="eyebrow">Pentadbiran PPA</div><h1 class="serif">Pentadbiran portal</h1><p class="mini">Urus akaun pengguna, senarai induk pensyarah, tetapan portal serta sandaran data di Google Drive.</p></div></div>
     <div class="tabs" role="tablist">${tabs.map(([id, l]) => `<button role="tab" aria-selected="${UI.admin.tab === id}" class="${UI.admin.tab === id ? 'aktif' : ''}" onclick="UI.admin.tab='${id}';UI.admin.cari='';lukisAdmin()">${l}</button>`).join('')}</div>
     <div id="adminIsi"></div>`;
-  ({ pengguna:tabPengguna, pensyarah:tabPensyarah, tetapan:tabTetapan, sandaran:tabSandaran, log:tabLog }[UI.admin.tab] || tabPengguna)();
+  ({ pengguna:tabPengguna, pensyarah:tabPensyarah, tetapan:tabTetapan, templat:tabTemplat, sandaran:tabSandaran, log:tabLog }[UI.admin.tab] || tabPengguna)();
 }
 function tabPengguna(){
   const us = S.pentadbiran.pengguna || [];
