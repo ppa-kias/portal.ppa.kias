@@ -495,7 +495,7 @@ table.grid tr.baris-jumlah td{font-weight:800;background:var(--surface-2);border
     <div class="login-kiri">
       <div>
         <div class="eyebrow" style="color:#BFDCCF">Modul portal</div>
-        <p class="login-intro" style="margin-top:8px">Sebuah platform untuk memantau penghantaran fail kursus, pencapaian CPD pensyarah, program akademik dan dokumentasi rasmi PPA.</p>
+        <p class="login-intro" style="margin-top:8px">Satu tempat untuk memantau penghantaran fail kursus, pencapaian CPD pensyarah, program akademik dan dokumentasi rasmi PPA.</p>
       </div>
       <div class="login-modul">
         <div><span class="li" data-ik="folder" data-s="18"></span><span><b>Fail Kursus</b><small>Pensyarah memuat naik fail kursus terus ke Google Drive. Kelengkapan dipantau secara automatik.</small></span></div>
@@ -1361,7 +1361,7 @@ function kadPanduanStaf(){
     <ol style="margin:0;padding-left:18px;line-height:1.8;color:var(--ink-2);font-size:13px">
       <li>Buka <b>Fail Kursus</b> dan pilih sesi semasa.</li>
       <li>Tekan <b>Tambah kursus</b> bagi setiap kursus yang anda ajar.</li>
-      <li>Buka kursus, kemudian tekan <b>Muat naik</b> pada item folder berkenaan. Status bertukar kepada <b>Lengkap</b> secara automatik.</li>
+      <li>Buka kursus, kemudian tekan <b>Muat naik PDF</b> pada item folder berkenaan. Hanya fail PDF diterima. Status bertukar kepada <b>Lengkap</b> secara automatik.</li>
       <li>Tandakan <b>TB</b> (tidak berkaitan) bagi item yang tidak diperlukan, contohnya labsheet amali.</li>
       <li>Gunakan <b>Cari fail rujukan PdP</b> di halaman Fail Kursus untuk melihat bahan pengajaran pensyarah lain mengikut kod atau nama kursus.</li>
       <li>Semak jam latihan anda di <b>CPD Pensyarah</b>. Rekod CPD dikemas kini oleh PPA.</li></ol>
@@ -1667,7 +1667,8 @@ function lukisModalKursus(kid){
         ${boleh ? `<button class="btn btn-ghost btn-sm" onclick="modalKursus(${k.id})">${ik('sunting', 14)}Sunting</button>` : ''}
       </div></div>
     ${k.catatan ? `<div class="notis"><b>Catatan:</b> ${esc(k.catatan)}</div>` : ''}
-    ${boleh ? `<p class="mini" style="margin:0 0 6px">Tekan <b>Muat naik</b> atau seret fail ke item berkenaan (had ${CONFIG.MAKS_MB} MB setiap fail). Status item bertukar kepada <b>Lengkap</b> secara automatik selepas fail dimuat naik.</p>` : ''}`;
+    ${boleh ? `<div class="notis info" style="margin:0 0 10px">Hanya fail <b>PDF</b> diterima (had ${CONFIG.MAKS_MB} MB setiap fail). Simpan dokumen Word, Excel atau PowerPoint sebagai PDF dahulu (<b>Fail &gt; Simpan sebagai &gt; PDF</b>).</div>
+      <p class="mini" style="margin:0 0 6px">Tekan <b>Muat naik PDF</b> atau seret fail PDF ke item berkenaan. Status item bertukar kepada <b>Lengkap</b> secara automatik selepas fail dimuat naik.</p>` : ''}`;
   g.forEach(x => { h += `<div class="mk-kump">${esc(x.n)}</div>` + x.i.map(f => itemFolder(k, f, boleh, A)).join(''); });
   if(!fol.length) h += `<div class="kosong">Struktur folder bagi sesi ini belum ditetapkan.</div>`;
   box.innerHTML = h;
@@ -1682,7 +1683,7 @@ function itemFolder(k, f, boleh, A){
     <div class="fk-item-baris">
       <span class="fk-lbl">${esc(f.label)}</span>
       <div class="fk-item-teks"><b>${esc(f.desc)}</b><div class="mini">${fail.length ? fail.length + ' fail' : 'Tiada fail'}${f.kongsi ? ` · <span class="badge b-rujukan" title="Fail item ini boleh dilihat oleh staf lain sebagai rujukan PdP">Dikongsi sebagai rujukan</span>` : ''}</div></div>
-      <div class="fk-item-kawal">${kawal}${boleh ? `<label class="btn btn-ghost btn-sm">${ik('naik', 14)}Muat naik<input type="file" multiple hidden onchange="muatNaikItem(${k.id},'${f.key}',this.files,this)"></label>` : ''}</div>
+      <div class="fk-item-kawal">${kawal}${boleh ? `<label class="btn btn-ghost btn-sm">${ik('naik', 14)}Muat naik PDF<input type="file" multiple hidden accept=".pdf,application/pdf" onchange="muatNaikItem(${k.id},'${f.key}',this.files,this)"></label>` : ''}</div>
     </div>
     ${fail.length ? `<div class="fk-fail">${fail.map(x => `<span class="fail-cip">${ikonFail(x.mime, x.nama)}<button class="cip-nama" onclick="lihatFail('fk',${x.id})" title="Lihat ${esc(x.nama)}">${esc(x.nama)}</button><small>${fmtSaiz(x.saiz)}</small>${boleh ? `<button class="cip-x" onclick="padamFailFK(${x.id},${k.id})" aria-label="Padam ${esc(x.nama)}" title="Padam fail">${ik('x', 12)}</button>` : ''}</span>`).join('')}</div>` : ''}
     <div class="fk-prog" id="p-${k.id}-${f.key}" hidden></div>
@@ -1712,10 +1713,26 @@ function jatuhFail(e, kid, key, n){
 function progHTML(nama, p, i, n){
   return `<div style="display:flex;justify-content:space-between;gap:10px"><span>${n > 1 ? `(${i}/${n}) ` : ''}Memuat naik <b>${esc(nama)}</b></span><b class="tnum">${p}%</b></div><div class="prog-bar"><span style="width:${p}%"></span></div>`;
 }
+/** Fail kursus: PDF sahaja. Semak nama (.pdf) dan tandatangan %PDF- dalam 1 KB pertama sebelum dimuat naik. */
+async function semakPdf(f){
+  if(!/[.]pdf$/i.test(f.name)) return 'bukan fail PDF';
+  try {
+    const b = new Uint8Array(await f.slice(0, 1024).arrayBuffer());
+    if(String.fromCharCode.apply(null, b).indexOf('%PDF-') < 0) return 'kandungan bukan PDF yang sah';
+  } catch(e){ /* pelayan akan menyemak */ }
+  return '';
+}
 async function muatNaikItem(kid, key, files, input){
-  const senarai = [...(files || [])];
+  let senarai = [...(files || [])];
   if(input) input.value = '';
   if(!senarai.length) return;
+  const ditolak = [];
+  for(const f of senarai){ const m = await semakPdf(f); if(m) ditolak.push(f.name + ' (' + m + ')'); }
+  const mesejTolak = ditolak.length ? 'Hanya fail PDF diterima untuk fail kursus. Ditolak: ' + ditolak.join(', ') + '. Simpan sebagai PDF dan muat naik semula.' : '';
+  if(ditolak.length){
+    senarai = senarai.filter(f => !ditolak.some(x => x.indexOf(f.name + ' (') === 0));
+    if(!senarai.length){ toast(mesejTolak, 'ralat'); return; }
+  }
   let berjaya = 0;
   mulaMuat();
   for(let i = 0; i < senarai.length; i++){
@@ -1729,7 +1746,8 @@ async function muatNaikItem(kid, key, files, input){
     } catch(e){ toast(f.name + ': ' + e.message, 'ralat'); }
   }
   tamatMuat();
-  if(berjaya) toast(berjaya > 1 ? berjaya + ' fail dimuat naik.' : 'Fail dimuat naik ke Google Drive.');
+  if(mesejTolak) toast((berjaya ? berjaya + ' fail PDF dimuat naik. ' : '') + mesejTolak, 'ralat');
+  else if(berjaya) toast(berjaya > 1 ? berjaya + ' fail dimuat naik.' : 'Fail dimuat naik ke Google Drive.');
   lukisModalKursus(kid); lukisSemula();
 }
 function bacaBase64(blob){
