@@ -3814,7 +3814,7 @@ async function janaRP(d, ttd){
   return [{ data: await blobKeB64(await simpanDocx(D)), ext:'docx', landskap:false }];
 }
 
-/** Tandatangan penyedia pada ruang "Disediakan Oleh" dan blok "Disemak dan Disahkan Oleh" selepasnya. */
+/** Tandatangan penyedia pada ruang "Disediakan Oleh". Blok "Disemak dan Disahkan Oleh" hanya bagi dokumen yang mempunyai pengesah. */
 async function ttdRP(D, ttd){
   const pLabel = cariPW(D, /^\(Tandatangan dan Cop Pensyarah\)$/), pTel = cariPW(D, /^No\.\s*Tel\s*:/), pDisediakan = cariPW(D, /^Disediakan Oleh:$/);
   if(pLabel && ttd.sedia.png){
@@ -3825,7 +3825,8 @@ async function ttdRP(D, ttd){
   }
   if(!pTel) return;
   const pPr = pPrW(pTel), rPr = rPrPertamaW(pTel), rTajuk = rPrPertamaW(pDisediakan) || rPr, rujuk = pTel.nextSibling;
-  const baris = [['Tarikh\t: ' + (ttd.sedia.tarikh || ''), rPr], ['', rPr], ['Disemak dan Disahkan Oleh:', rTajuk], ['@TTD', rPr],
+  const baris = !ttd.sah ? [['Tarikh\t: ' + (ttd.sedia.tarikh || ''), rPr], [lblKod(ttd) + '\t: ' + ttd.kodSah + ' (' + teksStatusSah(ttd) + ')', rPr]] :
+    [['Tarikh\t: ' + (ttd.sedia.tarikh || ''), rPr], ['', rPr], ['Disemak dan Disahkan Oleh:', rTajuk], ['@TTD', rPr],
     ['(Tandatangan dan Cop ' + (ttd.sah.peranan || 'Pengesah') + ')', rPr], ['Nama\t: ' + (ttd.sah.nama || ''), rPr],
     ['Tarikh\t: ' + (ttd.sah.tarikh || '-'), rPr], ['Kod pengesahan\t: ' + ttd.kodSah + ' (' + teksStatusSah(ttd) + ')', rPr]];
   for(const [t, r] of baris){
@@ -3870,11 +3871,11 @@ async function janaJSU(d, ttd){
     const cari = re => { for(let r = 100; r <= 125; r++) if(re.test(bacaX(X, h, 'A' + r))) return r; return 0; };
     const p = cari(/Tanda\s*Tangan\s*Pensyarah/i), k = cari(/Tanda\s*Tangan\s*KP/i);
     if(p){ if(ttd.sedia.png) await imejX(X, h, 'D' + (p - 2), ttd.sedia.png, { w:170, h:52, dx:10, dy:4 }); tulisX(h, 'D' + (p + 1), ttd.sedia.nama); tulisX(h, 'L' + p, 'Tarikh  : ' + (ttd.sedia.tarikh || '')); }
-    if(k){
+    if(k && ttd.sah){
       if(ttd.sah.png) await imejX(X, h, 'D' + (k - 2), ttd.sah.png, { w:170, h:52, dx:10, dy:4 });
       tulisX(h, 'D' + (k + 1), ttd.sah.nama + ' (' + ttd.sah.peranan + ')'); tulisX(h, 'L' + k, 'Tarikh  : ' + (ttd.sah.tarikh || ''));
-      tulisX(h, 'A' + (k + 2), 'Kod pengesahan: ' + ttd.kodSah + ' · ' + teksStatusSah(ttd));
     }
+    if(k || p) tulisX(h, 'A' + ((k || p) + 2), lblKod(ttd) + ': ' + ttd.kodSah + ' · ' + teksStatusSah(ttd));
   }
   return [await varianXlsx(X, ['PEPERIKSAAN AKHIR'], 'xlsx', false)];
 }
@@ -3922,8 +3923,8 @@ async function janaS3P(d, ttd){
   (d.masalah || []).slice(0, 4).forEach((m, i) => { tulisX(hL, 'B' + (59 + i), m.masalah || ''); tulisX(hL, 'D' + (59 + i), m.cadangan || ''); });
   if(n < 300){ sembunyiBarisX(await helaianX(X, 'Pencapain CLO'), 14 + n, 313); sembunyiBarisX(await helaianX(X, 'Laporan Markah'), 17 + n, 316); }
   if(ttd){
-    for(const [nama, a, b] of S3P_TTD){ const h = await helaianX(X, nama); await isiTtdX(X, h, a, ttd.sedia, ttd, false); await isiTtdX(X, h, b, ttd.sah, ttd, true); }
-    tulisX(hCLO, 'A45', 'Kod pengesahan: ' + ttd.kodSah + ' · ' + teksStatusSah(ttd));
+    for(const [nama, a, b] of S3P_TTD){ const h = await helaianX(X, nama); await isiTtdX(X, h, a, ttd.sedia, ttd, false); if(ttd.sah) await isiTtdX(X, h, b, ttd.sah, ttd, true); }
+    tulisX(hCLO, 'A45', lblKod(ttd) + ': ' + ttd.kodSah + ' · ' + teksStatusSah(ttd));
   }
   for(const nama of S3P_PDF) await buangButangX(X, await helaianX(X, nama));
   return [await varianXlsx(X, S3P_PDF, 'xlsm', false)];
@@ -4094,7 +4095,7 @@ function statusTemplatJana(jenis){
 }
 function bahagianJanaDok(){
   const draf = S.jana || [];
-  return `<section class="blok"><div class="seclabel" style="justify-content:space-between"><span class="eyebrow">Jana dokumen kursus</span><span class="mini">PDF berasaskan templat rasmi PPA, dengan tandatangan digital dan pengesahan</span></div>
+  return `<section class="blok"><div class="seclabel" style="justify-content:space-between"><span class="eyebrow">Jana dokumen kursus</span><span class="mini">PDF berasaskan templat rasmi PPA, dengan tandatangan digital anda</span></div>
     <div class="grid-3">${Object.keys(JANA_INFO).map(j => { const I = JANA_INFO[j];
       return `<div class="card kad-btn jana-pilih" ${klik(`bukaJana('${j}',0)`)}><div class="modul-kepala"><span class="modul-ikon" style="background:var(--brand-soft);color:var(--brand)">${ik(I.ikon, 20)}</span>
         <div><div class="modul-tajuk">Jana ${esc(I.tajuk)}</div><div class="mini" style="margin-top:4px;line-height:1.5">${esc(I.desk)}</div></div></div>
@@ -4134,13 +4135,13 @@ function lukisJana(){
   el('halaman').innerHTML = `<div class="kepala"><div>
       <button class="btn-teks" style="margin:0 0 6px -6px;display:inline-flex;align-items:center;gap:4px" onclick="tutupJana()">${ik('kiri', 14)}Dokumentasi</button>
       <div class="eyebrow">Jana dokumen kursus${J.id ? ' · draf disimpan' : ''}</div><h1 class="serif">${esc(I.tajuk)}</h1>
-      <p class="mini">Isi borang, kemudian tekan <b>Jana PDF dan hantar untuk pengesahan</b>. Dokumen dijana dalam format PDF berasaskan templat rasmi PPA, ditandatangani secara digital oleh anda, dan disahkan oleh pengesah (KP, pentadbir fakulti atau PPA). Simpan draf untuk menyunting semula kemudian.</p></div>
+      <p class="mini">Isi borang, kemudian tekan <b>Jana PDF bertandatangan</b>. Dokumen dijana dalam format PDF berasaskan templat rasmi PPA dan ditandatangani secara digital oleh anda. Pengesahan pihak lain tidak diperlukan. Simpan draf untuk menyunting semula kemudian.</p></div>
     <div class="kepala-aksi">${sumberIsiJana()}</div></div>
     <datalist id="dlPLO">${PLO_PILIHAN.slice(1).map(([v]) => `<option value="${v}">`).join('')}</datalist>
     <div id="janaBorang" class="jana-borang" oninput="janaUbah(event)" onchange="janaUbah(event)">${borang}</div>
     <div class="jana-bar"><span class="mini" id="janaStatus">${J.ubah ? 'Perubahan belum disimpan' : (J.id ? 'Draf disimpan' : 'Draf baharu')}</span>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="simpanDrafJana()">${ik('semak')}Simpan draf</button>
-      <button class="btn btn-primary" id="janaBtn" onclick="hantarJana()">${ik('semak')}Jana PDF dan hantar untuk pengesahan</button></div></div>`;
+      <button class="btn btn-primary" id="janaBtn" onclick="hantarJana()">${ik('semak')}Jana PDF bertandatangan</button></div></div>`;
   kemasRingkasanJana();
 }
 function lukisSemulaJana(){ const y = window.scrollY; lukisJana(); window.scrollTo(0, y); }
@@ -4381,7 +4382,7 @@ const NS_XDR = 'http:\/\/schemas.openxmlformats.org/drawingml/2006/spreadsheetDr
 const NS_REL = 'http:\/\/schemas.openxmlformats.org/package/2006/relationships';
 const NS_CT = 'http:\/\/schemas.openxmlformats.org/package/2006/content-types';
 const REL_IMEJ = 'http:\/\/schemas.openxmlformats.org/officeDocument/2006/relationships/image';
-const LBL_SAH = { menunggu:['b-hampir', 'Menunggu pengesahan'], disahkan:['b-ya', 'Disahkan'], dikembalikan:['b-tidak', 'Dikembalikan'] };
+const LBL_SAH = { menunggu:['b-hampir', 'Menunggu pengesahan'], disahkan:['b-ya', 'Disahkan'], dikembalikan:['b-tidak', 'Dikembalikan'], ditandatangani:['b-ya', 'Ditandatangani'] };
 function baitKeB64(bait){ let s = ''; for(let i = 0; i < bait.length; i += 0x8000) s += String.fromCharCode.apply(null, bait.subarray(i, i + 0x8000)); return btoa(s); }
 function b64KeBait(b64){ const bin = atob(b64 || ''), a = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a; }
 async function blobKeB64(blob){ return baitKeB64(new Uint8Array(await blob.arrayBuffer())); }
@@ -4495,7 +4496,12 @@ async function binaDokumen(jenis, d, ttd){
   if(jenis === 's3p') return janaS3P(d, ttd);
   return janaP2LO(d.program, d.kohort, d.rekod, d.info, ttd);
 }
-function teksStatusSah(ttd){ return ttd.sah.menunggu ? 'Menunggu pengesahan' : 'Disahkan secara digital pada ' + ttd.sah.tarikh; }
+function teksStatusSah(ttd){
+  if(!ttd.sah) return 'Ditandatangani secara digital oleh penyedia pada ' + (ttd.sedia.tarikh || '');
+  return ttd.sah.menunggu ? 'Menunggu pengesahan' : 'Disahkan secara digital pada ' + ttd.sah.tarikh;
+}
+/** RP, JSU dan S3P tanpa pengesah memaparkan "Kod dokumen"; dokumen yang disahkan (P2LO) memaparkan "Kod pengesahan". */
+function lblKod(ttd){ return ttd.sah ? 'Kod pengesahan' : 'Kod dokumen'; }
 
 /* ---------- tandatangan digital ---------- */
 async function ttdSaya(){ return b64KeBait((await api('tandatanganAmbil', {}, { senyap:true, tanpaMesej:true })).kandungan); }
@@ -4598,6 +4604,27 @@ async function alirHantar(o){
     return false;
   } finally { tamatMuat(); }
 }
+/** RP, JSU dan S3P: jana PDF dengan tandatangan digital penyedia sahaja (tiada pengesah). */
+async function alirTandatangan(o){
+  if(!await pastikanTandatangan()) return false;
+  if(!await sahkan({ tajuk:'Jana PDF bertandatangan?', mesej:'Tandatangan digital anda dan tarikh hari ini akan dimasukkan ke dalam ' + o.tajuk + '. PDF disimpan dalam Google Drive PPA dan boleh dimuat turun semula di bahagian Dokumen saya.', butang:'Tandatangan dan jana PDF' })) return false;
+  mulaMuat(); toast('Menjana PDF. Proses ini mungkin mengambil masa sehingga satu minit…');
+  let m = null;
+  try {
+    m = await api('pengesahanMula', { jenis:o.jenis, tajuk:o.tajuk, kod:o.kod, sesi:o.sesi || '' }, { senyap:true, tanpaMesej:true });
+    const ttd = { kodSah:m.kodSah, sedia:{ nama:S.pengguna.nama, tarikh:hariIniTeks(), png: await ttdSaya() }, sah:null };
+    const pdf = await jadiPdf(await binaDokumen(o.jenis, o.data, ttd));
+    await api('pengesahanHantar', { id:m.id, pdf, data:o.data }, { senyap:true });
+    UI.sahTab = 'saya';
+    lukisSemula();
+    lihatFail('sah', m.id);
+    return true;
+  } catch(e){
+    if(m) api('pengesahanPadam', { id:m.id }, { senyap:true, tanpaMesej:true }).catch(() => {});
+    toast(e.message || String(e), 'ralat');
+    return false;
+  } finally { tamatMuat(); }
+}
 function rekodSahSemua(){ const P = S.pengesahan || {}; const out = []; ['tugasan', 'saya', 'semua', 'program'].forEach(k => (P[k] || []).forEach(r => { if(!out.some(x => x.id === r.id)) out.push(r); })); return out; }
 function modalSahkan(r){
   return new Promise(ok => {
@@ -4640,25 +4667,26 @@ async function hantarKembalikan(id){
 }
 async function padamPengesahan(id){
   const r = rekodSahSemua().find(x => x.id === id); if(!r) return;
-  if(!await sahkan({ tajuk:'Padam ' + r.kodSah + '?', mesej:'Permohonan pengesahan dan fail PDF berkaitan akan dipadam.', butang:'Padam', bahaya:true })) return;
+  if(!await sahkan({ tajuk:'Padam ' + r.kodSah + '?', mesej:'Rekod dokumen ini dan fail PDF berkaitan akan dipadam.', butang:'Padam', bahaya:true })) return;
   await cuba(async () => { await api('pengesahanPadam', { id }); lukisSemula(); });
 }
 function chipSah(r){ const [c, l] = LBL_SAH[r.status] || ['b-neutral', r.status]; return `<span class="badge ${c}">${l}</span>`; }
 function bahagianPengesahan(){
   const P = S.pengesahan || { saya:[], tugasan:[], semua:[] }, A = isAdmin();
-  const tabs = [['tugasan', 'Menunggu pengesahan saya', P.tugasan], ['saya', 'Dihantar oleh saya', P.saya]].concat(A ? [['semua', 'Semua dokumen', P.semua]] : []);
+  /* Tab tugasan hanya dipaparkan jika ada dokumen (kini hanya Laporan P2LO) yang menunggu pengesahan pengguna ini. */
+  const tabs = (P.tugasan.length ? [['tugasan', 'Menunggu pengesahan saya', P.tugasan]] : []).concat([['saya', 'Dokumen saya', P.saya]], A ? [['semua', 'Semua dokumen', P.semua]] : []);
   if(!tabs.some(t => t[2].length)) return '';
   if(!tabs.some(t => t[0] === UI.sahTab && t[2].length)) UI.sahTab = (tabs.find(t => t[2].length) || tabs[0])[0];
   const senarai = (tabs.find(t => t[0] === UI.sahTab) || tabs[0])[2].slice().sort((a, b) => b.id - a.id);
-  return `<section class="blok" id="secSah"><div class="seclabel"><span class="eyebrow">Pengesahan dokumen</span><span class="mini">Dokumen PDF yang memerlukan tandatangan pengesahan</span></div>
+  return `<section class="blok" id="secSah"><div class="seclabel"><span class="eyebrow">Dokumen PDF bertandatangan</span><span class="mini">RP, JSU dan S3P ditandatangani oleh penyedia; Laporan P2LO disahkan oleh Dekan</span></div>
     <div class="card" style="overflow:hidden"><div class="tabs" role="tablist" style="padding:0 12px;margin:0">${tabs.map(([k, l, a]) => `<button role="tab" aria-selected="${UI.sahTab === k}" class="${UI.sahTab === k ? 'aktif' : ''}" onclick="UI.sahTab='${k}';lukisSemula()">${l} (${a.length})</button>`).join('')}</div>
     <div class="jadual-skrol"><table class="grid padat"><thead><tr><th>Dokumen</th><th class="sm-sembunyi">Disediakan oleh</th><th>Pengesah</th><th>Status</th><th></th></tr></thead><tbody>
     ${senarai.length ? senarai.map(r => { const pengesah = UI.sahTab === 'tugasan' && r.status === 'menunggu', pemohon = r.pemohonUid === S.pengguna.id;
       return `<tr class="baris"><td><span class="badge b-neutral">${esc((r.jenis || '').toUpperCase())}</span> <b>${esc(r.tajuk)}</b><div class="mini">${esc(r.kodSah)} · ${esc(fmtMasa(r.dihantar))}</div></td>
-        <td class="sm-sembunyi">${esc(r.pemohonNama)}</td><td>${esc(r.pengesahNama)}<div class="mini">${esc(r.pengesahPeranan)}</div></td>
-        <td>${chipSah(r)}${r.status === 'disahkan' ? `<div class="mini">${esc(fmtMasa(r.disahkan))}</div>` : ''}${r.catatan ? `<div class="mini" title="${esc(r.catatan)}">${esc(r.catatan.slice(0, 60))}</div>` : ''}</td>
+        <td class="sm-sembunyi">${esc(r.pemohonNama)}</td><td>${r.status === 'ditandatangani' ? '<span class="mini">Tidak diperlukan</span>' : `${esc(r.pengesahNama)}<div class="mini">${esc(r.pengesahPeranan)}</div>`}</td>
+        <td>${chipSah(r)}${r.status === 'disahkan' || r.status === 'ditandatangani' ? `<div class="mini">${esc(fmtMasa(r.disahkan))}</div>` : ''}${r.catatan ? `<div class="mini" title="${esc(r.catatan)}">${esc(r.catatan.slice(0, 60))}</div>` : ''}</td>
         <td><div class="aksi-baris">
-          <button class="btn btn-ghost btn-sm" onclick="lihatFail('sah',${r.id})" title="${r.status === 'disahkan' ? 'PDF disahkan' : 'PDF draf'}">${ik('fail', 14)}PDF</button>
+          <button class="btn btn-ghost btn-sm" onclick="lihatFail('sah',${r.id})" title="${r.status === 'disahkan' ? 'PDF disahkan' : (r.status === 'ditandatangani' ? 'PDF bertandatangan' : 'PDF draf')}">${ik('fail', 14)}PDF</button>
           ${pengesah ? `<button class="btn btn-primary btn-sm" onclick="sahkanPengesahan(${r.id})">${ik('semak', 14)}Sahkan</button><button class="btn btn-ghost btn-sm" onclick="kembalikanPengesahan(${r.id})">Kembalikan</button>` : ''}
           ${(pemohon && r.status !== 'disahkan') || A ? `<button class="btn-ikon bahaya" onclick="padamPengesahan(${r.id})" title="Padam" aria-label="Padam permohonan">${ik('padam', 15)}</button>` : ''}
         </div></td></tr>`; }).join('') : `<tr><td colspan="5"><div class="kosong">Tiada dokumen.</div></td></tr>`}
@@ -4676,7 +4704,7 @@ async function hantarJana(){
   }
   try { const r = await api('dokJanaSimpan', Object.assign({ id: J.id, jenis: J.jenis, data: J.data }, metaJana()), { senyap:true, tanpaMesej:true }); J.id = r.id; J.ubah = false; } catch(e){ /* draf tidak disimpan; teruskan */ }
   const btn = el('janaBtn'); if(btn) btn.disabled = true;
-  await alirHantar({ jenis:J.jenis, tajuk: I.pendek + ' ' + normKod(d.kod) + ' ' + String(d.nama || '').trim() + (d.sesi ? ' (' + d.sesi + ')' : ''), kod: normKod(d.kod), sesi: d.sesi || '', data });
+  await alirTandatangan({ jenis:J.jenis, tajuk: I.pendek + ' ' + normKod(d.kod) + ' ' + String(d.nama || '').trim() + (d.sesi ? ' (' + d.sesi + ')' : ''), kod: normKod(d.kod), sesi: d.sesi || '', data });
   if(el('janaBtn')) el('janaBtn').disabled = false;
 }
 async function hantarP2lo(pid){
