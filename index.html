@@ -1358,7 +1358,11 @@ function kadPanduanStaf(){
       <li>Semak jam latihan anda di <b>CPD Pensyarah</b>. Rekod CPD dikemas kini oleh PPA.</li></ol>
     ${isKP() ? `<div class="notis info" style="margin:14px 0 0"><b>Sebagai Ketua Program</b>, buka tab <b>Ketua Program</b> untuk menetapkan kod kursus dalam struktur program, memuat naik dokumen program (laporan akreditasi, surat kelulusan, surat pelantikan, minit, struktur kurikulum dan Table 4) serta memantau penghantaran fail kursus bagi kursus program anda.</div>` : ''}
     ${isPtFak() ? `<div class="notis info" style="margin:14px 0 0"><b>Sebagai pentadbir fakulti</b>, buka <b>CPD Pensyarah</b> atau <b>Fail Kursus</b> untuk laporan penuh staf ${esc(S.pengguna.fakulti || '')}. Muat turun laporan PDF atau CSV melalui butang <b>Laporan</b>.</div>`
-      : (!saya() ? '<div class="notis" style="margin:14px 0 0">Akaun anda belum dipautkan kepada rekod pensyarah. Hubungi PPA untuk memautkannya.</div>' : '')}</div>`;
+      : (!saya() ? notisBelumPaut('margin:14px 0 0') : '')}</div>`;
+}
+/** Notis akaun belum dipautkan: pautan berlaku secara automatik apabila emel akaun direkodkan dalam senarai pensyarah. */
+function notisBelumPaut(gaya, tujuan){
+  return `<div class="notis"${gaya ? ` style="${gaya}"` : ''}>Akaun anda belum dipautkan kepada rekod pensyarah kerana emel <b>${esc(S.pengguna.emel)}</b> belum direkodkan dalam senarai pensyarah PPA${tujuan ? ' ' + tujuan : ''}. Akaun dipautkan secara automatik sebaik sahaja PPA merekodkan emel ini; muat semula portal selepas itu.</div>`;
 }
 function lukisUtama(){
   tajukAtas('Utama', 'Rumusan keseluruhan portal');
@@ -1461,7 +1465,7 @@ function lukisFK(){
       A ? `<button class="btn btn-primary" onclick="modalUrusSesi()">${ik('tambah')}Cipta sesi</button>` : '');
     el('halaman').innerHTML = h; return;
   }
-  if(!A && !saya()) h += `<div class="notis">Akaun anda belum dipautkan kepada rekod pensyarah. Hubungi PPA untuk memautkan akaun supaya anda boleh mendaftar kursus dan memuat naik fail.</div>`;
+  if(!A && !saya()) h += notisBelumPaut('', '(diperlukan untuk mendaftar kursus dan memuat naik fail)');
   if(saya()) h += bahagianKursusSaya(sid, fol);
   h += notisSkop();
   if(!S.paparPenuh || skopFak()) h += bahagianCariRujukan(sid);
@@ -1811,7 +1815,7 @@ function modalKursus(kid){
   const k = kid ? S.fk.kursus.find(x => x.id === kid) : null, A = isAdmin();
   const sid = k ? k.sesi : UI.fk.sesi, sesi = S.fk.sesi.find(s => s.id === sid);
   if(!sesi){ toast('Sila pilih sesi dahulu.', 'ralat'); return; }
-  if(!A && !saya()){ toast('Akaun anda belum dipautkan kepada rekod pensyarah.', 'ralat'); return; }
+  if(!A && !saya()){ toast('Akaun anda belum dipautkan kepada rekod pensyarah. Pautan dibuat secara automatik apabila PPA merekodkan emel anda dalam senarai pensyarah.', 'ralat'); return; }
   bukaModal({ tajuk: k ? 'Sunting kursus' : 'Tambah kursus', desk: 'Sesi ' + sesi.nama + (A ? '' : ' · ' + ((petaP()[saya()] || {}).nama || '')), isi:`<div class="borang">
     ${A ? `<div><label class="fld" for="kPid">Pensyarah</label><select id="kPid"><option value="">Pilih pensyarah…</option>${optionsPensyarah(k ? k.pid : '')}</select></div>` : ''}
     <div><label class="fld" for="kKod">Kod dan nama kursus</label><input id="kKod" type="text" value="${k ? esc(k.kod) : ''}" placeholder="cth. MPU3122 : PENGAJIAN ISLAM" style="text-transform:uppercase" autocomplete="off"></div>
@@ -2178,7 +2182,7 @@ function bahagianCPDSaya(thn){
       </div></section>
       <section class="blok"><div class="seclabel"><span class="eyebrow">Rekod latihan saya</span><span class="mini">Rekod dikemas kini oleh PPA. Hubungi PPA jika ada latihan yang belum direkodkan.</span></div>
       <div class="card pad">${recs.length ? butirCPD(saya(), thn) : '<p class="mini">Belum ada rekod latihan bagi tahun ini.</p>'}</div></section>`;
-  } else h += `<div class="notis">Akaun anda belum dipautkan kepada rekod pensyarah. Hubungi PPA untuk melihat rekod CPD anda.</div>`;
+  } else h += notisBelumPaut('', '(diperlukan untuk melihat rekod CPD anda)');
   h += `<section class="blok"><div class="seclabel"><span class="eyebrow">Rumusan institusi · ${thn}</span></div><div class="grid-4">
     ${statKad('Pensyarah', C.n, 'dalam senarai tahun ' + thn)}${statKad('Capai sasaran', C.capai, C.kadar + '% daripada pensyarah', 'var(--brand)')}${statKad('Hampir', C.hampir, '75% hingga bawah sasaran', 'var(--amber)')}${statKad('Rendah', C.rendah, 'bawah 75% sasaran', 'var(--clay)')}</div></section>`;
   return h;
