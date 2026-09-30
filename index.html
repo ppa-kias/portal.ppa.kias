@@ -173,6 +173,15 @@ a.nav-i{text-decoration:none}
 .btn-ikon{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:8px;border:none;background:transparent;color:var(--muted);cursor:pointer;flex:none}
 .btn-ikon:hover{background:rgba(19,48,42,.06);color:var(--ink)}
 .btn-ikon.bahaya:hover{color:var(--clay);background:var(--clay-soft)}
+.btn.bahaya{color:var(--clay)}
+.pl-pukal{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 14px;background:var(--brand-soft);border-top:1px solid var(--line)}
+.pl-pukal[hidden]{display:none}
+.kad-sijil{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;border-left:4px solid var(--gold)}
+.kad-sijil .sijil-ikon{width:46px;height:46px;border-radius:12px;background:var(--gold-soft);color:#8A6412;display:grid;place-items:center;flex:none}
+.kad-sijil .sijil-isi{flex:1 1 280px;min-width:0}
+.kad-sijil .sijil-aksi{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.kad-sijil.disahkan{border-left-color:var(--brand)}
+.kad-sijil.disahkan .sijil-ikon{background:var(--brand-soft);color:var(--brand)}
 
 input[type=text],input[type=email],input[type=password],input[type=number],input[type=search],input[type=url],input[type=date],select,textarea{font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;width:100%;transition:border-color .15s,box-shadow .15s}
 select.auto{width:auto}
@@ -503,7 +512,7 @@ table.grid tr.baris-jumlah td{font-weight:800;background:var(--surface-2);border
     <div class="login-kiri">
       <div>
         <div class="eyebrow" style="color:#BFDCCF">Modul portal</div>
-        <p class="login-intro" style="margin-top:8px">Sebuah platform untuk memantau penghantaran fail kursus, pencapaian CPD pensyarah, program akademik dan dokumentasi rasmi PPA.</p>
+        <p class="login-intro" style="margin-top:8px">Satu tempat untuk memantau penghantaran fail kursus, pencapaian CPD pensyarah, program akademik dan dokumentasi rasmi PPA.</p>
       </div>
       <div class="login-modul">
         <div><span class="li" data-ik="folder" data-s="18"></span><span><b>Fail Kursus</b><small>Pensyarah memuat naik fail kursus terus ke Google Drive. Kelengkapan dipantau secara automatik.</small></span></div>
@@ -717,7 +726,7 @@ const IKON = {
 function keadaanKosong(){
   return { token:'', pengguna:null,
     tetapan:{ sasaranCPD:40, stafLihatSemua:false, kategoriDokumen:[], namaInstitusi:'', daftarKendiri:true },
-    fakulti:[], pensyarah:[], cpd:{ rekod:[], roster:[] }, fk:{ sesi:[], folder:[], kursus:[], fail:[] },
+    fakulti:[], pensyarah:[], cpd:{ rekod:[], roster:[] }, fk:{ sesi:[], folder:[], kursus:[], fail:[], sijil:[] },
     dokumen:[], ringkasan:null, pentadbiran:{ pengguna:[], log:[] }, paparPenuh:false, skopFakulti:'',
     program:{ senarai:[], kursus:[], fail:[], lantikan:[], item:[], pelajar:[] }, jana:[], pengesahan:{ saya:[], tugasan:[], semua:[], program:[] } };
 }
@@ -728,7 +737,7 @@ const UI = {
   fk:{ sesi:null, cari:'', fak:'semua', status:'semua' },
   dok:{ cari:'', kat:'semua', susun:'baru' },
   kp:{ prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua', kohort:'' },
-  jana:null, templat:null, p2lo:{}, p2loEdit:null, importFn:null, sahTab:'tugasan', ttd:null,
+  jana:null, templat:null, p2lo:{}, p2loEdit:null, importFn:null, sahTab:'tugasan', ttd:null, sijilTab:'menunggu', pelajar:{}, plTapis:{ kem:'semua', status:'semua', cari:'' }, plPilih:new Set(),
   admin:{ tab:'pengguna', cari:'', fak:'semua', cariLog:'' },
   sandaran:null, folderDraf:[], fakDraf:[], dokJenis:'fail', dokFail:null
 };
@@ -1226,7 +1235,7 @@ function resetPenapis(){
   Object.assign(UI.fk, { cari:'', fak:'semua', status:'semua', carian:null });
   Object.assign(UI.dok, { cari:'', kat:'semua' });
   Object.assign(UI.kp, { prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua', kohort:'' });
-  Object.assign(UI, { jana:null, templat:null, p2lo:{}, p2loEdit:null });
+  Object.assign(UI, { jana:null, templat:null, p2lo:{}, p2loEdit:null, pelajar:{}, plTapis:{ kem:'semua', status:'semua', cari:'' }, plPilih:new Set() });
   Object.assign(UI.admin, { tab:'pengguna', cari:'', fak:'semua', cariLog:'' });
 }
 
@@ -1241,7 +1250,7 @@ const NAV = [
 ];
 function binaNav(){
   el('nav').innerHTML = `<div class="nav-lbl">Menu</div>` + NAV.filter(n => (!n.admin || isAdmin()) && (!n.kp || lihatKP())).map(n =>
-    `<button class="nav-i ${UI.halaman === n.id ? 'aktif' : ''}" onclick="${n.kp ? 'UI.kp.prog=null;' : ''}pergi('${n.id}')" ${UI.halaman === n.id ? 'aria-current="page"' : ''}>${ik(n.ikon, 18)}<span>${n.label}</span>${n.id === 'dokumentasi' && bilTugasanSah() ? `<span class="nav-bil" title="Dokumen menunggu pengesahan anda">${bilTugasanSah()}</span>` : ''}</button>`).join('');
+    `<button class="nav-i ${UI.halaman === n.id ? 'aktif' : ''}" onclick="${n.kp ? 'UI.kp.prog=null;' : ''}pergi('${n.id}')" ${UI.halaman === n.id ? 'aria-current="page"' : ''}>${ik(n.ikon, 18)}<span>${n.label}</span>${n.id === 'dokumentasi' && bilTugasanSah() ? `<span class="nav-bil" title="Dokumen menunggu pengesahan anda">${bilTugasanSah()}</span>` : ''}${n.id === 'failkursus' && bilSijilMenunggu() ? `<span class="nav-bil" title="Permohonan sijil fail kursus menunggu pengesahan">${bilSijilMenunggu()}</span>` : ''}</button>`).join('');
   const u = S.pengguna;
   el('sisiKaki').innerHTML = `<button class="sisi-pengguna" onclick="modalProfil(false)" title="Profil dan kata laluan"><span class="avatar">${esc(inisial(u.nama))}</span><span class="sp-teks"><b>${esc(u.nama)}</b><small>${esc(labelPeranan(u))}</small></span></button>
     <button class="nav-i" onclick="logKeluar()">${ik('keluar', 18)}<span>Log keluar</span></button>
@@ -1415,6 +1424,7 @@ function lukisUtama(){
       ${!A && isKP() ? `<button class="btn btn-ghost" onclick="UI.kp.prog=null;pergi('ketuaprogram')">${ik('topi')}Dokumentasi program</button>` : ''}</div>
   </section>`;
   if(bilTugasanSah()) h += `<div class="notis info" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${bilTugasanSah()} dokumen</b> menunggu pengesahan dan tandatangan anda.</span><button class="btn btn-primary btn-sm" onclick="UI.sahTab='tugasan';pergi('dokumentasi')">Semak dokumen</button></div>`;
+  if(bilSijilMenunggu()) h += `<div class="notis info" id="notisSijil" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${bilSijilMenunggu()} permohonan sijil</b> penghantaran fail kursus menunggu pengesahan anda.</span><button class="btn btn-primary btn-sm" onclick="bukaSijilMenunggu()">Semak permohonan</button></div>`;
   if(saya()) h += statusSaya(thn, sid);
   h += `<section class="blok"><div class="seclabel"><span class="eyebrow">${fakSaya ? 'Modul portal · ' + esc(fakSaya) : 'Modul portal'}</span></div><div class="${lihatKP() ? 'grid-modul4' : 'grid-3'}">
     ${kadModul({ ke:'failkursus', aksen:'var(--brand)', aksenSoft:'var(--brand-soft)', ikon:'folder', tajuk:'Laporan Penghantaran Fail Kursus',
@@ -1487,10 +1497,147 @@ function lukisFK(){
   if(saya()) h += bahagianKursusSaya(sid, fol);
   h += notisSkop();
   if(!S.paparPenuh || skopFak()) h += bahagianCariRujukan(sid);
+  if(A) h += bahagianSijilAdmin(sid);
   h += S.paparPenuh ? bahagianFKPenuh(sid) : bahagianFKRingkas(sid);
   h += panduanFolder(fol);
   el('halaman').innerHTML = h;
   if(S.paparPenuh){ lukisSenaraiFK(); cartaFK(sid); if(skopFak()) lukisRujukan(); } else { lukisRujukan(); cartaFKRingkas(sid); }
+}
+
+/* ---------- sijil pengesahan penghantaran fail kursus ---------- */
+const LBL_SIJIL = { menunggu:['b-hampir', 'Menunggu pengesahan PPA'], disahkan:['b-ya', 'Disahkan'], dikembalikan:['b-tidak', 'Dikembalikan'] };
+function chipSijil(r){ const [c, l] = LBL_SIJIL[r.status] || ['b-neutral', r.status]; return `<span class="badge ${c}">${l}</span>`; }
+function sijilFK(pid, sid){ return (S.fk.sijil || []).find(r => r.pid === pid && r.sesi === sid); }
+function bilSijilMenunggu(){ return isAdmin() ? (S.fk.sijil || []).filter(r => r.status === 'menunggu').length : 0; }
+function kodPendek(kod){ return String(kod || '').split(':')[0].trim(); }
+/** Kad sijil pensyarah: lengkapkan semua fail kursus > hantar pengesahan > disahkan PPA > sijil PDF. */
+function kadSijilSaya(sid, fol, ks){
+  const r = sijilFK(saya(), sid), belum = ks.filter(k => kemajuan(k, fol) !== 100), lengkap = fol.length > 0 && !belum.length;
+  let isi, aksi = '';
+  if(r && r.status === 'disahkan'){
+    isi = `Disahkan oleh <b>${esc(r.olehSah)}</b> pada ${esc(fmtMasa(r.disahkan))}. Kod sijil <b>${esc(r.kod)}</b>. Sijil merangkumi ${(r.kursus || []).length} kursus.`;
+    aksi = `<button class="btn btn-primary btn-sm" onclick="janaSijilPdf(${r.id},false)">${ik('mata', 14)}Lihat sijil</button><button class="btn btn-ghost btn-sm" onclick="janaSijilPdf(${r.id},true)">${ik('turun', 14)}Muat turun PDF</button>`;
+  } else if(r && r.status === 'menunggu'){
+    isi = `Permohonan dihantar pada ${esc(fmtMasa(r.dihantar))} dan sedang menunggu pengesahan Pentadbir PPA. Sijil boleh dilihat dan dimuat turun sebaik sahaja disahkan.`;
+  } else {
+    isi = (r && r.status === 'dikembalikan' ? `<div class="notis" style="margin:0 0 8px"><b>Dikembalikan oleh ${esc(r.olehSah)}:</b> ${esc(r.catatan || '')}</div>` : '') + (lengkap
+      ? 'Semua fail kursus anda bagi sesi ini lengkap. Hantar untuk pengesahan Pentadbir PPA bagi mendapatkan sijil pengesahan penghantaran fail kursus.'
+      : `${ks.length - belum.length} daripada ${ks.length} kursus lengkap. Lengkapkan semua item folder (muat naik fail atau tanda TB) bagi ${belum.map(k => '<b>' + esc(kodPendek(k.kod)) + '</b>').join(', ')} sebelum menghantar untuk pengesahan.`);
+    aksi = `<button class="btn btn-primary btn-sm" id="btnHantarSijil" onclick="hantarSijil(${sid})" ${lengkap ? '' : 'disabled'}>${ik('semak', 14)}${r ? 'Hantar semula untuk pengesahan' : 'Hantar untuk pengesahan'}</button>`;
+  }
+  return `<div class="card pad kad-sijil ${r && r.status === 'disahkan' ? 'disahkan' : ''}" id="kadSijil" style="margin-top:16px"><span class="sijil-ikon">${ik('anugerah', 22)}</span>
+    <div class="sijil-isi"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px"><b>Sijil pengesahan penghantaran fail kursus</b>${r ? chipSijil(r) : ''}</div>
+      <div class="mini" style="line-height:1.6">${isi}</div></div>
+    <div class="sijil-aksi">${aksi}</div></div>`;
+}
+async function hantarSijil(sid){
+  const s = S.fk.sesi.find(x => x.id === sid);
+  if(!await sahkan({ tajuk:'Hantar untuk pengesahan?', mesej:'Permohonan sijil penghantaran fail kursus bagi sesi ' + (s ? s.nama : '') + ' akan dihantar kepada Pentadbir PPA. Pastikan semua fail yang dimuat naik adalah betul.', butang:'Hantar' })) return;
+  await cuba(async () => { await api('sijilFkHantar', { sesi: sid }); lukisSemula(); });
+}
+/** Pentadbir PPA: permohonan sijil bagi sesi ini. */
+function bahagianSijilAdmin(sid){
+  const semua = (S.fk.sijil || []).filter(r => r.sesi === sid);
+  if(!semua.length) return '';
+  const pm = petaP(), fol = folderSesi(sid), tabs = [['menunggu', 'Menunggu pengesahan'], ['disahkan', 'Disahkan'], ['dikembalikan', 'Dikembalikan']].map(([k, l]) => [k, l, semua.filter(r => r.status === k)]);
+  if(!tabs.some(t => t[0] === UI.sijilTab && t[2].length)) UI.sijilTab = (tabs.find(t => t[2].length) || tabs[0])[0];
+  const senarai = tabs.find(t => t[0] === UI.sijilTab)[2].slice().sort((a, b) => String(b.dihantar).localeCompare(String(a.dihantar)));
+  return `<section class="blok" id="secSijil"><div class="seclabel"><span class="eyebrow">Sijil penghantaran fail kursus</span><span class="mini">Permohonan pensyarah yang telah melengkapkan semua fail kursus sesi ini</span></div>
+    <div class="card" style="overflow:hidden"><div class="tabs" role="tablist" style="padding:0 12px;margin:0">${tabs.map(([k, l, a]) => `<button role="tab" aria-selected="${UI.sijilTab === k}" class="${UI.sijilTab === k ? 'aktif' : ''}" onclick="UI.sijilTab='${k}';lukisSemula()">${l} (${a.length})</button>`).join('')}</div>
+    <div class="jadual-skrol"><table class="grid padat"><thead><tr><th>Pensyarah</th><th>Kursus</th><th class="sm-sembunyi">Status semasa</th><th>Tarikh</th><th></th></tr></thead><tbody>
+    ${senarai.length ? senarai.map(r => { const p = pm[r.pid] || { nama:'-' }, ks = S.fk.kursus.filter(k => k.pid === r.pid && k.sesi === sid), belum = ks.filter(k => kemajuan(k, fol) !== 100);
+      return `<tr class="baris"><td><b>${esc(p.nama)}</b><div class="mini">${esc(p.fakulti || '')}${r.kod ? ' · ' + esc(r.kod) : ''}</div></td>
+        <td class="mini">${(r.kursus || []).map(k => esc(kodPendek(k.kod))).join(', ')}</td>
+        <td class="sm-sembunyi">${ks.length && !belum.length ? '<span class="badge b-ya">Lengkap</span>' : `<span class="badge b-tidak">${belum.length || ks.length} belum lengkap</span>`}</td>
+        <td class="mini">${r.status === 'menunggu' ? 'Dihantar ' + esc(fmtMasa(r.dihantar)) : esc(fmtMasa(r.disahkan)) + (r.olehSah ? '<br>' + esc(r.olehSah) : '')}${r.catatan ? `<div title="${esc(r.catatan)}">${esc(r.catatan.slice(0, 60))}</div>` : ''}</td>
+        <td><div class="aksi-baris">${r.status === 'menunggu' ? `<button class="btn btn-primary btn-sm" onclick="sahkanSijil(${r.id})">${ik('semak', 14)}Sahkan</button><button class="btn btn-ghost btn-sm" onclick="kembalikanSijil(${r.id})">Kembalikan</button>`
+          : (r.status === 'disahkan' ? `<button class="btn btn-ghost btn-sm" onclick="janaSijilPdf(${r.id},false)">${ik('fail', 14)}Sijil</button><button class="btn btn-ghost btn-sm bahaya" onclick="kembalikanSijil(${r.id})">Batalkan</button>` : '')}</div></td></tr>`; }).join('')
+      : `<tr><td colspan="5"><div class="kosong">Tiada permohonan.</div></td></tr>`}
+    </tbody></table></div></div></section>`;
+}
+function bukaSijilMenunggu(){
+  const r = (S.fk.sijil || []).filter(x => x.status === 'menunggu').sort((a, b) => String(a.dihantar).localeCompare(String(b.dihantar)))[0];
+  if(r) UI.fk.sesi = r.sesi;
+  UI.sijilTab = 'menunggu'; pergi('failkursus');
+  setTimeout(() => { const e = el('secSijil'); if(e) e.scrollIntoView({ block:'start' }); }, 80);
+}
+async function sahkanSijil(id){
+  const r = (S.fk.sijil || []).find(x => x.id === id), p = r ? petaP()[r.pid] : null; if(!r) return;
+  if(!await sahkan({ tajuk:'Sahkan sijil?', mesej:'Sijil pengesahan penghantaran fail kursus akan dijana untuk ' + (p ? p.nama : 'pensyarah ini') + '. Portal menyemak semula bahawa semua fail kursus masih lengkap.', butang:'Sahkan' })) return;
+  await cuba(async () => { await api('sijilFkSahkan', { id }); lukisSemula(); });
+}
+function kembalikanSijil(id){
+  const r = (S.fk.sijil || []).find(x => x.id === id); if(!r) return;
+  const batal = r.status === 'disahkan';
+  bukaModal({ tajuk: batal ? 'Batalkan sijil' : 'Kembalikan permohonan', desk: (petaP()[r.pid] || {}).nama || '',
+    isi:`<div class="borang"><div><label class="fld" for="sjCatatan">${batal ? 'Sebab sijil dibatalkan' : 'Sebab dikembalikan'}</label><textarea id="sjCatatan" rows="3" placeholder="cth. Fail F2.2 bukan Rancangan Pengajaran sesi ini"></textarea></div><p class="ralat" id="sjErr" hidden></p></div>`,
+    kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-danger-solid" onclick="hantarKembalikanSijil(${id})">${batal ? 'Batalkan sijil' : 'Kembalikan'}</button>` });
+  fokus('sjCatatan');
+}
+async function hantarKembalikanSijil(id){
+  const err = el('sjErr'), catatan = el('sjCatatan').value.trim();
+  if(!catatan){ err.textContent = 'Nyatakan sebabnya.'; err.hidden = false; return; }
+  try { await api('sijilFkKembalikan', { id, catatan }); tutupModal(); lukisSemula(); } catch(e){ err.textContent = e.message; err.hidden = false; }
+}
+function dimensiImej(src){ return new Promise((ok, gagal) => { const i = new Image(); i.onload = () => ok({ w: i.naturalWidth, h: i.naturalHeight, img: i }); i.onerror = () => gagal(new Error('Imej tidak dapat dibaca.')); i.src = src; }); }
+/** Logo PPA (bar sisi) sebagai PNG untuk jsPDF. */
+async function logoPng(){
+  const src = (document.querySelector('.sisi-logo img') || {}).src; if(!src) return null;
+  try { const d = await dimensiImej(src), c = document.createElement('canvas'); c.width = d.w; c.height = d.h; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, d.w, d.h); x.drawImage(d.img, 0, 0); return { data: c.toDataURL('image/png'), nisbah: d.w / d.h }; }
+  catch(e){ return null; }
+}
+/** Sijil PDF (A4 landskap) dijana di pelayar daripada rekod yang disahkan. */
+async function binaSijilPdf(d){
+  const J = window.jspdf && window.jspdf.jsPDF; if(!J) throw new Error('Penjana PDF memerlukan sambungan internet.');
+  const doc = new J('l', 'mm', 'a4'), W = 297, H = 210, r = d.sijil, hijau = [12, 69, 58], emas = [176, 128, 26];
+  doc.setProperties({ title: 'Sijil Pengesahan Penghantaran Fail Kursus ' + r.kod, subject: d.pensyarah.nama + ' · ' + d.sesiNama, creator: 'Portal PPA KIAS' });
+  doc.setFillColor(252, 250, 244); doc.rect(0, 0, W, H, 'F');
+  doc.setDrawColor(...hijau); doc.setLineWidth(2.4); doc.rect(8, 8, W - 16, H - 16);
+  doc.setDrawColor(...emas); doc.setLineWidth(0.7); doc.rect(12.5, 12.5, W - 25, H - 25);
+  doc.setFillColor(...emas); [[12.5, 12.5], [W - 12.5, 12.5], [12.5, H - 12.5], [W - 12.5, H - 12.5]].forEach(([x, y]) => doc.circle(x, y, 1.6, 'F'));
+  const logo = await logoPng();
+  if(logo){ const lw = 76; doc.addImage(logo.data, 'PNG', (W - lw) / 2, 20, lw, lw / logo.nisbah); }
+  const tengah = (t, y, saiz, gaya, warna, fon) => { doc.setFont(fon || 'helvetica', gaya || 'normal'); doc.setFontSize(saiz); doc.setTextColor(...(warna || [55, 60, 58])); doc.text(t, W / 2, y, { align:'center' }); };
+  tengah('SIJIL PENGESAHAN', 55, 27, 'bold', hijau, 'times');
+  tengah('PENGHANTARAN FAIL KURSUS', 63.5, 14, 'bold', emas, 'helvetica');
+  tengah('Dengan ini disahkan bahawa', 77, 11.5);
+  let saiz = 24; doc.setFont('times', 'bolditalic'); doc.setFontSize(saiz); while(doc.getTextWidth(d.pensyarah.nama) > W - 70 && saiz > 14){ saiz -= 1; doc.setFontSize(saiz); }
+  tengah(d.pensyarah.nama, 89, saiz, 'bolditalic', [25, 30, 28], 'times');
+  doc.setDrawColor(...emas); doc.setLineWidth(0.4); doc.line(W / 2 - 70, 92.5, W / 2 + 70, 92.5);
+  tengah([d.pensyarah.jawatan, d.namaFakulti || d.pensyarah.fakulti].filter(Boolean).join(' · '), 98.5, 10, 'normal', [95, 100, 98]);
+  tengah('telah melengkapkan penghantaran fail kursus bagi semua kursus yang diajar pada sesi akademik', 108, 11.5);
+  tengah(d.sesiNama, 116, 13.5, 'bold', hijau);
+  const ks = (r.kursus || []).map(k => String(k.kod || '').replace(/\s*:\s*/, ' : '));
+  doc.setFont('helvetica', 'normal'); doc.setTextColor(55, 60, 58);
+  const dua = ks.length > 4, fs = ks.length > 10 ? 8.5 : 9.5, lajur = dua ? [W / 2 - 64, W / 2 + 6] : [W / 2], baris = dua ? Math.ceil(ks.length / 2) : ks.length;
+  doc.setFontSize(fs);
+  ks.slice(0, 20).forEach((k, i) => { const c = dua ? Math.floor(i / baris) : 0, rr = dua ? i % baris : i, t = (i + 1) + '. ' + k;
+    const tt = doc.splitTextToSize(t, dua ? 62 : 150)[0]; doc.text(tt, lajur[c], 124 + rr * (fs * 0.5), { align: dua ? 'left' : 'center' }); });
+  const yT = 178;
+  if(d.ttd && d.ttd.kandungan){
+    try { const src = 'data:' + d.ttd.mime + ';base64,' + d.ttd.kandungan, dm = await dimensiImej(src), th = 15, tw = Math.min(55, th * dm.w / dm.h);
+      doc.addImage(src, /jpe?g/i.test(d.ttd.mime) ? 'JPEG' : 'PNG', 70 - tw / 2, yT - th - 1, tw, th); } catch(e){ /* tanpa imej tandatangan */ }
+  }
+  doc.setDrawColor(120); doc.setLineWidth(0.3); doc.line(35, yT, 105, yT);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(30); doc.text(r.olehSah || 'Pentadbir PPA', 70, yT + 5, { align:'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(95, 100, 98);
+  doc.text('Pentadbir PPA, Pusat Pembangunan Akademik', 70, yT + 9.5, { align:'center' });
+  doc.text('Tarikh pengesahan: ' + fmtTarikh(String(r.disahkan).slice(0, 10)), 70, yT + 13.5, { align:'center' });
+  doc.setFontSize(8.5); doc.text('Kod sijil', W - 70, yT + 1, { align:'center' });
+  doc.setFont('courier', 'bold'); doc.setFontSize(12); doc.setTextColor(...hijau); doc.text(r.kod, W - 70, yT + 7, { align:'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(130); doc.text('Dijana secara automatik melalui Portal PPA KIAS', W - 70, yT + 12, { align:'center' });
+  tengah(S.tetapan.namaInstitusi || 'Kolej Universiti Islam Antarabangsa Sultan Ismail Petra (KIAS)', H - 16.5, 8, 'normal', [120, 120, 115]);
+  return doc;
+}
+async function janaSijilPdf(id, muatTurun){
+  mulaMuat();
+  try {
+    const d = await api('sijilFkAmbil', { id }, { senyap:true, tanpaMesej:true }), doc = await binaSijilPdf(d);
+    const nama = 'Sijil_Fail_Kursus_' + namaFailSelamat(d.pensyarah.nama) + '_' + namaFailSelamat(d.sesiNama) + '.pdf';
+    if(muatTurun){ doc.save(nama); toast('Sijil PDF dimuat turun.'); }
+    else window.open(URL.createObjectURL(doc.output('blob')), '_blank');
+  } catch(e){ toast(e.message || String(e), 'ralat'); }
+  finally { tamatMuat(); }
 }
 
 /* ---------- carian fail rujukan PdP (staf) ---------- */
@@ -1560,7 +1707,7 @@ function bahagianKursusSaya(sid, fol){
   const ks = S.fk.kursus.filter(k => k.sesi === sid && k.pid === saya()).sort((a, b) => a.kod.localeCompare(b.kod));
   let h = `<section class="blok"><div class="seclabel"><span class="eyebrow">Kursus saya</span><span class="mini">${ks.length} kursus dalam sesi ini</span></div>`;
   if(!ks.length) h += kosong('Belum ada kursus didaftarkan', 'Tambah kursus yang anda ajar pada sesi ini, kemudian muat naik fail bagi setiap item folder.', `<button class="btn btn-primary" onclick="modalKursus(0)">${ik('tambah')}Tambah kursus</button>`);
-  else h += `<div class="grid-kursus">${ks.map(k => kadKursus(k, fol)).join('')}</div>`;
+  else h += `<div class="grid-kursus">${ks.map(k => kadKursus(k, fol)).join('')}</div>` + kadSijilSaya(sid, fol, ks);
   return h + '</section>';
 }
 function bahagianFKPenuh(sid){
@@ -2534,7 +2681,7 @@ function lukisSenaraiProgramKP(){
         <div class="dd-sep"></div><button onclick="csvPelajarSemua('xlsx')">${ik('jadual')}Statistik pelajar (Excel)</button><button onclick="csvPelajarSemua('csv')">${ik('jadual')}Statistik pelajar (CSV)</button></div></div>` : ''}
       ${A || ps.some(p => p.bolehUrus) ? `<div class="dd"><button class="btn btn-ghost" onclick="togolDD(event,this)">${ik('naik')}<span class="sm-sembunyi">Import</span></button><div class="dd-menu">
         ${A ? `<button onclick="modalImportProgram()">${ik('jadual')}Import senarai program (CSV / Excel)</button>` : ''}
-        ${ps.some(p => p.bolehUrus) ? `<button onclick="modalImportPelajar(0)">${ik('kumpulan')}Import data pelajar semua program</button>` : ''}</div></div>` : ''}
+        ${ps.some(p => p.bolehUrus) ? `<button onclick="modalImportPelajar(0)">${ik('kumpulan')}Import senarai pelajar semua program</button>` : ''}</div></div>` : ''}
       ${A ? `<button class="btn btn-primary" onclick="modalProgram(0)">${ik('tambah')}<span class="sm-sembunyi">Tambah program</span></button>` : ''}</div></div>`;
   if(fak) h += `<div class="notis info">Paparan pentadbir fakulti: program di bawah <b>${esc(fak)} · ${esc(namaFak(fak))}</b>${seliaan.length ? ' serta program yang anda ketuai' : ''}. Dokumentasi dan struktur program dikemas kini oleh Ketua Program atau PPA.</div>`;
   if(!ps.length){
@@ -2603,7 +2750,7 @@ function lukisProgramKP(){
   </div></section>`;
   h += bahagianPelajarProgram(p, boleh) + bahagianP2loProgram(p, boleh) + bahagianDokProgram(p, boleh) + bahagianFKProgram(p, sesi) + bahagianStrukturProgram(p, boleh) + bahagianLantikanProgram(p);
   el('halaman').innerHTML = h;
-  lukisSenaraiKPFK(); cartaPelajarProgram(p); cartaP2lo(p);
+  lukisSenaraiKPFK(); cartaPelajarProgram(p); cartaP2lo(p); lukisSenaraiPelajar(p.id);
 }
 function bahagianDokProgram(p, boleh){
   const d = ringkasDokProg(p);
@@ -2793,36 +2940,93 @@ function templatStruktur(pid){
 }
 
 /* ---------- statistik pelajar (kemasukan, aktif, graduan) ---------- */
+const STATUS_PELAJAR = { aktif:['Aktif', 'b-hampir'], graduan:['Graduan', 'b-ya'], tangguh:['Tangguh', 'b-neutral'], berhenti:['Berhenti / tarik diri', 'b-tidak'] };
+function chipPelajar(st){ const m = STATUS_PELAJAR[st] || [st || '-', 'b-neutral']; return `<span class="badge ${m[1]}">${esc(m[0])}</span>`; }
 function bahagianPelajarProgram(p, boleh){
   const rows = pelajarProgram(p.id), R = ringkasPelajar(rows);
-  const aksi = boleh ? `<div class="kepala-aksi">
-      <button class="btn btn-ghost btn-sm" onclick="modalImportPelajar(${p.id})">${ik('naik', 14)}Import CSV / Excel</button>
-      <button class="btn btn-primary btn-sm" onclick="modalPelajar(${p.id},0)">${ik('tambah', 14)}Tambah kemasukan</button></div>` : '';
-  let h = `<section class="blok"><div class="seclabel" style="justify-content:space-between;align-items:center"><span class="eyebrow">Statistik pelajar</span>${aksi}</div>`;
-  if(!rows.length){
-    return h + kosong('Belum ada data pelajar', boleh ? 'Tambah bilangan pelajar bagi setiap kemasukan secara manual, atau import daripada fail CSV atau Excel.' : 'Data pelajar program ini belum dikemas kini oleh Ketua Program.') + '</section>';
-  }
-  const akhir = rows.reduce((a, r) => String(r.dikemaskini || '') > String(a.dikemaskini || '') ? r : a, rows[0]);
-  h += `<div class="grid-4">
+  const aksi = `<div class="kepala-aksi">
+      ${boleh ? `<button class="btn btn-ghost btn-sm" onclick="modalImportPelajar(${p.id})">${ik('naik', 14)}Import senarai (CSV / Excel)</button>
+      <button class="btn btn-primary btn-sm" onclick="modalPelajar(${p.id},0)">${ik('tambah', 14)}Tambah pelajar</button>` : ''}</div>`;
+  let h = `<section class="blok" id="secPelajar"><div class="seclabel" style="justify-content:space-between;align-items:center"><span class="eyebrow">Statistik pelajar</span>${aksi}</div>`;
+  if(rows.length){
+    const akhir = rows.reduce((a, r) => String(r.dikemaskini || '') > String(a.dikemaskini || '') ? r : a, rows[0]), lama = rows.filter(r => r.sumber === 'bilangan');
+    h += `<div class="grid-4">
       ${statKad('Jumlah pelajar keseluruhan', fmtNombor(R.aktif), 'pelajar aktif semasa')}
       ${statKad('Jumlah graduan', fmtNombor(R.graduan), `daripada ${R.kemasukan} kemasukan`)}
       ${statKad('Pelajar diterima masuk', fmtNombor(R.pelajar), 'kumulatif semua kemasukan')}
       ${statKad('Kemasukan terkini', R.terkini ? fmtNombor(R.terkini.pelajar) : '-', R.terkini ? esc(R.terkini.kemasukan) : '')}
     </div>
     <div class="grid-rumusan" style="margin-top:16px">
-      <div class="card pad"><h3 class="serif h3">Bilangan pelajar setiap kemasukan</h3><div class="mini">Status semasa pelajar bagi setiap kemasukan</div>
+      <div class="card pad"><h3 class="serif h3">Bilangan pelajar setiap kemasukan</h3><div class="mini">Status semasa pelajar bagi setiap sesi kemasukan</div>
         <div class="carta-kotak" style="height:290px"><canvas id="chPelajar" role="img" aria-label="Carta bilangan pelajar setiap kemasukan mengikut status"></canvas></div></div>
       <div class="card pad"><h3 class="serif h3">Jumlah pelajar keseluruhan dan graduan</h3><div class="mini">Taburan semua pelajar yang diterima masuk</div>
         <div class="carta-kotak" style="height:290px"><canvas id="chStatusPelajar" role="img" aria-label="Carta taburan pelajar aktif, graduan dan tidak aktif"></canvas></div></div>
     </div>
-    <div class="card" style="overflow:hidden;margin-top:16px"><div class="jadual-skrol"><table class="grid padat"><thead><tr><th>Kemasukan</th><th class="kanan">Diterima masuk</th><th class="kanan">Aktif</th><th class="kanan">Graduan</th><th class="kanan">Tidak aktif</th><th class="sm-sembunyi">Catatan</th>${boleh ? '<th></th>' : ''}</tr></thead><tbody>
-      ${rows.map(r => `<tr class="baris"><td><b>${esc(r.kemasukan)}</b></td><td class="kanan tnum">${fmtNombor(r.pelajar)}</td><td class="kanan tnum">${fmtNombor(r.aktif)}</td><td class="kanan tnum">${fmtNombor(r.graduan)}</td><td class="kanan tnum">${fmtNombor(tidakAktif(r))}</td><td class="sm-sembunyi mini">${esc(r.catatan || '')}</td>
-        ${boleh ? `<td><div class="aksi-baris"><button class="btn-ikon" onclick="modalPelajar(${p.id},${r.id})" title="Kemas kini" aria-label="Kemas kini kemasukan ${esc(r.kemasukan)}">${ik('sunting', 15)}</button><button class="btn-ikon bahaya" onclick="padamPelajar(${r.id})" title="Buang" aria-label="Buang kemasukan ${esc(r.kemasukan)}">${ik('padam', 15)}</button></div></td>` : ''}</tr>`).join('')}
-      <tr class="baris-jumlah"><td>Jumlah</td><td class="kanan tnum">${fmtNombor(R.pelajar)}</td><td class="kanan tnum">${fmtNombor(R.aktif)}</td><td class="kanan tnum">${fmtNombor(R.graduan)}</td><td class="kanan tnum">${fmtNombor(R.tidakAktif)}</td><td class="sm-sembunyi"></td>${boleh ? '<td></td>' : ''}</tr>
+    <div class="card" style="overflow:hidden;margin-top:16px"><div class="jadual-skrol"><table class="grid padat"><thead><tr><th>Sesi kemasukan</th><th class="kanan">Diterima masuk</th><th class="kanan">Aktif</th><th class="kanan">Graduan</th><th class="kanan">Tidak aktif</th>${lama.length ? '<th></th>' : ''}</tr></thead><tbody>
+      ${rows.map(r => `<tr class="baris"><td><b>${esc(r.kemasukan)}</b>${r.sumber === 'bilangan' ? ' <span class="badge b-kunci" title="Bilangan dimasukkan secara manual sebelum senarai nama digunakan">Bilangan sahaja (data lama)</span>' : ''}</td><td class="kanan tnum">${fmtNombor(r.pelajar)}</td><td class="kanan tnum">${fmtNombor(r.aktif)}</td><td class="kanan tnum">${fmtNombor(r.graduan)}</td><td class="kanan tnum">${fmtNombor(tidakAktif(r))}</td>
+        ${lama.length ? `<td>${r.sumber === 'bilangan' && boleh ? `<div class="aksi-baris"><button class="btn-ikon bahaya" onclick="padamPelajarLama(${r.id})" title="Buang bilangan lama" aria-label="Buang bilangan lama kemasukan ${esc(r.kemasukan)}">${ik('padam', 15)}</button></div>` : ''}</td>` : ''}</tr>`).join('')}
+      <tr class="baris-jumlah"><td>Jumlah</td><td class="kanan tnum">${fmtNombor(R.pelajar)}</td><td class="kanan tnum">${fmtNombor(R.aktif)}</td><td class="kanan tnum">${fmtNombor(R.graduan)}</td><td class="kanan tnum">${fmtNombor(R.tidakAktif)}</td>${lama.length ? '<td></td>' : ''}</tr>
     </tbody></table></div></div>
-    <p class="mini" style="margin-top:10px;line-height:1.7">Tidak aktif = diterima masuk − aktif − graduan (berhenti, tarik diri atau dibuang). Kemas kini terakhir: ${esc(fmtMasa(akhir.dikemaskini))}${akhir.oleh ? ' oleh ' + esc(akhir.oleh) : ''}.</p></section>`;
-  return h;
+    <p class="mini" style="margin-top:10px;line-height:1.7">Statistik dikira daripada senarai nama pelajar di bawah. Tidak aktif = pelajar bertaraf tangguh atau berhenti / tarik diri.${lama.length ? ' Kemasukan bertanda <b>Bilangan sahaja</b> ialah data lama; import senarai nama bagi kemasukan itu untuk menggantikannya.' : ''} Kemas kini terakhir: ${esc(fmtMasa(akhir.dikemaskini))}${akhir.oleh ? ' oleh ' + esc(akhir.oleh) : ''}.</p>`;
+  }
+  return h + bahagianSenaraiPelajar(p, boleh, rows.length) + '</section>';
 }
+/** Senarai nama pelajar (dimuatkan apabila program dibuka; tidak dimuatkan semasa log masuk). */
+function bahagianSenaraiPelajar(p, boleh, adaStat){
+  const L = UI.pelajar[p.id];
+  if(L === undefined || L === 'muat'){ if(L === undefined) setTimeout(() => muatPelajar(p.id), 0); return `<div class="card pad mini" style="margin-top:16px">Memuatkan senarai pelajar…</div>`; }
+  if(!L.length){
+    return `<div style="margin-top:16px">${kosong(adaStat ? 'Belum ada senarai nama pelajar' : 'Belum ada data pelajar',
+      boleh ? 'Masukkan pelajar mengikut sesi kemasukan, no. matrik dan nama, satu demi satu atau import daripada fail CSV / Excel. Statistik dan carta dikira secara automatik.' : 'Senarai pelajar program ini belum dikemas kini oleh Ketua Program.',
+      boleh ? `<button class="btn btn-primary" onclick="modalImportPelajar(${p.id})">${ik('naik')}Import senarai pelajar</button>` : '')}</div>`;
+  }
+  const kem = [...new Set(L.map(r => r.kemasukan))], T = UI.plTapis;
+  if(T.kem !== 'semua' && !kem.includes(T.kem)) T.kem = 'semua';
+  return `<div class="card" style="overflow:hidden;margin-top:16px" id="kadSenaraiPelajar">
+    <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+      <h3 class="serif h3" style="margin-right:auto">Senarai pelajar <span class="mini" id="plBil"></span></h3>
+      <div class="cari" style="min-width:200px">${ik('cari')}<input type="search" placeholder="Cari no. matrik atau nama" value="${esc(T.cari)}" oninput="UI.plTapis.cari=this.value;lukisSenaraiPelajar(${p.id})" aria-label="Cari pelajar"></div>
+      <select class="auto" onchange="UI.plTapis.kem=this.value;lukisSenaraiPelajar(${p.id})" aria-label="Sesi kemasukan"><option value="semua">Semua kemasukan</option>${kem.map(k => `<option value="${esc(k)}" ${T.kem === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select>
+      <select class="auto" onchange="UI.plTapis.status=this.value;lukisSenaraiPelajar(${p.id})" aria-label="Status"><option value="semua">Semua status</option>${Object.keys(STATUS_PELAJAR).map(k => `<option value="${k}" ${T.status === k ? 'selected' : ''}>${STATUS_PELAJAR[k][0]}</option>`).join('')}</select>
+      <div class="dd"><button class="btn btn-ghost btn-sm" onclick="togolDD(event,this)">${ik('turun', 14)}Muat turun</button><div class="dd-menu"><button onclick="muatTurunSenaraiPelajar(${p.id},'xlsx')">${ik('jadual')}Excel (.xlsx)</button><button onclick="muatTurunSenaraiPelajar(${p.id},'csv')">${ik('jadual')}CSV</button></div></div>
+    </div>
+    ${boleh ? `<div class="pl-pukal" id="plPukal" hidden><span class="mini" id="plPilihBil"></span>
+      <select class="auto" id="plStatusPukal" aria-label="Status baharu">${Object.keys(STATUS_PELAJAR).map(k => `<option value="${k}">${STATUS_PELAJAR[k][0]}</option>`).join('')}</select>
+      <button class="btn btn-ghost btn-sm" onclick="tukarStatusPelajar(${p.id})">Tukar status</button><button class="btn btn-ghost btn-sm bahaya" onclick="padamPelajarPilih(${p.id})">${ik('padam', 14)}Padam</button></div>` : ''}
+    <div class="jadual-skrol" style="max-height:560px"><table class="grid padat"><thead><tr>${boleh ? `<th style="width:34px"><input type="checkbox" id="plSemua" onchange="pilihSemuaPelajar(${p.id},this.checked)" aria-label="Pilih semua pelajar yang dipaparkan"></th>` : ''}<th>No. matrik</th><th>Nama</th><th class="sm-sembunyi">Sesi kemasukan</th><th>Status</th>${boleh ? '<th></th>' : ''}</tr></thead>
+      <tbody id="plBaris"></tbody></table></div></div>`;
+}
+function pelajarDitapis(pid){
+  const L = Array.isArray(UI.pelajar[pid]) ? UI.pelajar[pid] : [], T = UI.plTapis, q = T.cari.toLowerCase().trim();
+  return L.filter(r => (T.kem === 'semua' || r.kemasukan === T.kem) && (T.status === 'semua' || r.status === T.status) && (!q || (r.matrik + ' ' + r.nama).toLowerCase().includes(q)));
+}
+function lukisSenaraiPelajar(pid){
+  const box = el('plBaris'); if(!box) return;
+  const p = S.program.senarai.find(x => x.id === pid), boleh = !!(p && p.bolehUrus), v = pelajarDitapis(pid), L = UI.pelajar[pid] || [];
+  const ada = new Set(L.map(r => r.id)); [...UI.plPilih].forEach(id => { if(!ada.has(id)) UI.plPilih.delete(id); });
+  box.innerHTML = v.length ? v.map(r => `<tr class="baris">${boleh ? `<td><input type="checkbox" ${UI.plPilih.has(r.id) ? 'checked' : ''} onchange="pilihPelajar(${pid},${r.id},this.checked)" aria-label="Pilih ${esc(r.nama)}"></td>` : ''}
+      <td class="tnum"><b>${esc(r.matrik)}</b></td><td>${esc(r.nama)}${r.catatan ? `<div class="mini">${esc(r.catatan)}</div>` : ''}</td><td class="sm-sembunyi mini">${esc(r.kemasukan)}</td><td>${chipPelajar(r.status)}</td>
+      ${boleh ? `<td><div class="aksi-baris"><button class="btn-ikon" onclick="modalPelajar(${pid},${r.id})" title="Sunting" aria-label="Sunting ${esc(r.nama)}">${ik('sunting', 15)}</button></div></td>` : ''}</tr>`).join('')
+    : `<tr><td colspan="${boleh ? 6 : 4}"><div class="kosong">Tiada pelajar sepadan dengan tapisan.</div></td></tr>`;
+  const b = el('plBil'); if(b) b.textContent = '· ' + (v.length === L.length ? fmtNombor(L.length) + ' pelajar' : fmtNombor(v.length) + ' daripada ' + fmtNombor(L.length));
+  kemasPilihPelajar(pid);
+}
+function pilihPelajar(pid, id, pilih){ if(pilih) UI.plPilih.add(id); else UI.plPilih.delete(id); kemasPilihPelajar(pid); }
+function pilihSemuaPelajar(pid, pilih){ pelajarDitapis(pid).forEach(r => { if(pilih) UI.plPilih.add(r.id); else UI.plPilih.delete(r.id); }); lukisSenaraiPelajar(pid); }
+function kemasPilihPelajar(pid){
+  const n = UI.plPilih.size, bar = el('plPukal'), v = pelajarDitapis(pid), semua = el('plSemua');
+  if(bar){ bar.hidden = !n; el('plPilihBil').textContent = n + ' pelajar dipilih'; }
+  if(semua) semua.checked = v.length > 0 && v.every(r => UI.plPilih.has(r.id));
+}
+async function muatPelajar(pid){
+  if(UI.pelajar[pid] === 'muat') return;
+  UI.pelajar[pid] = 'muat';
+  try { UI.pelajar[pid] = (await api('pelajarSenarai', { programId: pid }, { senyap:true, tanpaMesej:true })).senarai; }
+  catch(e){ UI.pelajar[pid] = []; toast(e.message, 'ralat'); }
+  if(UI.halaman === 'ketuaprogram' && UI.kp.prog === pid) lukisSemula();
+}
+/** Terima senarai terkini daripada pelayan selepas tambah, sunting, import atau padam. */
+function terimaSenaraiPelajar(r){ if(r && r.programId && Array.isArray(r.senarai)) UI.pelajar[r.programId] = r.senarai; }
 function dataCartaKemasukan(rows){
   const set = (label, data, warna) => ({ label, data, backgroundColor: warna, borderColor:'#FFFFFF', borderWidth:{ top:2 }, borderSkipped:'bottom', maxBarThickness:38 });
   return { labels: rows.map(r => r.kemasukan), datasets:[
@@ -2853,8 +3057,8 @@ function bahagianPelajarSemua(){
   const R = ringkasPelajar(S.program.pelajar.filter(r => ps.some(p => p.id === r.programId)));
   let h = `<section class="blok"><div class="seclabel" style="justify-content:space-between"><span class="eyebrow">Statistik pelajar</span><span class="mini">${ada.length} daripada ${ps.length} program mempunyai data pelajar</span></div>`;
   if(!ada.length){
-    return h + kosong('Belum ada data pelajar', urus ? 'Kemas kini bilangan pelajar bagi setiap kemasukan di halaman program, atau import data semua program sekali gus daripada fail CSV atau Excel.' : 'Data pelajar belum dikemas kini oleh Ketua Program.',
-      urus ? `<button class="btn btn-primary" onclick="modalImportPelajar(0)">${ik('naik')}Import data pelajar</button>` : '') + '</section>';
+    return h + kosong('Belum ada data pelajar', urus ? 'Masukkan senarai pelajar (sesi kemasukan, no. matrik dan nama) di halaman program, atau import senarai semua program sekali gus daripada fail CSV atau Excel.' : 'Data pelajar belum dikemas kini oleh Ketua Program.',
+      urus ? `<button class="btn btn-primary" onclick="modalImportPelajar(0)">${ik('naik')}Import senarai pelajar</button>` : '') + '</section>';
   }
   const tinggi = Math.max(220, ada.length * 46 + 80);
   return h + `<div class="grid-4">
@@ -2898,37 +3102,58 @@ function kadModulKP(){
     kaki: R.kemasukan ? fmtNombor(R.pelajar) + ' pelajar diterima masuk' : 'Data pelajar belum dikemas kini' });
 }
 
-/* ---------- borang data pelajar ---------- */
+/* ---------- borang pelajar ---------- */
 function modalPelajar(pid, id){
-  const p = S.program.senarai.find(x => x.id === pid), r = id ? S.program.pelajar.find(x => x.id === id) : null; if(!p) return;
-  bukaModal({ tajuk: r ? 'Kemas kini kemasukan ' + r.kemasukan : 'Tambah data kemasukan', desk: p.kod + ' · ' + p.nama, isi:`<div class="borang">
-    <div><label class="fld" for="plKem">Kemasukan (sesi atau ambilan)</label><input id="plKem" type="text" value="${r ? esc(r.kemasukan) : ''}" placeholder="cth. 2024/2025 Sem 1 atau Julai 2024" autocomplete="off"></div>
-    <div class="tiga"><div><label class="fld" for="plMasuk">Diterima masuk</label><input id="plMasuk" type="number" min="0" step="1" value="${r ? r.pelajar : ''}"></div>
-      <div><label class="fld" for="plAktif">Pelajar aktif</label><input id="plAktif" type="number" min="0" step="1" value="${r ? r.aktif : ''}" placeholder="Automatik"></div>
-      <div><label class="fld" for="plGrad">Graduan</label><input id="plGrad" type="number" min="0" step="1" value="${r ? r.graduan : ''}" placeholder="0"></div></div>
-    <div class="mini" style="line-height:1.6">Jika <b>Pelajar aktif</b> dibiarkan kosong, semua pelajar yang belum bergraduat dikira aktif. Baki (diterima masuk − aktif − graduan) dikira sebagai <b>tidak aktif</b>, iaitu berhenti, tarik diri atau dibuang.</div>
+  const p = S.program.senarai.find(x => x.id === pid), L = Array.isArray(UI.pelajar[pid]) ? UI.pelajar[pid] : [], r = id ? L.find(x => x.id === id) : null; if(!p) return;
+  const kem = [...new Set(L.map(x => x.kemasukan).concat(pelajarProgram(pid).map(x => x.kemasukan)))];
+  bukaModal({ tajuk: r ? 'Sunting pelajar' : 'Tambah pelajar', desk: p.kod + ' · ' + p.nama, isi:`<div class="borang">
+    <div><label class="fld" for="plKem">Sesi kemasukan</label><input id="plKem" type="text" list="dlKem" value="${r ? esc(r.kemasukan) : (UI.plTapis.kem !== 'semua' ? esc(UI.plTapis.kem) : '')}" placeholder="cth. 2024/2025 Sem 1" autocomplete="off"><datalist id="dlKem">${kem.map(k => `<option value="${esc(k)}">`).join('')}</datalist></div>
+    <div class="dua"><div><label class="fld" for="plMatrik">No. matrik</label><input id="plMatrik" type="text" value="${r ? esc(r.matrik) : ''}" autocomplete="off"></div>
+      <div><label class="fld" for="plStatus">Status</label><select id="plStatus">${Object.keys(STATUS_PELAJAR).map(k => `<option value="${k}" ${(r ? r.status : 'aktif') === k ? 'selected' : ''}>${STATUS_PELAJAR[k][0]}</option>`).join('')}</select></div></div>
+    <div><label class="fld" for="plNama">Nama pelajar</label><input id="plNama" type="text" value="${r ? esc(r.nama) : ''}" autocomplete="off"></div>
     <div><label class="fld" for="plCat">Catatan (pilihan)</label><input id="plCat" type="text" value="${r ? esc(r.catatan || '') : ''}"></div>
     <p class="ralat" id="plErr" hidden></p></div>`,
-    kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" onclick="simpanPelajar(${pid},${r ? r.id : 0})">${r ? 'Simpan' : 'Tambah'}</button>` });
-  fokus(r ? 'plMasuk' : 'plKem');
+    kaki:`${r ? `<button class="btn btn-ghost bahaya" style="margin-right:auto" onclick="padamPelajarSatu(${pid},${r.id})">${ik('padam', 14)}Padam</button>` : ''}<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" onclick="simpanPelajar(${pid},${r ? r.id : 0})">${r ? 'Simpan' : 'Tambah'}</button>` });
+  fokus(r ? 'plNama' : (el('plKem').value ? 'plMatrik' : 'plKem'));
 }
 async function simpanPelajar(pid, id){
   const err = el('plErr'), salah = m => { err.textContent = m; err.hidden = false; };
-  const d = { programId: pid, id, kemasukan: el('plKem').value.trim(), pelajar: el('plMasuk').value.trim(), aktif: el('plAktif').value.trim(), graduan: el('plGrad').value.trim(), catatan: el('plCat').value.trim() };
-  if(!d.kemasukan) return salah('Sila isi nama kemasukan.');
-  if(d.pelajar === '') return salah('Sila isi bilangan pelajar diterima masuk.');
-  try { await api('progPelajarSimpan', d); tutupModal(); lukisSemula(); } catch(e){ salah(e.message); }
+  const d = { programId: pid, id, kemasukan: el('plKem').value.trim(), matrik: el('plMatrik').value.trim(), nama: el('plNama').value.trim(), status: el('plStatus').value, catatan: el('plCat').value.trim() };
+  if(!d.kemasukan) return salah('Sila isi sesi kemasukan.');
+  if(!d.matrik) return salah('Sila isi no. matrik.');
+  if(!d.nama) return salah('Sila isi nama pelajar.');
+  try { terimaSenaraiPelajar(await api('pelajarSimpan', d)); tutupModal(); lukisSemula(); } catch(e){ salah(e.message); }
 }
-async function padamPelajar(id){
-  const r = S.program.pelajar.find(x => x.id === id); if(!r) return;
-  if(!await sahkan({ tajuk:'Buang kemasukan ' + r.kemasukan + '?', mesej:'Rekod bilangan pelajar bagi kemasukan ini akan dibuang daripada statistik program.', butang:'Buang', bahaya:true })) return;
+async function padamPelajarSatu(pid, id){
+  const r = (UI.pelajar[pid] || []).find(x => x.id === id); if(!r) return;
+  tutupModal();
+  if(!await sahkan({ tajuk:'Padam ' + r.nama + '?', mesej:'Rekod pelajar ' + r.matrik + ' akan dibuang daripada senarai dan statistik program.', butang:'Padam', bahaya:true })) return;
+  await cuba(async () => { terimaSenaraiPelajar(await api('pelajarPadam', { programId: pid, ids:[id] })); UI.plPilih.delete(id); lukisSemula(); });
+}
+async function padamPelajarPilih(pid){
+  const ids = [...UI.plPilih]; if(!ids.length) return;
+  if(!await sahkan({ tajuk:'Padam ' + ids.length + ' pelajar?', mesej:'Rekod pelajar yang dipilih akan dibuang daripada senarai dan statistik program.', butang:'Padam', bahaya:true })) return;
+  await cuba(async () => { terimaSenaraiPelajar(await api('pelajarPadam', { programId: pid, ids })); UI.plPilih.clear(); lukisSemula(); });
+}
+async function tukarStatusPelajar(pid){
+  const ids = [...UI.plPilih], status = el('plStatusPukal').value; if(!ids.length) return;
+  await cuba(async () => { terimaSenaraiPelajar(await api('pelajarStatus', { programId: pid, ids, status })); UI.plPilih.clear(); lukisSemula(); });
+}
+async function padamPelajarLama(id){
+  const r = S.program.pelajar.find(x => x.id === id && x.sumber === 'bilangan'); if(!r) return;
+  if(!await sahkan({ tajuk:'Buang bilangan lama ' + r.kemasukan + '?', mesej:'Bilangan pelajar yang dimasukkan secara manual bagi kemasukan ini akan dibuang daripada statistik program.', butang:'Buang', bahaya:true })) return;
   await cuba(async () => { await api('progPelajarPadam', { id }); lukisSemula(); });
+}
+function muatTurunSenaraiPelajar(pid, fmt){
+  const p = S.program.senarai.find(x => x.id === pid), L = pelajarDitapis(pid);
+  const rows = [['SesiKemasukan', 'NoMatrik', 'Nama', 'Status', 'Catatan']].concat(L.map(r => [r.kemasukan, r.matrik, r.nama, (STATUS_PELAJAR[r.status] || [r.status])[0], r.catatan || '']));
+  muatTurunJadual('Senarai_Pelajar_' + namaFailSelamat(p ? p.kod : 'Program'), rows, fmt);
 }
 
 /* ---------- import dan templat CSV / Excel ---------- */
-const LAJUR_PELAJAR = { kodProgram:['kodprogram','kodprog','program'], kemasukan:['kemasukan','sesikemasukan','ambilan','intake','kohort','sesi'],
-  pelajar:['pelajar','diterimamasuk','bilpelajar','bilanganpelajar','pelajarmasuk','bilpelajarmasuk','jumlahpelajar','enrolmen'],
-  aktif:['aktif','pelajaraktif','bilaktif','bilpelajaraktif'], graduan:['graduan','bilgraduan','jumlahgraduan','bergraduat','graduat'], catatan:['catatan','ulasan'] };
+const LAJUR_PELAJAR = { kodProgram:['kodprogram','kodprog','program'], kemasukan:['sesikemasukan','kemasukan','ambilan','intake','kohort','sesi'],
+  matrik:['nomatrik','matrik','nomatriks','nopelajar','idpelajar','nomatric','matricno','studentid','nopendaftaran'], nama:['nama','namapelajar','name','namapenuh'],
+  status:['status','statuspelajar'], catatan:['catatan','ulasan'] };
 const LAJUR_PROGRAM = { kod:['kod','kodprogram','kodprog'], nama:['nama','namaprogram','program'], fakulti:['fakulti','pusat','fakultipusat'], tahap:['tahap','peringkat'],
   kp:['ketuaprogram','kp','emelkp','namakp','emelketuaprogram'], catatan:['catatan'] };
 function kunciLajur(h){ return String(h || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
@@ -2969,24 +3194,28 @@ function tunjukRalatImport(ralat){
 }
 function modalImportPelajar(pid){
   const p = pid ? S.program.senarai.find(x => x.id === pid) : null;
-  modalImport({ tajuk:'Import data pelajar', desk: p ? p.kod + ' · ' + p.nama : 'Semua program di bawah seliaan anda',
-    nota:`Lajur: ${p ? '' : '<b>KodProgram</b>, '}<b>Kemasukan</b>, <b>Pelajar</b> (diterima masuk), <b>Aktif</b>, <b>Graduan</b> dan <b>Catatan</b> (pilihan). Kemasukan yang sudah ada dikemas kini, kemasukan baharu ditambah, dan tiada rekod dibuang. Jika lajur Aktif kosong, pelajar yang belum bergraduat dikira aktif. Muat turun templat untuk mendapatkan data semasa, sunting dalam Excel, kemudian import semula.`,
+  modalImport({ tajuk:'Import senarai pelajar', desk: p ? p.kod + ' · ' + p.nama : 'Semua program di bawah seliaan anda',
+    nota:`Lajur: ${p ? '' : '<b>KodProgram</b>, '}<b>SesiKemasukan</b>, <b>NoMatrik</b>, <b>Nama</b>, <b>Status</b> (Aktif, Graduan, Tangguh atau Berhenti; kosong = Aktif) dan <b>Catatan</b> (pilihan). Pelajar dipadankan mengikut no. matrik: rekod sedia ada dikemas kini, pelajar baharu ditambah, dan tiada rekod dibuang. Statistik dan carta dikira secara automatik daripada senarai ini.`,
     templat: fmt => templatPelajar(pid, fmt),
     jalan: async teks => {
-      const baris = barisIkutLajur(teks, LAJUR_PELAJAR, p ? ['kemasukan', 'pelajar'] : ['kodProgram', 'kemasukan', 'pelajar']);
+      const baris = barisIkutLajur(teks, LAJUR_PELAJAR, p ? ['kemasukan', 'matrik', 'nama'] : ['kodProgram', 'kemasukan', 'matrik', 'nama']);
       if(!baris.length) throw new Error('Tiada baris data ditemui selepas baris tajuk.');
-      return api('progPelajarImport', { programId: pid || '', baris });
+      const r = await api('pelajarImport', { programId: pid || '', baris });
+      terimaSenaraiPelajar(r);
+      if(!pid) UI.pelajar = {};
+      return r;
     } });
 }
 function templatPelajar(pid, fmt){
-  const ps = pid ? S.program.senarai.filter(p => p.id === pid) : S.program.senarai.filter(p => p.bolehUrus);
-  const rows = [[...(pid ? [] : ['KodProgram', 'NamaProgram']), 'Kemasukan', 'Pelajar', 'Aktif', 'Graduan', 'Catatan']];
-  ps.forEach(p => pelajarProgram(p.id).forEach(r => rows.push([...(pid ? [] : [p.kod, p.nama]), r.kemasukan, Number(r.pelajar) || 0, Number(r.aktif) || 0, Number(r.graduan) || 0, r.catatan || ''])));
+  const p = pid ? S.program.senarai.find(x => x.id === pid) : null, L = pid && Array.isArray(UI.pelajar[pid]) ? UI.pelajar[pid] : [];
+  const rows = [[...(pid ? [] : ['KodProgram']), 'SesiKemasukan', 'NoMatrik', 'Nama', 'Status', 'Catatan']];
+  L.forEach(r => rows.push([r.kemasukan, r.matrik, r.nama, (STATUS_PELAJAR[r.status] || [r.status])[0], r.catatan || '']));
   if(rows.length === 1){
-    const c = pid || !ps.length ? [] : [ps[0].kod, ps[0].nama];
-    rows.push([...c, '2022/2023 Sem 1', 48, 3, 40, 'Contoh: 5 pelajar berhenti'], [...c, '2023/2024 Sem 1', 52, 50, 0, ''], [...c, '2024/2025 Sem 1', 60, '', '', 'Aktif kosong: dikira automatik']);
+    const c = pid ? [] : [(S.program.senarai.find(x => x.bolehUrus) || { kod:'BUS' }).kod];
+    rows.push([...c, '2022/2023 Sem 1', 'BUS22001', 'Ahmad bin Ali', 'Graduan', ''], [...c, '2023/2024 Sem 1', 'BUS23001', 'Nur Aisyah binti Hassan', 'Aktif', ''],
+      [...c, '2023/2024 Sem 1', 'BUS23002', 'Muhammad Faiz bin Omar', 'Berhenti', 'Tarik diri Sem 2']);
   }
-  muatTurunJadual(pid && ps[0] ? 'Data_Pelajar_' + namaFailSelamat(ps[0].kod) : 'Data_Pelajar_Program', rows, fmt);
+  muatTurunJadual(p ? 'Senarai_Pelajar_' + namaFailSelamat(p.kod) : 'Senarai_Pelajar_Program', rows, fmt);
 }
 function csvPelajarSemua(fmt){
   const rows = [['KodProgram', 'NamaProgram', 'Fakulti', 'Kemasukan', 'Pelajar', 'Aktif', 'Graduan', 'TidakAktif', 'Catatan', 'DikemasKini', 'Oleh']];
