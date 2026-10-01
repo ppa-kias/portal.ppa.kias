@@ -1703,7 +1703,7 @@ function menuFK(){
   return `<div class="dd"><button class="btn btn-ghost" onclick="togolDD(event,this)">${ik('turun')}<span class="sm-sembunyi">${A ? 'Lagi' : 'Laporan'}</span></button><div class="dd-menu">
     <button onclick="pdfFK()">${ik('fail')}${skopFak() ? 'Laporan PDF fakulti ' + esc(skopFak()) : (S.paparPenuh ? 'Laporan PDF sesi ini' : 'Laporan PDF kursus saya')}</button>
     <button onclick="csvFK()">${ik('jadual')}Muat turun CSV</button>
-    ${A ? `<div class="dd-sep"></div><button onclick="modalUrusFolder()">${ik('tetapan')}Struktur senarai semak folder</button><button onclick="modalImportFK()">${ik('naik')}Import kursus (CSV)</button>` : ''}
+    ${A ? `<div class="dd-sep"></div><button onclick="modalUrusFolder()">${ik('tetapan')}Struktur senarai semak folder</button><button onclick="modalKursusPukal()">${ik('jadual')}Tambah kursus pukal (Excel)</button><button onclick="modalImportFK()">${ik('naik')}Import status sistem lama (CSV)</button>` : ''}
   </div></div>`;
 }
 function kotakFolder(k, fol){
@@ -1950,12 +1950,15 @@ async function bacaFailData(f){
   return X.utils.sheet_to_csv(sh, { FS:'\t', blankrows:false });
 }
 /** Muat turun jadual sebagai Excel (.xlsx) atau CSV. */
-async function muatTurunJadual(nama, rows, fmt){
+async function muatTurunJadual(nama, rows, fmt, tambahan){
   if(fmt === 'xlsx'){
     try {
-      const X = await muatXLSX(), ws = X.utils.aoa_to_sheet(rows), wb = X.utils.book_new();
-      ws['!cols'] = rows[0].map((h, i) => ({ wch: Math.min(48, Math.max(10, ...rows.map(r => String(r[i] ?? '').length + 2))) }));
-      X.utils.book_append_sheet(wb, ws, 'Data');
+      const X = await muatXLSX(), wb = X.utils.book_new();
+      [{ nama:'Data', rows }].concat(tambahan || []).forEach(h => {
+        const ws = X.utils.aoa_to_sheet(h.rows);
+        ws['!cols'] = h.rows[0].map((x, i) => ({ wch: Math.min(48, Math.max(10, ...h.rows.map(r => String(r[i] ?? '').length + 2))) }));
+        X.utils.book_append_sheet(wb, ws, h.nama);
+      });
       X.writeFile(wb, nama + '.xlsx');
       toast('Fail Excel dimuat turun.');
       return;
@@ -2187,6 +2190,34 @@ function muatTurunCSV(nama, rows){
   muatTurunURL(url, nama); setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
 function namaFailSelamat(s){ return String(s || '').replace(/[^\w.-]+/g, '_').replace(/_+/g, '_'); }
+const LAJUR_FK_PUKAL = { pensyarah:['pensyarah','emel','emelpensyarah','namapensyarah','nama','email','pensyarahemelataunama'],
+  kod:['kodkursus','kod','kursus','kodnamakursus'], nama:['namakursus','tajukkursus'], catatan:['catatan','ulasan'] };
+function modalKursusPukal(){
+  const ss = sesiTersusun();
+  if(!ss.length){ toast('Sila tambah sesi dahulu melalui Urus sesi.', 'ralat'); return; }
+  modalImport({ tajuk:'Tambah kursus pukal', desk:'Tetapkan kursus kepada pensyarah bagi satu sesi pengajian melalui fail Excel.',
+    nota:'Lajur: <b>Pensyarah</b> (emel @kias.edu.my atau nama penuh seperti dalam senarai pensyarah), <b>KodKursus</b>, <b>NamaKursus</b> (pilihan) dan <b>Catatan</b> (pilihan). Satu baris bagi setiap kursus; beberapa kod boleh diasingkan dengan koma. Kursus yang sudah didaftarkan bagi pensyarah yang sama dalam sesi ini (dikesan melalui kod kursus) <b>dikekalkan seperti asal</b> dan tidak ditambah semula.',
+    atas:`<div><label class="fld" for="imSesi">Sesi pengajian</label><select id="imSesi">${ss.map(s => `<option value="${s.id}" ${s.id === UI.fk.sesi ? 'selected' : ''}>${esc(s.nama)}</option>`).join('')}</select></div>`,
+    templat: fmt => templatKursusPukal(fmt),
+    jalan: async teks => {
+      const baris = barisIkutLajur(teks, LAJUR_FK_PUKAL, ['pensyarah', 'kod']);
+      if(!baris.length) throw new Error('Tiada baris data ditemui selepas baris tajuk.');
+      const sesi = Number(el('imSesi').value);
+      const r = await api('fkKursusPukal', { sesi, baris });
+      UI.fk.sesi = sesi;
+      return r;
+    } });
+}
+function templatKursusPukal(fmt){
+  const P = S.pensyarah.filter(p => p.aktif !== false).slice().sort((a, b) => fakIdx(a.fakulti) - fakIdx(b.fakulti) || a.nama.localeCompare(b.nama));
+  const contoh = P.slice(0, 2).map(p => p.emel || p.nama);
+  const rows = [['Pensyarah', 'KodKursus', 'NamaKursus', 'Catatan'],
+    [contoh[0] || 'nama@kias.edu.my', 'MPU3122', 'Pengajian Islam', 'Kumpulan A'],
+    [contoh[0] || 'nama@kias.edu.my', 'PIA0254', 'Bahasa Arab', ''],
+    [contoh[1] || contoh[0] || 'nama@kias.edu.my', 'USL1013', 'Akidah', '']];
+  muatTurunJadual('Templat_Tambah_Kursus_Pukal', rows, fmt,
+    [{ nama:'Senarai Pensyarah', rows: [['Nama', 'Emel', 'Fakulti', 'Jawatan']].concat(P.map(p => [p.nama, p.emel || '', p.fakulti || '', p.jawatan || ''])) }]);
+}
 function templatFK(){
   const fol = folderSesi(UI.fk.sesi);
   muatTurunCSV('Templat_Import_Fail_Kursus.csv', [
@@ -3189,7 +3220,7 @@ function modalImport(o){
   bukaModal({ tajuk:o.tajuk, desk:o.desk, isi:`
     <div class="notis info">${o.nota}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="UI.importFn.templat('xlsx')">${ik('turun', 14)}Templat Excel</button><button class="btn btn-ghost btn-sm" onclick="UI.importFn.templat('csv')">${ik('turun', 14)}Templat CSV</button></div>
-    <div class="borang"><div><label class="fld" for="imFail">Fail CSV atau Excel (.csv, .xlsx)</label><input type="file" id="imFail" accept="${TERIMA_JADUAL}"></div>
+    <div class="borang">${o.atas || ''}<div><label class="fld" for="imFail">Fail CSV atau Excel (.csv, .xlsx)</label><input type="file" id="imFail" accept="${TERIMA_JADUAL}"></div>
     <div><label class="fld" for="imTampal">atau tampal terus dari Excel / Google Sheets (termasuk baris tajuk)</label><textarea id="imTampal" rows="6" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea></div>
     <p class="ralat" id="imErr" hidden></p></div>`,
     kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" id="imBtn" onclick="jalanImport()">Import</button>` });
@@ -3202,8 +3233,16 @@ async function jalanImport(){
     if(!teks.trim()) throw new Error('Sila pilih fail atau tampal data.');
     const r = await o.jalan(teks);
     tutupModal(); lukisSemula();
-    if(r && r.ralat && r.ralat.length) tunjukRalatImport(r.ralat);
+    if(r && r.dikekalkan && r.dikekalkan.length) tunjukHasilImport(r);
+    else if(r && r.ralat && r.ralat.length) tunjukRalatImport(r.ralat);
   } catch(e){ err.textContent = e.message; err.hidden = false; btn.disabled = false; }
+}
+/** Ringkasan import yang turut menyenaraikan rekod sedia ada yang dikekalkan tanpa diubah. */
+function tunjukHasilImport(r){
+  const bhg = (tajuk, L) => L.length ? `<div class="fld" style="margin:4px 0 6px">${tajuk} (${L.length})</div><ul class="senarai-ralat" style="max-height:30vh;margin-bottom:14px">${L.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
+  bukaModal({ tajuk:'Hasil import', desk: r.mesej || '',
+    isi: bhg('Sudah wujud, rekod asal dikekalkan', r.dikekalkan || []) + bhg('Baris dilangkau (betulkan dan import semula)', r.ralat || []),
+    kaki:`<button class="btn btn-primary" onclick="tutupModal()">Tutup</button>` });
 }
 function tunjukRalatImport(ralat){
   bukaModal({ tajuk:'Baris yang dilangkau', desk: ralat.length + ' baris tidak diimport. Betulkan baris ini dalam fail, kemudian import semula. Baris lain telah disimpan.',
