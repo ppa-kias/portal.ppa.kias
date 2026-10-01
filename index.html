@@ -112,6 +112,15 @@ a.nav-i{text-decoration:none}
 .sisi-pengguna:hover{background:rgba(255,255,255,.1)}
 .avatar{width:34px;height:34px;border-radius:50%;background:var(--gold);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
 .avatar.besar{width:52px;height:52px;font-size:18px}
+.avatar.foto{background:#fff;overflow:hidden}
+.titik-j{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:1px}
+.avatar.foto img{width:100%;height:100%;object-fit:cover;object-position:50% 22%;display:block}
+.pasport{width:84px;aspect-ratio:35/45;border-radius:8px;overflow:hidden;background:var(--gold);color:#fff;display:grid;place-items:center;font-weight:800;font-size:24px;flex:none;box-shadow:0 0 0 1px var(--line)}
+.pasport img{width:100%;height:100%;object-fit:cover;display:block}
+.pasport.besar{width:140px;font-size:34px}
+.pasport.kosong{background:var(--surface-2);color:var(--muted);border:1.5px dashed #D9D3C1;box-shadow:none}
+.syarat-gambar{margin:0;padding-left:18px;line-height:1.75;font-size:13px;color:var(--ink-2)}
+.gambar-susun{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
 .sp-teks{min-width:0;display:flex;flex-direction:column}
 .sp-teks b{font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sp-teks small{font-size:11.5px;opacity:.7}
@@ -672,7 +681,8 @@ const CONFIG = {
          'https:\/\/drive.google.com/thumbnail?id=1Z_Vcc2Ism_XGAC2dnUIL2AM6QI93zzC-&sz=w400'],
   TERUS_MB: 5,
   MAKS_MB: 100,
-  EKIAS: 'https:\/\/ekias.my/ekias/'   /* pautan Sistem eKIAS di bahagian bawah menu */
+  EKIAS: 'https:\/\/ekias.my/ekias/',   /* pautan Sistem eKIAS di bahagian bawah menu */
+  LINKTREE: 'https:\/\/linktr.ee/PPA_KIAS'   /* pautan Linktree PPA, di bawah Sistem eKIAS */
 };
 
 /* PENTING: Apps Script membuang teks selepas dua garis condong berturut-turut dalam skrip
@@ -706,6 +716,8 @@ const IKON = {
   segar:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
   luar:'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
   fail:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+  linktree:'<path d="M12 22v-9"/><path d="m5 6 7 7 7-7"/><path d="M4 13h16"/><path d="M12 2v4"/>',
+  kamera:'<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
   pautan:'<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
   semak:'<path d="M20 6 9 17l-5-5"/>',
   x:'<path d="M18 6 6 18M6 6l12 12"/>',
@@ -739,7 +751,7 @@ const UI = {
   fk:{ sesi:null, cari:'', fak:'semua', status:'semua' },
   dok:{ cari:'', kat:'semua', susun:'baru' },
   kp:{ prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua', kohort:'' },
-  jana:null, templat:null, p2lo:{}, p2loEdit:null, importFn:null, sahTab:'tugasan', ttd:null, sijilTab:'menunggu', pelajar:{}, plTapis:{ kem:'semua', status:'semua', cari:'' }, plPilih:new Set(),
+  jana:null, templat:null, p2lo:{}, p2loEdit:null, importFn:null, sahTab:'tugasan', ttd:null, sijilTab:'menunggu', pelajar:{}, plTapis:{ kem:'semua', status:'semua', jantina:'semua', cari:'' }, plPilih:new Set(),
   admin:{ tab:'pengguna', cari:'', fak:'semua', cariLog:'' },
   sandaran:null, folderDraf:[], fakDraf:[], dokJenis:'fail', dokFail:null
 };
@@ -1033,7 +1045,17 @@ function ringkasDokProg(p){
 }
 /* ---- Statistik pelajar program ---- */
 /* Warna mengikut entiti (disahkan untuk rabun warna): graduan, pelajar aktif, tidak aktif (baki), kemasukan (siri tunggal). */
-const WP = { graduan:'#11805F', aktif:'#C08A12', tidakAktif:'#A39D8C', kemasukan:'#4A72B0' };
+const WP = { graduan:'#11805F', aktif:'#C08A12', tidakAktif:'#A39D8C', kemasukan:'#4A72B0', lelaki:'#2F6DB5', perempuan:'#C4517A', tanpaJantina:'#C9C3B3' };
+const JANTINA = { L:'Lelaki', P:'Perempuan' };
+/** Ringkasan jantina daripada baris statistik kemasukan: { L, P, X } dengan { jumlah, aktif, graduan, tidakAktif } (X = tidak dinyatakan). */
+function ringkasJantina(rows){
+  const o = {}; ['L', 'P', 'X'].forEach(k => { o[k] = { jumlah:0, aktif:0, graduan:0, tidakAktif:0 }; });
+  rows.forEach(r => { if(!r.jantina) return; ['L', 'P', 'X'].forEach(k => { const j = r.jantina[k] || {};
+    const a = Number(j.aktif) || 0, g = Number(j.graduan) || 0, t = (Number(j.tangguh) || 0) + (Number(j.berhenti) || 0);
+    o[k].aktif += a; o[k].graduan += g; o[k].tidakAktif += t; o[k].jumlah += a + g + t; }); });
+  return o;
+}
+function pct(a, b){ return b ? Math.round(a / b * 100) : 0; }
 function fmtNombor(n){ n = Number(n) || 0; try { return n.toLocaleString('ms-MY'); } catch(e){ return String(n); } }
 function tahunKemasukan(s){ const m = String(s || '').match(/(19|20)\d{2}/); return m ? Number(m[0]) : 0; }
 function pelajarProgram(pid){
@@ -1237,7 +1259,7 @@ function resetPenapis(){
   Object.assign(UI.fk, { cari:'', fak:'semua', status:'semua', carian:null });
   Object.assign(UI.dok, { cari:'', kat:'semua' });
   Object.assign(UI.kp, { prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua', kohort:'' });
-  Object.assign(UI, { jana:null, templat:null, p2lo:{}, p2loEdit:null, pelajar:{}, plTapis:{ kem:'semua', status:'semua', cari:'' }, plPilih:new Set() });
+  Object.assign(UI, { jana:null, templat:null, p2lo:{}, p2loEdit:null, pelajar:{}, plTapis:{ kem:'semua', status:'semua', jantina:'semua', cari:'' }, plPilih:new Set() });
   Object.assign(UI.admin, { tab:'pengguna', cari:'', fak:'semua', cariLog:'' });
 }
 
@@ -1254,9 +1276,10 @@ function binaNav(){
   el('nav').innerHTML = `<div class="nav-lbl">Menu</div>` + NAV.filter(n => (!n.admin || isAdmin()) && (!n.kp || lihatKP())).map(n =>
     `<button class="nav-i ${UI.halaman === n.id ? 'aktif' : ''}" onclick="${n.kp ? 'UI.kp.prog=null;' : ''}pergi('${n.id}')" ${UI.halaman === n.id ? 'aria-current="page"' : ''}>${ik(n.ikon, 18)}<span>${n.label}</span>${n.id === 'dokumentasi' && bilTugasanSah() ? `<span class="nav-bil" title="Dokumen menunggu pengesahan anda">${bilTugasanSah()}</span>` : ''}${n.id === 'failkursus' && bilSijilMenunggu() ? `<span class="nav-bil" title="Permohonan sijil fail kursus menunggu pengesahan">${bilSijilMenunggu()}</span>` : ''}</button>`).join('');
   const u = S.pengguna;
-  el('sisiKaki').innerHTML = `<button class="sisi-pengguna" onclick="modalProfil(false)" title="Profil dan kata laluan"><span class="avatar">${esc(inisial(u.nama))}</span><span class="sp-teks"><b>${esc(u.nama)}</b><small>${esc(labelPeranan(u))}</small></span></button>
+  el('sisiKaki').innerHTML = `<button class="sisi-pengguna" onclick="modalProfil(false)" title="Profil dan kata laluan">${avatarPengguna(u)}<span class="sp-teks"><b>${esc(u.nama)}</b><small>${esc(labelPeranan(u))}</small></span></button>
     <button class="nav-i" onclick="logKeluar()">${ik('keluar', 18)}<span>Log keluar</span></button>
-    <div class="nav-luar"><a class="nav-i" id="pautanEkias" href="${esc(CONFIG.EKIAS)}" target="_blank" rel="noopener" title="Buka Sistem eKIAS dalam tab baharu">${ik('pautan', 18)}<span>Sistem eKIAS</span><span class="ik-luar" aria-hidden="true">${ik('luar', 14)}</span></a></div>`;
+    <div class="nav-luar"><a class="nav-i" id="pautanEkias" href="${esc(CONFIG.EKIAS)}" target="_blank" rel="noopener" title="Buka Sistem eKIAS dalam tab baharu">${ik('pautan', 18)}<span>Sistem eKIAS</span><span class="ik-luar" aria-hidden="true">${ik('luar', 14)}</span></a>
+      <a class="nav-i" id="pautanLinktree" href="${esc(CONFIG.LINKTREE)}" target="_blank" rel="noopener" title="Buka Linktree PPA dalam tab baharu">${ik('linktree', 18)}<span>Linktree PPA</span><span class="ik-luar" aria-hidden="true">${ik('luar', 14)}</span></a></div>`;
   const b = el('atasPeranan');
   b.className = 'badge sm-sembunyi ' + (isAdmin() ? 'b-admin' : (isPtFak() ? 'b-fakulti' : (isKP() ? 'b-kp' : 'b-neutral')));
   b.textContent = isAdmin() ? 'Pentadbir PPA' : (isPtFak() ? 'Pentadbir Fakulti · ' + (skopFak() || u.fakulti || '') : (isKP() ? 'Ketua Program' : 'Paparan staf'));
@@ -1621,14 +1644,15 @@ async function binaSijilPdf(d){
   tengah([d.pensyarah.jawatan, d.namaFakulti || d.pensyarah.fakulti].filter(Boolean).join(' · '), 102.5, 11.5, 'normal', [90, 96, 94]);
   tengah('telah melengkapkan penghantaran fail kursus bagi semua kursus yang diajar pada sesi akademik', 113, 13.5);
   tengah(d.sesiNama, 122, 15.5, 'bold', hijau);
-  /* Senarai kursus: 1 lajur (hingga 4), 2 lajur (hingga 8), 3 lajur (hingga 12); selebihnya diringkaskan. */
-  const semua = (r.kursus || []).map(k => String(k.kod || '').replace(/\s*:\s*/, ' : ')), lj = semua.length <= 4 ? 1 : (semua.length <= 8 ? 2 : 3);
-  let ks = semua.slice(0, lj * 4); if(semua.length > lj * 4) ks = semua.slice(0, lj * 4 - 1).concat(['dan ' + (semua.length - lj * 4 + 1) + ' kursus lain']);
-  const baris = Math.ceil(ks.length / lj), lebar = lj === 1 ? 200 : (lj === 2 ? 100 : 70), x0 = W / 2 - (lj * lebar) / 2;
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(lj === 1 ? 12 : (lj === 2 ? 11 : 10)); doc.setTextColor(...teks);
-  ks.forEach((k, i) => { const c = Math.floor(i / baris), rr = i % baris, t = (/^dan /.test(k) ? '' : (i + 1) + '. ') + k, y = 131.5 + rr * 5.6;
-    const tt = doc.splitTextToSize(t, lebar - 3)[0];
-    if(lj === 1) doc.text(tt, W / 2, y, { align:'center' }); else doc.text(tt, x0 + c * lebar + 2, y); });
+  /* Senarai kursus: saiz fon kekal (12 / 11 / 10 pt bagi 1 / 2 / 3 lajur). Nama panjang dibalut ke baris seterusnya dan
+     senarai tidak pernah melepasi ruang di atas blok tandatangan; jika 3 lajur pun tidak muat, baki diringkaskan. */
+  const semua = (r.kursus || []).map(k => String(k.kod || '').replace(/\s*:\s*/, ' : '));
+  const L = susunSenaraiSijil(doc, semua);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(L.fon); doc.setTextColor(...teks);
+  L.lajur.forEach((kol, c) => kol.forEach(b => {
+    if(L.lj === 1) doc.text(b.teks, W / 2, b.y, { align:'center' });
+    else doc.text(b.teks, L.x0 + c * L.lebar + 2 + b.inden, b.y);
+  }));
   /* Tandatangan Pengarah PPA (kiri) dan kod sijil (kanan) */
   const xT = 88, yG = 174;
   if(d.ttd && d.ttd.kandungan){
@@ -1645,6 +1669,40 @@ async function binaSijilPdf(d){
   doc.setFont('courier', 'bold'); doc.setFontSize(13); doc.setTextColor(...hijau); doc.text(r.kod, xK, yG + 7.5, { align:'center' });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120); doc.text('Dijana secara automatik melalui Portal PPA KIAS', xK, yG + 13, { align:'center' });
   return doc;
+}
+const SIJIL_SENARAI = { y0:130.5, yMaks:158, lebar:[200, 116, 78], fon:[12, 11, 10], jarak:[5.2, 4.8, 4.4], sela:.7 };
+/** Susun senarai kursus sijil (ukuran dalam mm) tanpa melepasi ruang di atas blok tandatangan. Urutan cubaan:
+    nama penuh dibalut dalam 1, 2 atau 3 lajur; kemudian satu baris setiap kursus (nama panjang diakhiri "..."); akhirnya baki diringkaskan. */
+function susunSenaraiSijil(doc, semua){
+  const C = SIJIL_SENARAI, ruang = C.yMaks - C.y0;
+  const potong = (t, w) => { if(doc.getTextWidth(t) <= w) return t; while(t.length > 4 && doc.getTextWidth(t + '...') > w) t = t.slice(0, -1); return t.replace(/[\s:]+$/, '') + '...'; };
+  const cuba = (item, lj, balut) => {
+    const lebar = C.lebar[lj - 1], fon = C.fon[lj - 1], lh = C.jarak[lj - 1];
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(fon);
+    const blok = item.map((k, i) => {
+      const no = /^dan [0-9]+ kursus lain$/.test(k) ? '' : (i + 1) + '. ', inden = lj > 1 ? doc.getTextWidth(no) : 0, w = lebar - 3;
+      if(!balut) return { baris:[potong(no + k, w)], inden };
+      if(lj === 1) return { baris: doc.splitTextToSize(no + k, w), inden };
+      const bs = doc.splitTextToSize(k, w - inden);
+      return { baris: bs.map((t, j) => j ? t : no + t), inden };
+    });
+    const tinggi = b => (b.baris.length - 1) * lh;
+    if(blok.some(b => tinggi(b) > ruang)) return null;
+    const isi = had => { const kol = [[]]; let y = 0, ada = false;
+      for(const b of blok){
+        if(ada && y + tinggi(b) > had){ kol.push([]); y = 0; ada = false; }
+        if(kol.length > lj) return null;
+        b.baris.forEach((t, j) => kol[kol.length - 1].push({ teks:t, inden: j && lj > 1 ? b.inden : 0, y: C.y0 + y + j * lh }));
+        y += tinggi(b) + lh + C.sela; ada = true;
+      }
+      return kol; };
+    const jumlah = blok.reduce((a, b) => a + tinggi(b) + lh + C.sela, 0) - lh - C.sela;
+    const lajur = isi(Math.min(ruang, Math.max(jumlah / lj, ...blok.map(tinggi)) + .01)) || isi(ruang);
+    return lajur ? { lj, lebar, fon, lajur, x0: 297 / 2 - (lj * lebar) / 2 } : null;
+  };
+  for(const balut of [true, false]) for(let lj = 1; lj <= 3; lj++){ const r = cuba(semua, lj, balut); if(r) return r; }
+  for(let n = semua.length - 1; n >= 1; n--){ const r = cuba(semua.slice(0, n).concat(['dan ' + (semua.length - n) + ' kursus lain']), 3, false); if(r) return r; }
+  return cuba(['dan ' + semua.length + ' kursus'], 1, false);
 }
 async function janaSijilPdf(id, muatTurun){
   mulaMuat();
@@ -3010,6 +3068,7 @@ function bahagianPelajarProgram(p, boleh){
       <div class="card pad"><h3 class="serif h3">Jumlah pelajar keseluruhan dan graduan</h3><div class="mini">Taburan semua pelajar yang diterima masuk</div>
         <div class="carta-kotak" style="height:290px"><canvas id="chStatusPelajar" role="img" aria-label="Carta taburan pelajar aktif, graduan dan tidak aktif"></canvas></div></div>
     </div>
+    ${bahagianJantina(ringkasJantina(rows), 'program')}
     <div class="card" style="overflow:hidden;margin-top:16px"><div class="jadual-skrol"><table class="grid padat"><thead><tr><th>Sesi kemasukan</th><th class="kanan">Diterima masuk</th><th class="kanan">Aktif</th><th class="kanan">Graduan</th><th class="kanan">Tidak aktif</th>${lama.length ? '<th></th>' : ''}</tr></thead><tbody>
       ${rows.map(r => `<tr class="baris"><td><b>${esc(r.kemasukan)}</b>${r.sumber === 'bilangan' ? ' <span class="badge b-kunci" title="Bilangan dimasukkan secara manual sebelum senarai nama digunakan">Bilangan sahaja (data lama)</span>' : ''}</td><td class="kanan tnum">${fmtNombor(r.pelajar)}</td><td class="kanan tnum">${fmtNombor(r.aktif)}</td><td class="kanan tnum">${fmtNombor(r.graduan)}</td><td class="kanan tnum">${fmtNombor(tidakAktif(r))}</td>
         ${lama.length ? `<td>${r.sumber === 'bilangan' && boleh ? `<div class="aksi-baris"><button class="btn-ikon bahaya" onclick="padamPelajarLama(${r.id})" title="Buang bilangan lama" aria-label="Buang bilangan lama kemasukan ${esc(r.kemasukan)}">${ik('padam', 15)}</button></div>` : ''}</td>` : ''}</tr>`).join('')}
@@ -3036,26 +3095,27 @@ function bahagianSenaraiPelajar(p, boleh, adaStat){
       <div class="cari" style="min-width:200px">${ik('cari')}<input type="search" placeholder="Cari no. matrik atau nama" value="${esc(T.cari)}" oninput="UI.plTapis.cari=this.value;lukisSenaraiPelajar(${p.id})" aria-label="Cari pelajar"></div>
       <select class="auto" onchange="UI.plTapis.kem=this.value;lukisSenaraiPelajar(${p.id})" aria-label="Sesi kemasukan"><option value="semua">Semua kemasukan</option>${kem.map(k => `<option value="${esc(k)}" ${T.kem === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select>
       <select class="auto" onchange="UI.plTapis.status=this.value;lukisSenaraiPelajar(${p.id})" aria-label="Status"><option value="semua">Semua status</option>${Object.keys(STATUS_PELAJAR).map(k => `<option value="${k}" ${T.status === k ? 'selected' : ''}>${STATUS_PELAJAR[k][0]}</option>`).join('')}</select>
+      <select class="auto" onchange="UI.plTapis.jantina=this.value;lukisSenaraiPelajar(${p.id})" aria-label="Jantina"><option value="semua">Semua jantina</option>${Object.keys(JANTINA).map(k => `<option value="${k}" ${T.jantina === k ? 'selected' : ''}>${JANTINA[k]}</option>`).join('')}<option value="X" ${T.jantina === 'X' ? 'selected' : ''}>Tidak dinyatakan</option></select>
       <div class="dd"><button class="btn btn-ghost btn-sm" onclick="togolDD(event,this)">${ik('turun', 14)}Muat turun</button><div class="dd-menu"><button onclick="muatTurunSenaraiPelajar(${p.id},'xlsx')">${ik('jadual')}Excel (.xlsx)</button><button onclick="muatTurunSenaraiPelajar(${p.id},'csv')">${ik('jadual')}CSV</button></div></div>
     </div>
     ${boleh ? `<div class="pl-pukal" id="plPukal" hidden><span class="mini" id="plPilihBil"></span>
       <select class="auto" id="plStatusPukal" aria-label="Status baharu">${Object.keys(STATUS_PELAJAR).map(k => `<option value="${k}">${STATUS_PELAJAR[k][0]}</option>`).join('')}</select>
       <button class="btn btn-ghost btn-sm" onclick="tukarStatusPelajar(${p.id})">Tukar status</button><button class="btn btn-ghost btn-sm bahaya" onclick="padamPelajarPilih(${p.id})">${ik('padam', 14)}Padam</button></div>` : ''}
-    <div class="jadual-skrol" style="max-height:560px"><table class="grid padat"><thead><tr>${boleh ? `<th style="width:34px"><input type="checkbox" id="plSemua" onchange="pilihSemuaPelajar(${p.id},this.checked)" aria-label="Pilih semua pelajar yang dipaparkan"></th>` : ''}<th>No. matrik</th><th>Nama</th><th class="sm-sembunyi">Sesi kemasukan</th><th>Status</th>${boleh ? '<th></th>' : ''}</tr></thead>
+    <div class="jadual-skrol" style="max-height:560px"><table class="grid padat"><thead><tr>${boleh ? `<th style="width:34px"><input type="checkbox" id="plSemua" onchange="pilihSemuaPelajar(${p.id},this.checked)" aria-label="Pilih semua pelajar yang dipaparkan"></th>` : ''}<th>No. matrik</th><th>Nama</th><th class="sm-sembunyi">Jantina</th><th class="sm-sembunyi">Sesi kemasukan</th><th>Status</th>${boleh ? '<th></th>' : ''}</tr></thead>
       <tbody id="plBaris"></tbody></table></div></div>`;
 }
 function pelajarDitapis(pid){
   const L = Array.isArray(UI.pelajar[pid]) ? UI.pelajar[pid] : [], T = UI.plTapis, q = T.cari.toLowerCase().trim();
-  return L.filter(r => (T.kem === 'semua' || r.kemasukan === T.kem) && (T.status === 'semua' || r.status === T.status) && (!q || (r.matrik + ' ' + r.nama).toLowerCase().includes(q)));
+  return L.filter(r => (T.kem === 'semua' || r.kemasukan === T.kem) && (T.status === 'semua' || r.status === T.status) && (!T.jantina || T.jantina === 'semua' || (r.jantina || 'X') === T.jantina) && (!q || (r.matrik + ' ' + r.nama).toLowerCase().includes(q)));
 }
 function lukisSenaraiPelajar(pid){
   const box = el('plBaris'); if(!box) return;
   const p = S.program.senarai.find(x => x.id === pid), boleh = !!(p && p.bolehUrus), v = pelajarDitapis(pid), L = UI.pelajar[pid] || [];
   const ada = new Set(L.map(r => r.id)); [...UI.plPilih].forEach(id => { if(!ada.has(id)) UI.plPilih.delete(id); });
   box.innerHTML = v.length ? v.map(r => `<tr class="baris">${boleh ? `<td><input type="checkbox" ${UI.plPilih.has(r.id) ? 'checked' : ''} onchange="pilihPelajar(${pid},${r.id},this.checked)" aria-label="Pilih ${esc(r.nama)}"></td>` : ''}
-      <td class="tnum"><b>${esc(r.matrik)}</b></td><td>${esc(r.nama)}${r.catatan ? `<div class="mini">${esc(r.catatan)}</div>` : ''}</td><td class="sm-sembunyi mini">${esc(r.kemasukan)}</td><td>${chipPelajar(r.status)}</td>
+      <td class="tnum"><b>${esc(r.matrik)}</b></td><td>${esc(r.nama)}${r.catatan ? `<div class="mini">${esc(r.catatan)}</div>` : ''}</td><td class="sm-sembunyi mini">${JANTINA[r.jantina] || '-'}</td><td class="sm-sembunyi mini">${esc(r.kemasukan)}</td><td>${chipPelajar(r.status)}</td>
       ${boleh ? `<td><div class="aksi-baris"><button class="btn-ikon" onclick="modalPelajar(${pid},${r.id})" title="Sunting" aria-label="Sunting ${esc(r.nama)}">${ik('sunting', 15)}</button></div></td>` : ''}</tr>`).join('')
-    : `<tr><td colspan="${boleh ? 6 : 4}"><div class="kosong">Tiada pelajar sepadan dengan tapisan.</div></td></tr>`;
+    : `<tr><td colspan="${boleh ? 7 : 5}"><div class="kosong">Tiada pelajar sepadan dengan tapisan.</div></td></tr>`;
   const b = el('plBil'); if(b) b.textContent = '· ' + (v.length === L.length ? fmtNombor(L.length) + ' pelajar' : fmtNombor(v.length) + ' daripada ' + fmtNombor(L.length));
   kemasPilihPelajar(pid);
 }
@@ -3092,6 +3152,13 @@ function cartaPelajarProgram(p){
   const rows = pelajarProgram(p.id); if(!rows.length) return;
   const R = ringkasPelajar(rows);
   carta('chPelajar', 'bar', dataCartaKemasukan(rows), opsyenCartaKemasukan(rows));
+  const J = ringkasJantina(rows); cartaJantina(J);
+  if(el('chJantinaKem')){
+    const kr = rows.filter(r => r.jantina), JK = kr.map(r => ringkasJantina([r])), set = (label, k, warna) => ({ label, data: JK.map(j => j[k].jumlah), backgroundColor: warna, borderColor:'#FFFFFF', borderWidth:{ top:2 }, borderSkipped:'bottom', maxBarThickness:38 });
+    carta('chJantinaKem', 'bar', { labels: kr.map(r => r.kemasukan), datasets:[set('Lelaki', 'L', WP.lelaki), set('Perempuan', 'P', WP.perempuan)].concat(J.X.jumlah ? [set('Tidak dinyatakan', 'X', WP.tanpaJantina)] : []) },
+      { plugins:{ legend: LEGENDA_BAWAH, tooltip:{ mode:'index', intersect:false } }, interaction:{ mode:'index', intersect:false },
+        scales:{ x:{ stacked:true, grid:{ display:false }, ticks:{ autoSkip:true, maxRotation:40 } }, y:{ stacked:true, beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } } } });
+  }
   carta('chStatusPelajar', 'doughnut', { labels:['Pelajar aktif', 'Graduan', 'Tidak aktif'],
     datasets:[{ data:[R.aktif, R.graduan, R.tidakAktif], backgroundColor:[WP.aktif, WP.graduan, WP.tidakAktif], borderColor:'#FFFFFF', borderWidth:2, hoverOffset:4 }] },
     { cutout:'64%', _tengah:{ teks: fmtNombor(R.pelajar), label:'pelajar diterima masuk' },
@@ -3120,11 +3187,54 @@ function bahagianPelajarSemua(){
         <div class="carta-kotak" style="height:${tinggi}px"><canvas id="chPelajarProg" role="img" aria-label="Carta pelajar aktif dan graduan mengikut program"></canvas></div></div>
       <div class="card pad"><h3 class="serif h3">Bilangan pelajar setiap kemasukan</h3><div class="mini">Pelajar diterima masuk mengikut tahun kemasukan, semua program</div>
         <div class="carta-kotak" style="height:${tinggi}px"><canvas id="chKemasukanThn" role="img" aria-label="Carta bilangan pelajar diterima masuk mengikut tahun"></canvas></div></div>
-    </div></section>`;
+    </div>
+    ${bahagianJantina(ringkasJantina(S.program.pelajar.filter(r => ps.some(p => p.id === r.programId))), 'semua', tinggi)}</section>`;
+}
+/** Analisis pelajar mengikut jantina (Lelaki / Perempuan). skop 'semua' = semua program; 'program' = satu program. */
+function bahagianJantina(J, skop, tinggi){
+  const ada = J.L.jumlah + J.P.jumlah + J.X.jumlah;
+  if(!ada) return `<div class="card pad" style="margin-top:16px" id="kadJantina"><h3 class="serif h3">Pelajar mengikut jantina</h3><p class="mini" style="margin-top:6px">Belum ada data jantina. Jantina direkodkan bersama senarai nama pelajar (lajur Jantina, atau dikenal pasti daripada nama bin / binti).</p></div>`;
+  const kanan = skop === 'semua'
+    ? `<div class="card pad"><h3 class="serif h3">Jantina pelajar aktif mengikut program</h3><div class="mini">Bilangan pelajar aktif lelaki dan perempuan bagi setiap program</div>
+        <div class="carta-kotak" style="height:${tinggi}px"><canvas id="chJantinaProg" role="img" aria-label="Carta pelajar aktif lelaki dan perempuan mengikut program"></canvas></div></div>`
+    : `<div class="card pad"><h3 class="serif h3">Jantina pelajar setiap kemasukan</h3><div class="mini">Semua pelajar yang diterima masuk, mengikut sesi kemasukan</div>
+        <div class="carta-kotak" style="height:290px"><canvas id="chJantinaKem" role="img" aria-label="Carta pelajar lelaki dan perempuan setiap kemasukan"></canvas></div></div>`;
+  return `<div class="${skop === 'semua' ? 'grid-2' : 'grid-rumusan'}" style="margin-top:16px" id="kadJantina">
+      <div class="card pad"><h3 class="serif h3">Pelajar mengikut jantina</h3><div class="mini">Taburan pelajar aktif lelaki dan perempuan${skop === 'semua' ? ', semua program' : ''}</div>
+        <div class="carta-kotak" style="height:220px"><canvas id="chJantina" role="img" aria-label="Carta pelajar aktif mengikut jantina"></canvas></div>
+        ${jadualJantina(J)}</div>
+      ${kanan}</div>`;
+}
+function jadualJantina(J){
+  const k = ['L', 'P'].concat(J.X.jumlah ? ['X'] : []), nama = { L:'Lelaki', P:'Perempuan', X:'Tidak dinyatakan' };
+  const T = { aktif: J.L.aktif + J.P.aktif + J.X.aktif, graduan: J.L.graduan + J.P.graduan + J.X.graduan, jumlah: J.L.jumlah + J.P.jumlah + J.X.jumlah };
+  return `<div class="jadual-skrol" style="margin-top:12px"><table class="grid padat"><thead><tr><th>Jantina</th><th class="kanan">Aktif</th><th class="kanan">Graduan</th><th class="kanan">Diterima masuk</th><th class="kanan">% aktif</th></tr></thead><tbody>
+    ${k.map(x => `<tr class="baris"><td><span class="titik-j" style="background:${x === 'L' ? WP.lelaki : x === 'P' ? WP.perempuan : WP.tanpaJantina}"></span>${nama[x]}</td><td class="kanan tnum">${fmtNombor(J[x].aktif)}</td><td class="kanan tnum">${fmtNombor(J[x].graduan)}</td><td class="kanan tnum">${fmtNombor(J[x].jumlah)}</td><td class="kanan tnum">${pct(J[x].aktif, T.aktif)}%</td></tr>`).join('')}
+    <tr class="baris-jumlah"><td>Jumlah</td><td class="kanan tnum">${fmtNombor(T.aktif)}</td><td class="kanan tnum">${fmtNombor(T.graduan)}</td><td class="kanan tnum">${fmtNombor(T.jumlah)}</td><td class="kanan tnum">${T.aktif ? '100%' : '-'}</td></tr>
+  </tbody></table></div>${J.X.jumlah ? `<p class="mini" style="margin-top:8px">Tidak dinyatakan: jantina tiada dalam rekod dan tidak dapat dikenal pasti daripada nama. Kemas kini lajur Jantina dalam senarai pelajar.</p>` : ''}`;
+}
+function cartaJantina(J){
+  if(!el('chJantina')) return;
+  const k = ['L', 'P'].concat(J.X.aktif ? ['X'] : []), lbl = { L:'Lelaki', P:'Perempuan', X:'Tidak dinyatakan' }, w = { L:WP.lelaki, P:WP.perempuan, X:WP.tanpaJantina };
+  const jum = k.reduce((a, x) => a + J[x].aktif, 0);
+  carta('chJantina', 'doughnut', { labels: k.map(x => lbl[x]), datasets:[{ data: k.map(x => J[x].aktif), backgroundColor: k.map(x => w[x]), borderColor:'#FFFFFF', borderWidth:2, hoverOffset:4 }] },
+    { cutout:'62%', _tengah:{ teks: fmtNombor(jum), label:'pelajar aktif' },
+      plugins:{ legend: gabungDalam(LEGENDA_BAWAH, { labels:{ generateLabels: c => Chart.overrides.doughnut.plugins.legend.labels.generateLabels(c).map((l, i) => Object.assign(l, { text: l.text + ': ' + fmtNombor(c.data.datasets[0].data[i]) + ' (' + pct(c.data.datasets[0].data[i], jum) + '%)' })) } }),
+        tooltip:{ callbacks:{ label: c => c.label + ': ' + fmtNombor(c.parsed) + ' (' + pct(c.parsed, jum) + '%)' } } } });
 }
 function cartaPelajarSemua(){
   const ps = S.program.senarai.filter(p => pelajarProgram(p.id).length); if(!ps.length) return;
   const R = ps.map(p => ringkasPelajar(pelajarProgram(p.id)));
+  cartaJantina(ringkasJantina(S.program.pelajar.filter(r => ps.some(p => p.id === r.programId))));
+  if(el('chJantinaProg')){
+    const JP = ps.map(p => ringkasJantina(pelajarProgram(p.id)));
+    carta('chJantinaProg', 'bar', { labels: ps.map(p => p.kod), datasets:[
+        { label:'Lelaki', data: JP.map(j => j.L.aktif), backgroundColor: WP.lelaki, borderRadius:4, maxBarThickness:16, categoryPercentage:.7, barPercentage:.9 },
+        { label:'Perempuan', data: JP.map(j => j.P.aktif), backgroundColor: WP.perempuan, borderRadius:4, maxBarThickness:16, categoryPercentage:.7, barPercentage:.9 }] },
+      { indexAxis:'y', plugins:{ legend: LEGENDA_BAWAH, tooltip:{ callbacks:{ title: it => { const p = ps[it[0].dataIndex]; return p.kod + ' · ' + p.nama; },
+          label: c => { const j = JP[c.dataIndex], t = j.L.aktif + j.P.aktif; return c.dataset.label + ': ' + fmtNombor(c.parsed.x) + ' (' + pct(c.parsed.x, t) + '%)'; } } } },
+        scales:{ x:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } }, y:{ grid:{ display:false } } } });
+  }
   carta('chPelajarProg', 'bar', { labels: ps.map(p => p.kod), datasets:[
       { label:'Pelajar aktif', data: R.map(r => r.aktif), backgroundColor: WP.aktif, borderRadius:4, maxBarThickness:16, categoryPercentage:.7, barPercentage:.9 },
       { label:'Graduan', data: R.map(r => r.graduan), backgroundColor: WP.graduan, borderRadius:4, maxBarThickness:16, categoryPercentage:.7, barPercentage:.9 }] },
@@ -3159,6 +3269,7 @@ function modalPelajar(pid, id){
     <div class="dua"><div><label class="fld" for="plMatrik">No. matrik</label><input id="plMatrik" type="text" value="${r ? esc(r.matrik) : ''}" autocomplete="off"></div>
       <div><label class="fld" for="plStatus">Status</label><select id="plStatus">${Object.keys(STATUS_PELAJAR).map(k => `<option value="${k}" ${(r ? r.status : 'aktif') === k ? 'selected' : ''}>${STATUS_PELAJAR[k][0]}</option>`).join('')}</select></div></div>
     <div><label class="fld" for="plNama">Nama pelajar</label><input id="plNama" type="text" value="${r ? esc(r.nama) : ''}" autocomplete="off"></div>
+    <div><label class="fld" for="plJantina">Jantina</label><select id="plJantina"><option value="">Kenal pasti daripada nama (bin / binti)</option>${Object.keys(JANTINA).map(k => `<option value="${k}" ${r && r.jantina === k ? 'selected' : ''}>${JANTINA[k]}</option>`).join('')}</select></div>
     <div><label class="fld" for="plCat">Catatan (pilihan)</label><input id="plCat" type="text" value="${r ? esc(r.catatan || '') : ''}"></div>
     <p class="ralat" id="plErr" hidden></p></div>`,
     kaki:`${r ? `<button class="btn btn-ghost bahaya" style="margin-right:auto" onclick="padamPelajarSatu(${pid},${r.id})">${ik('padam', 14)}Padam</button>` : ''}<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" onclick="simpanPelajar(${pid},${r ? r.id : 0})">${r ? 'Simpan' : 'Tambah'}</button>` });
@@ -3166,7 +3277,7 @@ function modalPelajar(pid, id){
 }
 async function simpanPelajar(pid, id){
   const err = el('plErr'), salah = m => { err.textContent = m; err.hidden = false; };
-  const d = { programId: pid, id, kemasukan: el('plKem').value.trim(), matrik: el('plMatrik').value.trim(), nama: el('plNama').value.trim(), status: el('plStatus').value, catatan: el('plCat').value.trim() };
+  const d = { programId: pid, id, kemasukan: el('plKem').value.trim(), matrik: el('plMatrik').value.trim(), nama: el('plNama').value.trim(), status: el('plStatus').value, jantina: el('plJantina').value, catatan: el('plCat').value.trim() };
   if(!d.kemasukan) return salah('Sila isi sesi kemasukan.');
   if(!d.matrik) return salah('Sila isi no. matrik.');
   if(!d.nama) return salah('Sila isi nama pelajar.');
@@ -3194,14 +3305,14 @@ async function padamPelajarLama(id){
 }
 function muatTurunSenaraiPelajar(pid, fmt){
   const p = S.program.senarai.find(x => x.id === pid), L = pelajarDitapis(pid);
-  const rows = [['SesiKemasukan', 'NoMatrik', 'Nama', 'Status', 'Catatan']].concat(L.map(r => [r.kemasukan, r.matrik, r.nama, (STATUS_PELAJAR[r.status] || [r.status])[0], r.catatan || '']));
+  const rows = [['SesiKemasukan', 'NoMatrik', 'Nama', 'Jantina', 'Status', 'Catatan']].concat(L.map(r => [r.kemasukan, r.matrik, r.nama, JANTINA[r.jantina] || '', (STATUS_PELAJAR[r.status] || [r.status])[0], r.catatan || '']));
   muatTurunJadual('Senarai_Pelajar_' + namaFailSelamat(p ? p.kod : 'Program'), rows, fmt);
 }
 
 /* ---------- import dan templat CSV / Excel ---------- */
 const LAJUR_PELAJAR = { kodProgram:['kodprogram','kodprog','program'], kemasukan:['sesikemasukan','kemasukan','ambilan','intake','kohort','sesi'],
   matrik:['nomatrik','matrik','nomatriks','nopelajar','idpelajar','nomatric','matricno','studentid','nopendaftaran'], nama:['nama','namapelajar','name','namapenuh'],
-  status:['status','statuspelajar'], catatan:['catatan','ulasan'] };
+  status:['status','statuspelajar'], jantina:['jantina','gender','sex','jantinapelajar'], catatan:['catatan','ulasan'] };
 const LAJUR_PROGRAM = { kod:['kod','kodprogram','kodprog'], nama:['nama','namaprogram','program'], fakulti:['fakulti','pusat','fakultipusat'], tahap:['tahap','peringkat'],
   kp:['ketuaprogram','kp','emelkp','namakp','emelketuaprogram'], catatan:['catatan'] };
 function kunciLajur(h){ return String(h || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
@@ -3251,7 +3362,7 @@ function tunjukRalatImport(ralat){
 function modalImportPelajar(pid){
   const p = pid ? S.program.senarai.find(x => x.id === pid) : null;
   modalImport({ tajuk:'Import senarai pelajar', desk: p ? p.kod + ' · ' + p.nama : 'Semua program di bawah seliaan anda',
-    nota:`Lajur: ${p ? '' : '<b>KodProgram</b>, '}<b>SesiKemasukan</b>, <b>NoMatrik</b>, <b>Nama</b>, <b>Status</b> (Aktif, Graduan, Tangguh atau Berhenti; kosong = Aktif) dan <b>Catatan</b> (pilihan). Pelajar dipadankan mengikut no. matrik: rekod sedia ada dikemas kini, pelajar baharu ditambah, dan tiada rekod dibuang. Statistik dan carta dikira secara automatik daripada senarai ini.`,
+    nota:`Lajur: ${p ? '' : '<b>KodProgram</b>, '}<b>SesiKemasukan</b>, <b>NoMatrik</b>, <b>Nama</b>, <b>Jantina</b> (Lelaki atau Perempuan; jika kosong, dikenal pasti daripada nama bin / binti), <b>Status</b> (Aktif, Graduan, Tangguh atau Berhenti; kosong = Aktif) dan <b>Catatan</b> (pilihan). Pelajar dipadankan mengikut no. matrik: rekod sedia ada dikemas kini, pelajar baharu ditambah, dan tiada rekod dibuang. Statistik dan carta dikira secara automatik daripada senarai ini.`,
     templat: fmt => templatPelajar(pid, fmt),
     jalan: async teks => {
       const baris = barisIkutLajur(teks, LAJUR_PELAJAR, p ? ['kemasukan', 'matrik', 'nama'] : ['kodProgram', 'kemasukan', 'matrik', 'nama']);
@@ -3264,18 +3375,19 @@ function modalImportPelajar(pid){
 }
 function templatPelajar(pid, fmt){
   const p = pid ? S.program.senarai.find(x => x.id === pid) : null, L = pid && Array.isArray(UI.pelajar[pid]) ? UI.pelajar[pid] : [];
-  const rows = [[...(pid ? [] : ['KodProgram']), 'SesiKemasukan', 'NoMatrik', 'Nama', 'Status', 'Catatan']];
-  L.forEach(r => rows.push([r.kemasukan, r.matrik, r.nama, (STATUS_PELAJAR[r.status] || [r.status])[0], r.catatan || '']));
+  const rows = [[...(pid ? [] : ['KodProgram']), 'SesiKemasukan', 'NoMatrik', 'Nama', 'Jantina', 'Status', 'Catatan']];
+  L.forEach(r => rows.push([r.kemasukan, r.matrik, r.nama, JANTINA[r.jantina] || '', (STATUS_PELAJAR[r.status] || [r.status])[0], r.catatan || '']));
   if(rows.length === 1){
     const c = pid ? [] : [(S.program.senarai.find(x => x.bolehUrus) || { kod:'BUS' }).kod];
-    rows.push([...c, '2022/2023 Sem 1', 'BUS22001', 'Ahmad bin Ali', 'Graduan', ''], [...c, '2023/2024 Sem 1', 'BUS23001', 'Nur Aisyah binti Hassan', 'Aktif', ''],
-      [...c, '2023/2024 Sem 1', 'BUS23002', 'Muhammad Faiz bin Omar', 'Berhenti', 'Tarik diri Sem 2']);
+    rows.push([...c, '2022/2023 Sem 1', 'BUS22001', 'Ahmad bin Ali', 'Lelaki', 'Graduan', ''], [...c, '2023/2024 Sem 1', 'BUS23001', 'Nur Aisyah binti Hassan', 'Perempuan', 'Aktif', ''],
+      [...c, '2023/2024 Sem 1', 'BUS23002', 'Muhammad Faiz bin Omar', 'Lelaki', 'Berhenti', 'Tarik diri Sem 2']);
   }
   muatTurunJadual(p ? 'Senarai_Pelajar_' + namaFailSelamat(p.kod) : 'Senarai_Pelajar_Program', rows, fmt);
 }
 function csvPelajarSemua(fmt){
-  const rows = [['KodProgram', 'NamaProgram', 'Fakulti', 'Kemasukan', 'Pelajar', 'Aktif', 'Graduan', 'TidakAktif', 'Catatan', 'DikemasKini', 'Oleh']];
-  S.program.senarai.forEach(p => pelajarProgram(p.id).forEach(r => rows.push([p.kod, p.nama, p.fakulti, r.kemasukan, Number(r.pelajar) || 0, Number(r.aktif) || 0, Number(r.graduan) || 0, tidakAktif(r), r.catatan || '', r.dikemaskini || '', r.oleh || ''])));
+  const rows = [['KodProgram', 'NamaProgram', 'Fakulti', 'Kemasukan', 'Pelajar', 'Aktif', 'Graduan', 'TidakAktif', 'Lelaki', 'Perempuan', 'LelakiAktif', 'PerempuanAktif', 'Catatan', 'DikemasKini', 'Oleh']];
+  S.program.senarai.forEach(p => pelajarProgram(p.id).forEach(r => { const j = ringkasJantina([r]);
+    rows.push([p.kod, p.nama, p.fakulti, r.kemasukan, Number(r.pelajar) || 0, Number(r.aktif) || 0, Number(r.graduan) || 0, tidakAktif(r), j.L.jumlah, j.P.jumlah, j.L.aktif, j.P.aktif, r.catatan || '', r.dikemaskini || '', r.oleh || '']); }));
   muatTurunJadual('Statistik_Pelajar_Program' + (skopFak() ? '_' + skopFak() : ''), rows, fmt);
 }
 function modalImportProgram(){
@@ -5326,10 +5438,90 @@ function lukisJadualLog(){
 }
 
 /* ============================ PROFIL & KATA LALUAN ============================ */
+function avatarPengguna(u, besar){
+  return u && u.gambar ? `<span class="avatar foto ${besar ? 'besar' : ''}"><img src="${esc(u.gambar)}" alt=""></span>` : `<span class="avatar ${besar ? 'besar' : ''}">${esc(inisial(u ? u.nama : ''))}</span>`;
+}
+function pasportPengguna(u, besar){
+  return u && u.gambar ? `<span class="pasport ${besar ? 'besar' : ''}"><img src="${esc(u.gambar)}" alt="Gambar profil ${esc(u.nama)}"></span>` : `<span class="pasport ${besar ? 'besar' : ''}">${esc(inisial(u ? u.nama : ''))}</span>`;
+}
+/* Gambar profil: gambar rasmi berukuran pasport (35 x 45 mm) berlatar putih. Imej dipangkas kepada nisbah pasport
+   (350 x 450 piksel, JPEG) dan latarnya disemak di pelayar sebelum dihantar; pelayan menyemak semula format dan nisbah. */
+const GAMBAR_PASPORT = { lebar:350, tinggi:450, minLebar:240, nisbahMin:.55, nisbahMaks:.95, putihMin:.8 };
+function bacaImej(f){
+  return new Promise((ok, gagal) => { const url = URL.createObjectURL(f), img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); ok(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); gagal(new Error('Fail ini bukan imej yang boleh dibaca. Gunakan JPEG atau PNG.')); };
+    img.src = url; });
+}
+/** Peratus piksel putih di jalur atas dan sisi atas imej (kawasan latar belakang gambar pasport). */
+function nisbahLatarPutih(ctx, W, H){
+  const d = ctx.getImageData(0, 0, W, H).data, sisi = Math.round(W * .07), atas = Math.round(H * .06), had = Math.round(H * .55);
+  let n = 0, putih = 0;
+  for(let y = 0; y < had; y += 2) for(let x = 0; x < W; x += 2){
+    if(y >= atas && x >= sisi && x < W - sisi) continue;
+    const i = (y * W + x) * 4, r = d[i], g = d[i + 1], b = d[i + 2], mn = Math.min(r, g, b), mx = Math.max(r, g, b);
+    n++; if(mn >= 190 && mx - mn <= 35) putih++;
+  }
+  return n ? putih / n : 0;
+}
+async function prosesGambarPasport(f){
+  const G = GAMBAR_PASPORT;
+  if(!/^image\/(jpeg|png|webp)$/.test(f.type) && !/\.(jpe?g|png|webp)$/i.test(f.name)) throw new Error('Sila pilih imej JPEG atau PNG.');
+  if(f.size > 15 * 1024 * 1024) throw new Error('Saiz imej melebihi 15 MB.');
+  const img = await bacaImej(f), w = img.naturalWidth, h = img.naturalHeight, r = w / h, sasaran = G.lebar / G.tinggi;
+  if(r > G.nisbahMaks) throw new Error('Gambar mesti berorientasi potret seperti gambar pasport (35 x 45 mm). Gambar landskap atau segi empat sama tidak diterima.');
+  if(r < G.nisbahMin) throw new Error('Gambar terlalu panjang. Gunakan gambar berukuran pasport (35 x 45 mm).');
+  let sx = 0, sy = 0, sw = w, sh = h;
+  if(r > sasaran){ sw = h * sasaran; sx = (w - sw) / 2; } else { sh = w / sasaran; sy = (h - sh) * .3; }
+  if(sw < G.minLebar) throw new Error('Resolusi gambar terlalu rendah. Gunakan gambar sekurang-kurangnya ' + G.minLebar + ' piksel lebar.');
+  const c = document.createElement('canvas'); c.width = G.lebar; c.height = G.tinggi;
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  const putih = nisbahLatarPutih(ctx, c.width, c.height);
+  if(putih < G.putihMin) throw new Error('Latar belakang gambar tidak berwarna putih (' + Math.round(putih * 100) + '% putih). Sila gunakan gambar rasmi berlatar putih.');
+  let q = .9, url = c.toDataURL('image/jpeg', q);
+  while(url.length > 380000 && q > .5){ q -= .1; url = c.toDataURL('image/jpeg', q); }
+  return url;
+}
+function modalGambarProfil(){
+  const u = S.pengguna; UI.gambarBaru = '';
+  bukaModal({ tajuk:'Gambar profil', desk:'Gambar ini dipaparkan pada profil dan menu anda.', isi:`
+    <div class="gambar-susun"><div id="gpPratonton">${u.gambar ? pasportPengguna(u, true) : `<span class="pasport besar kosong">${ik('kamera', 34)}</span>`}</div>
+      <div style="flex:1;min-width:220px"><b style="font-size:14px">Ciri gambar yang diterima</b>
+        <ul class="syarat-gambar"><li>Gambar <b>rasmi</b>: wajah jelas menghadap ke hadapan, berpakaian kemas dan formal.</li><li>Berukuran <b>pasport</b> (35 x 45 mm, potret). Imej dipangkas secara automatik kepada nisbah pasport.</li><li>Berlatar <b>putih</b> sepenuhnya.</li><li>Format JPEG atau PNG.</li></ul></div></div>
+    <div class="borang" style="margin-top:16px"><div><label class="fld" for="gpFail">Pilih gambar</label><input type="file" id="gpFail" accept="image/jpeg,image/png,image/webp" onchange="pilihGambarProfil(this.files[0])"></div>
+      <label class="semak" style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><input type="checkbox" id="gpSah"> <span>Saya mengesahkan gambar ini ialah gambar rasmi saya, berukuran pasport dan berlatar putih.</span></label>
+      <p class="ralat" id="gpErr" hidden></p></div>`,
+    kaki:`${u.gambar ? `<button class="btn btn-ghost bahaya" style="margin-right:auto" onclick="padamGambarProfil()">${ik('padam', 14)}Padam gambar</button>` : ''}<button class="btn btn-ghost" onclick="tutupModal();modalProfil(false)">Batal</button><button class="btn btn-primary" id="gpSimpan" onclick="simpanGambarProfil()" disabled>Simpan gambar</button>` });
+}
+async function pilihGambarProfil(f){
+  const err = el('gpErr'); err.hidden = true; UI.gambarBaru = ''; el('gpSimpan').disabled = true;
+  if(!f) return;
+  try {
+    UI.gambarBaru = await prosesGambarPasport(f);
+    el('gpPratonton').innerHTML = `<span class="pasport besar"><img src="${UI.gambarBaru}" alt="Pratonton gambar profil"></span>`;
+    el('gpSimpan').disabled = false;
+  } catch(e){ err.textContent = e.message; err.hidden = false; el('gpFail').value = ''; }
+}
+async function simpanGambarProfil(){
+  const err = el('gpErr'); err.hidden = true;
+  if(!UI.gambarBaru){ err.textContent = 'Sila pilih gambar dahulu.'; err.hidden = false; return; }
+  if(!el('gpSah').checked){ err.textContent = 'Sila sahkan bahawa gambar ini ialah gambar rasmi berukuran pasport dan berlatar putih.'; err.hidden = false; return; }
+  el('gpSimpan').disabled = true;
+  try { const r = await api('gambarProfilSimpan', { data: UI.gambarBaru, sahRasmi:true }); S.pengguna = r.pengguna; UI.gambarBaru = ''; tutupModal(); binaNav(); modalProfil(false); }
+  catch(e){ err.textContent = e.message; err.hidden = false; el('gpSimpan').disabled = false; }
+}
+async function padamGambarProfil(){
+  tutupModal();
+  if(!await sahkan({ tajuk:'Padam gambar profil?', mesej:'Inisial nama anda akan dipaparkan semula sebagai ganti gambar.', butang:'Padam', bahaya:true })){ modalGambarProfil(); return; }
+  await cuba(async () => { const r = await api('gambarProfilPadam', {}); S.pengguna = r.pengguna; binaNav(); modalProfil(false); });
+}
 function modalProfil(paksa){
   const u = S.pengguna, p = saya() ? petaP()[saya()] : null, minta = u.adaKataLaluan && !(paksa && LG.klSemasa);
   bukaModal({ tajuk: paksa ? 'Tetapkan kata laluan baharu' : 'Profil saya', desk: paksa ? 'Demi keselamatan, sila tetapkan kata laluan baharu sebelum meneruskan.' : '', kunci: !!paksa, kecil: !!paksa,
-    isi:`${paksa ? '' : `<div class="profil"><span class="avatar besar">${esc(inisial(u.nama))}</span><div><b style="font-size:15px">${esc(u.nama)}</b><div class="mini">${esc(u.emel)} · ${esc(labelPeranan(u))}</div>${p ? `<div class="mini">${esc(p.fakulti || '')} · ${esc(p.jawatan || '')}</div>` : ''}</div></div>
+    isi:`${paksa ? '' : `<div class="profil">${pasportPengguna(u)}<div><b style="font-size:15px">${esc(u.nama)}</b><div class="mini">${esc(u.emel)} · ${esc(labelPeranan(u))}</div>${p ? `<div class="mini">${esc(p.fakulti || '')} · ${esc(p.jawatan || '')}</div>` : ''}
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="tutupModal();modalGambarProfil()">${ik('kamera', 14)}${u.gambar ? 'Tukar gambar' : 'Muat naik gambar'}</button></div></div>
+      ${u.gambar ? '' : `<div class="notis info" style="margin:14px 0 0">Muat naik gambar rasmi berukuran pasport dan berlatar putih untuk dipaparkan pada profil anda.</div>`}
       <div class="notis" style="margin:16px 0 0;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>Tandatangan digital</b>: ${u.adaTandatangan ? 'tersimpan' : 'belum disimpan'}. Diperlukan untuk menghantar atau mengesahkan dokumen PDF.</span><button class="btn btn-ghost btn-sm" onclick="tutupModal();modalTandatangan()">${u.adaTandatangan ? 'Kemas kini' : 'Tetapkan'}</button></div>
       <h3 class="h3" style="margin:20px 0 10px">Tukar kata laluan</h3>`}
       <div class="borang">${minta ? `<div><label class="fld" for="klLama">Kata laluan semasa</label><input type="password" id="klLama" autocomplete="current-password"></div>` : ''}
@@ -5586,13 +5778,19 @@ async function pdfProgram(){
   else {
     const R = ringkasPelajar(rowsP);
     doc.setFontSize(9); doc.text('Jumlah pelajar keseluruhan (aktif): ' + fmtNombor(R.aktif) + ' · Jumlah graduan: ' + fmtNombor(R.graduan) + ' · Diterima masuk (kumulatif): ' + fmtNombor(R.pelajar) + ' · Tidak aktif: ' + fmtNombor(R.tidakAktif), 14, y + 6);
-    const img = await buatCartaImej({ type:'bar', data: dataCartaKemasukan(rowsP), options: opsyenCartaKemasukan(rowsP) }, 1400, 540);
+    const J = ringkasJantina(rowsP), tJ = J.L.aktif + J.P.aktif + J.X.aktif;
     let yT = y + 10;
+    if(J.L.jumlah + J.P.jumlah + J.X.jumlah){
+      doc.text('Pelajar aktif mengikut jantina: Lelaki ' + fmtNombor(J.L.aktif) + ' (' + pct(J.L.aktif, tJ) + '%) · Perempuan ' + fmtNombor(J.P.aktif) + ' (' + pct(J.P.aktif, tJ) + '%)' + (J.X.aktif ? ' · Tidak dinyatakan ' + fmtNombor(J.X.aktif) : '') +
+        ' · Diterima masuk: Lelaki ' + fmtNombor(J.L.jumlah) + ', Perempuan ' + fmtNombor(J.P.jumlah), 14, y + 11);
+      yT = y + 15;
+    }
+    const img = await buatCartaImej({ type:'bar', data: dataCartaKemasukan(rowsP), options: opsyenCartaKemasukan(rowsP) }, 1400, 540);
     if(img){ const w = W - 28, h = w * 540 / 1400; doc.addImage(img, 'JPEG', 14, yT, w, h); yT += h + 4; }
-    doc.autoTable(Object.assign({}, PDF_JADUAL, { startY: yT, head:[['Kemasukan','Diterima masuk','Aktif','Graduan','Tidak aktif','Catatan']],
-      body: rowsP.map(r => [r.kemasukan, fmtNombor(r.pelajar), fmtNombor(r.aktif), fmtNombor(r.graduan), fmtNombor(tidakAktif(r)), r.catatan || ''])
-        .concat([['Jumlah', fmtNombor(R.pelajar), fmtNombor(R.aktif), fmtNombor(R.graduan), fmtNombor(R.tidakAktif), '']]),
-      columnStyles:{ 1:{ halign:'right' }, 2:{ halign:'right' }, 3:{ halign:'right' }, 4:{ halign:'right' } },
+    doc.autoTable(Object.assign({}, PDF_JADUAL, { startY: yT, head:[['Kemasukan','Diterima masuk','Lelaki','Perempuan','Aktif','Graduan','Tidak aktif','Catatan']],
+      body: rowsP.map(r => { const j = ringkasJantina([r]); return [r.kemasukan, fmtNombor(r.pelajar), r.jantina ? fmtNombor(j.L.jumlah) : '-', r.jantina ? fmtNombor(j.P.jumlah) : '-', fmtNombor(r.aktif), fmtNombor(r.graduan), fmtNombor(tidakAktif(r)), r.catatan || '']; })
+        .concat([['Jumlah', fmtNombor(R.pelajar), fmtNombor(J.L.jumlah), fmtNombor(J.P.jumlah), fmtNombor(R.aktif), fmtNombor(R.graduan), fmtNombor(R.tidakAktif), '']]),
+      columnStyles:{ 1:{ halign:'right' }, 2:{ halign:'right' }, 3:{ halign:'right' }, 4:{ halign:'right' }, 5:{ halign:'right' }, 6:{ halign:'right' } },
       didParseCell: d2 => { if(d2.section === 'body' && d2.row.index === rowsP.length) d2.cell.styles.fontStyle = 'bold'; },
       didDrawPage: pdfKaki(doc) }));
   }
@@ -5604,10 +5802,10 @@ function barisSemuaProgram(sid){
 function csvSemuaProgram(){
   const sid = sesiKP(), sesi = S.fk.sesi.find(s => s.id === sid), it = S.program.item;
   const rows = [['Kod Program','Nama Program','Fakulti','Tahap','Ketua Program','KP Sejak','Dokumen Lengkap','Dokumen Diperlukan', ...it.map((x, i) => (i + 1) + '. ' + x.label),
-    'Kursus Struktur','Ditawarkan Sesi','Pendaftaran Fail Kursus','Fail Kursus Lengkap','Kadar Lengkap (%)','Bil. Kemasukan','Pelajar Diterima Masuk','Pelajar Aktif','Graduan','Tidak Aktif']];
+    'Kursus Struktur','Ditawarkan Sesi','Pendaftaran Fail Kursus','Fail Kursus Lengkap','Kadar Lengkap (%)','Bil. Kemasukan','Pelajar Diterima Masuk','Pelajar Aktif','Graduan','Tidak Aktif','Aktif Lelaki','Aktif Perempuan']];
   barisSemuaProgram(sid).forEach(({ p, d, f }) => rows.push([p.kod, p.nama, p.fakulti, p.tahap, p.kpNama || '', fmtTarikh(p.kpSejak), d.ya, d.perlu,
     ...it.map(x => ({ YA:'YA', TIDAK:'TIDAK', TB:'TB' })[statusItemProg(p, x.key)]), f.n, f.ditawar, f.fk, f.lengkap, f.fk ? f.kadar : '',
-    ...(r => [r.kemasukan, r.pelajar, r.aktif, r.graduan, r.tidakAktif])(ringkasPelajar(pelajarProgram(p.id)))]));
+    ...(r => [r.kemasukan, r.pelajar, r.aktif, r.graduan, r.tidakAktif])(ringkasPelajar(pelajarProgram(p.id))), ...(j => [j.L.aktif, j.P.aktif])(ringkasJantina(pelajarProgram(p.id)))]));
   muatTurunCSV('Pemantauan_Program_' + (skopFak() ? skopFak() + '_' : '') + namaFailSelamat(sesi ? sesi.nama : 'tiada_sesi') + '.csv', rows);
   toast('CSV dimuat turun.');
 }
@@ -5621,7 +5819,7 @@ function pdfSemuaProgram(){
   doc.autoTable(Object.assign({}, PDF_JADUAL, { startY: 58, head:[['Bil','Kod','Program','Fakulti','Ketua Program','Dokumentasi','Dokumen belum','Pelajar aktif','Graduan','Struktur','Ditawarkan','Fail kursus lengkap']],
     body: R.map(({ p, d, f }, i) => [i + 1, p.kod, p.nama + (p.tahap ? '\n' + p.tahap : ''), p.fakulti || '-', p.kpNama ? p.kpNama + (p.kpSejak ? '\nsejak ' + fmtTarikh(p.kpSejak) : '') : 'Belum dilantik',
       d.ya + '/' + d.perlu + ' (' + d.pct + '%)', S.program.item.map((x, j) => statusItemProg(p, x.key) === 'TIDAK' ? String(j + 1) : '').filter(Boolean).join(', ') || '-',
-      ...(r => r.kemasukan ? [fmtNombor(r.aktif), fmtNombor(r.graduan)] : ['-', '-'])(ringkasPelajar(pelajarProgram(p.id))),
+      ...(r => r.kemasukan ? [fmtNombor(r.aktif) + (j => j.L.jumlah + j.P.jumlah ? '\nL ' + fmtNombor(j.L.aktif) + ' · P ' + fmtNombor(j.P.aktif) : '')(ringkasJantina(pelajarProgram(p.id))), fmtNombor(r.graduan)] : ['-', '-'])(ringkasPelajar(pelajarProgram(p.id))),
       f.n, f.ditawar + '/' + f.n, f.fk ? f.lengkap + '/' + f.fk + ' (' + f.kadar + '%)' : '-']),
     styles:{ font:'helvetica', fontSize:7.8, cellPadding:2, textColor:40, valign:'top' },
     columnStyles:{ 0:{ cellWidth:9, halign:'center' }, 1:{ cellWidth:16 }, 2:{ cellWidth:54 }, 3:{ cellWidth:15 }, 4:{ cellWidth:42 }, 7:{ halign:'right' }, 8:{ halign:'right' } },
@@ -5629,7 +5827,10 @@ function pdfSemuaProgram(){
   let y = doc.lastAutoTable.finalY + 6;
   if(y > doc.internal.pageSize.getHeight() - 25){ doc.addPage(); y = 20; }
   doc.setFontSize(7.5); doc.setTextColor(110);
-  doc.text(doc.splitTextToSize('Nombor dokumen: ' + S.program.item.map((x, i) => (i + 1) + '. ' + x.label).join('; '), doc.internal.pageSize.getWidth() - 28), 14, y);
+  const JS = ringkasJantina(S.program.pelajar.filter(r => S.program.senarai.some(p => p.id === r.programId))), tJ = JS.L.aktif + JS.P.aktif + JS.X.aktif;
+  const nota = (tJ ? 'Pelajar aktif mengikut jantina (semua program): Lelaki ' + fmtNombor(JS.L.aktif) + ' (' + pct(JS.L.aktif, tJ) + '%), Perempuan ' + fmtNombor(JS.P.aktif) + ' (' + pct(JS.P.aktif, tJ) + '%)' + (JS.X.aktif ? ', tidak dinyatakan ' + fmtNombor(JS.X.aktif) : '') + '. L = lelaki, P = perempuan. ' : '') +
+    'Nombor dokumen: ' + S.program.item.map((x, i) => (i + 1) + '. ' + x.label).join('; ');
+  doc.text(doc.splitTextToSize(nota, doc.internal.pageSize.getWidth() - 28), 14, y);
   doc.save('Laporan_Pemantauan_Program' + (skopFak() ? '_' + skopFak() : '') + (sesi ? '_' + namaFailSelamat(sesi.nama) : '') + '.pdf'); toast('Laporan PDF dijana.');
 }
 
