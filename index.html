@@ -1759,41 +1759,49 @@ async function janaSijilPdf(id, muatTurun){
 }
 
 /* ---------- carian fail rujukan PdP (staf) ---------- */
+/* Carian fail rujukan PdP: lalai merentas semua sesi (termasuk sesi lepas) supaya dokumentasi kursus lama boleh dirujuk. */
 function bahagianCariRujukan(sid){
-  const kongsi = folderSesi(sid).filter(f => f.kongsi);
-  const q = UI.fk.carian && UI.fk.carian.sesi === sid ? UI.fk.carian.q : '';
-  return `<section class="blok"><div class="seclabel"><span class="eyebrow">Cari fail rujukan PdP</span><span class="mini">Lihat bahan pengajaran yang dimuat naik oleh pensyarah lain bagi sesi ini</span></div>
+  const ss = sesiTersusun(), pilih = UI.fk.rjSesi === undefined ? 'semua' : UI.fk.rjSesi;
+  if(pilih !== 'semua' && !ss.some(s => s.id === pilih)) UI.fk.rjSesi = 'semua';
+  const kongsi = UI.fk.rjSesi === undefined || UI.fk.rjSesi === 'semua'
+    ? [...new Map(S.fk.folder.filter(f => f.kongsi).map(f => [f.label + '|' + f.desc, f])).values()].sort((a, b) => String(a.label).localeCompare(String(b.label), 'ms', { numeric:true }))
+    : folderSesi(UI.fk.rjSesi).filter(f => f.kongsi);
+  const q = UI.fk.carian ? UI.fk.carian.q : '';
+  return `<section class="blok"><div class="seclabel"><span class="eyebrow">Cari fail rujukan PdP</span><span class="mini">Lihat bahan pengajaran yang dimuat naik oleh pensyarah lain, termasuk dokumentasi kursus sesi lepas</span></div>
     <div class="card pad">
       <form class="cari-rujukan" onsubmit="return cariRujukan(event)">
         <div class="cari">${ik('cari')}<input type="search" id="rjQ" value="${esc(q)}" placeholder="Kod atau nama kursus, cth. USL1013 atau AKIDAH" aria-label="Kod atau nama kursus" autocomplete="off"></div>
+        <select class="auto" id="rjSesi" aria-label="Sesi carian" onchange="UI.fk.rjSesi = this.value === 'semua' ? 'semua' : Number(this.value); if(UI.fk.carian) cariRujukan()">
+          <option value="semua" ${(UI.fk.rjSesi || 'semua') === 'semua' ? 'selected' : ''}>Semua sesi</option>${ss.map(s => `<option value="${s.id}" ${UI.fk.rjSesi === s.id ? 'selected' : ''}>${esc(s.nama)}</option>`).join('')}</select>
         <button class="btn btn-primary" type="submit" id="rjBtn">${ik('cari')}Cari</button>
       </form>
       <p class="mini" style="margin-top:10px;line-height:1.7">${kongsi.length
-        ? 'Item yang boleh dirujuk: ' + kongsi.map(f => `<span class="badge b-rujukan" title="${esc(f.desc)}">${esc(f.label)}</span>`).join(' ') + '. Dokumen yang mengandungi maklumat pelajar, markah atau penilaian tidak dikongsi.'
+        ? 'Item yang boleh dirujuk: ' + kongsi.map(f => `<span class="badge b-rujukan" title="${esc(f.desc)}">${esc(f.label)}</span>`).join(' ') + '. Dokumen yang mengandungi maklumat pelajar, markah atau penilaian tidak dikongsi. Kursus anda sendiri daripada sesi lepas turut disenaraikan.'
         : 'Tiada item folder dibuka sebagai rujukan bagi sesi ini.'}</p>
       <div id="fkRujukan"></div>
     </div></section>`;
 }
 async function cariRujukan(ev){
   if(ev) ev.preventDefault();
-  const q = (el('rjQ').value || '').trim(), sid = UI.fk.sesi;
+  const q = (el('rjQ').value || '').trim(), pilih = UI.fk.rjSesi || 'semua';
   if(q.length < 2){ toast('Masukkan sekurang-kurangnya 2 aksara kod atau nama kursus.', 'ralat'); return false; }
   const btn = el('rjBtn'); if(btn) btn.disabled = true;
-  await cuba(async () => { const r = await api('fkCari', { sesi: sid, q }); UI.fk.carian = { sesi: sid, q, res: r }; lukisRujukan(); });
+  await cuba(async () => { const r = await api('fkCari', { sesi: pilih, q }); UI.fk.carian = { pilih, q, res: r }; lukisRujukan(); });
   if(el('rjBtn')) el('rjBtn').disabled = false;
   return false;
 }
 function lukisRujukan(){
   const box = el('fkRujukan'); if(!box) return;
   const c = UI.fk.carian;
-  if(!c || c.sesi !== UI.fk.sesi){ box.innerHTML = ''; return; }
-  const r = c.res, fol = folderSesi(c.sesi);
-  if(!r.hasil.length){ box.innerHTML = `<div class="kosong" style="padding:24px 10px"><div class="serif kosong-tajuk">Tiada kursus ditemui</div><p class="mini">Tiada kursus pensyarah lain yang sepadan dengan "${esc(c.q)}" dalam sesi ini.</p></div>`; return; }
-  box.innerHTML = `<p class="mini" style="margin:14px 0 10px">${r.jumlah} kursus ditemui bagi "<b>${esc(c.q)}</b>"${r.jumlah > r.hasil.length ? `. Dipaparkan ${r.hasil.length} yang pertama; perhalusi carian untuk hasil lain.` : ''}</p>
+  if(!c || c.pilih !== (UI.fk.rjSesi || 'semua')){ box.innerHTML = ''; return; }
+  const r = c.res, skop = c.pilih === 'semua' ? 'semua sesi' : 'sesi ini';
+  if(!r.hasil.length){ box.innerHTML = `<div class="kosong" style="padding:24px 10px"><div class="serif kosong-tajuk">Tiada kursus ditemui</div><p class="mini">Tiada kursus yang sepadan dengan "${esc(c.q)}" dalam ${skop}.</p></div>`; return; }
+  box.innerHTML = `<p class="mini" style="margin:14px 0 10px">${r.jumlah} kursus ditemui bagi "<b>${esc(c.q)}</b>"${c.pilih === 'semua' ? ` dalam ${r.bilSesi} sesi` : ''}${r.jumlah > r.hasil.length ? `. Dipaparkan ${r.hasil.length} yang pertama; perhalusi carian atau pilih sesi untuk hasil lain.` : ''}</p>
     <div class="grid-kursus">${r.hasil.map(k => {
-      const kumpulan = fol.filter(f => k.fail.some(x => x.folderKey === f.key));
+      const fol = folderSesi(k.sesi), kumpulan = fol.filter(f => k.fail.some(x => x.folderKey === f.key));
       return `<div class="card rj-kad">
-        <div><div class="kk-kod">${esc(k.kod)}</div><div class="mini">${esc(k.pensyarah)}${k.fakulti ? ' · ' + esc(k.fakulti) : ''}</div></div>
+        <div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><span class="badge b-neutral">${ik('kalendar', 12)}${esc(k.sesiNama)}</span>${k.milikSaya ? '<span class="badge b-ya">Kursus anda</span>' : ''}</div>
+          <div class="kk-kod">${esc(k.kod)}</div><div class="mini">${esc(k.pensyarah)}${k.fakulti ? ' · ' + esc(k.fakulti) : ''}</div></div>
         ${k.fail.length ? kumpulan.map(f => `<div><div class="rj-item"><span class="fk-lbl">${esc(f.label)}</span><span class="mini">${esc(f.desc)}</span></div>
             <div class="fk-fail" style="padding-left:0;margin-top:6px">${k.fail.filter(x => x.folderKey === f.key).map(x => `<span class="fail-cip">${ikonFail(x.mime, x.nama)}<button class="cip-nama" onclick="lihatFail('fk',${x.id})" title="Lihat ${esc(x.nama)}">${esc(x.nama)}</button><small>${fmtSaiz(x.saiz)}</small></span>`).join('')}</div></div>`).join('')
           : '<p class="mini">Belum ada fail rujukan dimuat naik bagi kursus ini.</p>'}
