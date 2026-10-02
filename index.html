@@ -197,10 +197,11 @@ select.auto{width:auto}
 textarea{resize:vertical;line-height:1.55}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
 label.fld{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:6px}
-.borang{display:grid;gap:14px}
-.dua{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.tiga{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-@media(max-width:560px){.dua,.tiga{grid-template-columns:1fr!important}}
+.borang{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.dua{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tiga{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.borang>*,.dua>*,.tiga>*{min-width:0}
+@media(max-width:560px){.dua,.tiga{grid-template-columns:minmax(0,1fr)!important}}
 .semak{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;color:var(--ink-2);cursor:pointer}
 .semak input{margin-top:3px;width:auto}
 .ralat{color:var(--clay);font-size:13px;font-weight:600}
@@ -290,6 +291,16 @@ details.card[open]>summary .putar{transform:rotate(90deg)}
 .modal-bg{position:fixed;inset:0;z-index:60;background:rgba(19,48,42,.45);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
 .modal{background:var(--surface);border-radius:18px;width:100%;max-width:560px;box-shadow:0 30px 70px -20px rgba(12,40,34,.55);animation:pop .18s ease;position:relative}
 .modal.lebar{max-width:900px}
+.modal.penuh{max-width:1180px}
+.klik-carta{cursor:pointer;transition:box-shadow .15s,border-color .15s}
+.klik-carta:hover,.klik-carta:focus-visible{box-shadow:0 0 0 2px var(--brand);outline:none}
+.nota-had{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--brand);margin-top:4px}
+.p2lo-isi{overflow-wrap:anywhere}
+.p2lo-isi .kad-kepala{flex-wrap:wrap}
+.p2lo-isi .btn{max-width:100%;white-space:normal;height:auto;min-height:32px;text-align:left;line-height:1.35}
+.p2lo-isi textarea{min-height:44px;overflow:hidden}
+.p2lo-isi .jadual-input textarea{min-height:34px;resize:none}
+.p2lo-baca{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-height:40px}
 .modal.kecil{max-width:440px}
 @keyframes pop{from{transform:translateY(8px) scale(.985);opacity:0}to{transform:none;opacity:1}}
 .modal-h{padding:20px 56px 14px 22px;border-bottom:1px solid var(--line)}
@@ -474,6 +485,31 @@ tr.klik{cursor:pointer}
 .p2lo-sem button:disabled{opacity:.55;cursor:default}
 .p2lo-sem b{display:block;font-size:13px}
 .nilai-lemah{color:var(--clay);font-weight:700}
+.nav-bil.merah{background:var(--clay)}
+.mesej-grid{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;height:calc(100vh - 320px);min-height:400px}
+.mesej-senarai,.mesej-benang{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.ms-isi{overflow-y:auto;flex:1}
+.ms-item{display:flex;gap:10px;padding:12px 14px;border:0;border-bottom:1px solid var(--line);border-left:3px solid transparent;background:none;width:100%;text-align:left;cursor:pointer;align-items:flex-start;font:inherit;color:inherit}
+.ms-item:hover{background:var(--surface-2)}
+.ms-item.aktif{background:var(--brand-soft);border-left-color:var(--brand)}
+.ms-teks{min-width:0;flex:1}
+.ms-baris{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ms-nama{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-masa{font-size:11.5px;color:var(--muted);flex:none}
+.ms-pratonton{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.ms-item.belum .ms-pratonton{color:var(--ink);font-weight:600}
+.ms-bil{background:var(--clay);color:#fff;border-radius:999px;font-size:11px;font-weight:800;min-width:20px;height:20px;padding:0 6px;display:inline-grid;place-items:center;flex:none}
+.mb-kepala{display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.mb-isi{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:6px;background:var(--surface-2)}
+.gelembung{max-width:min(75%,560px);padding:9px 13px;border-radius:14px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;font-size:14px}
+.gelembung.saya{align-self:flex-end;background:var(--brand);color:#fff;border-bottom-right-radius:4px}
+.gelembung.dia{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:4px}
+.gelembung small{display:block;font-size:11px;opacity:.75;margin-top:3px;text-align:right}
+.mb-tarikh{align-self:center;font-size:11.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:2px 10px;margin:8px 0 4px}
+.mb-tulis{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);align-items:flex-end}
+.mb-tulis textarea{max-height:160px;min-height:44px;resize:none}
+.mb-kembali{display:none}
+@media(max-width:860px){.mesej-grid{grid-template-columns:minmax(0,1fr)}.mesej-grid.buka .mesej-senarai{display:none}.mesej-grid:not(.buka) .mesej-benang{display:none}.mb-kembali{display:inline-grid}}
 .nav-bil{margin-left:auto;background:var(--gold);color:#fff;border-radius:999px;font-size:11px;font-weight:800;min-width:20px;height:20px;padding:0 6px;display:inline-grid;place-items:center}
 .ttd-kotak{position:relative;border:1px dashed var(--line);border-radius:12px;background:#fff;touch-action:none}
 .ttd-kotak canvas{display:block;width:100%;height:auto;aspect-ratio:3/1;cursor:crosshair;touch-action:none}
@@ -717,6 +753,9 @@ const IKON = {
   luar:'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
   fail:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
   linktree:'<path d="M12 22v-9"/><path d="m5 6 7 7 7-7"/><path d="M4 13h16"/><path d="M12 2v4"/>',
+  mesej:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+  hantar:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
+  besar:'<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/>',
   kamera:'<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
   pautan:'<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
   semak:'<path d="M20 6 9 17l-5-5"/>',
@@ -742,11 +781,12 @@ function keadaanKosong(){
     tetapan:{ sasaranCPD:40, stafLihatSemua:false, kategoriDokumen:[], namaInstitusi:'', daftarKendiri:true, sijilPengarah:'', sijilTtdUid:0 },
     fakulti:[], pensyarah:[], cpd:{ rekod:[], roster:[] }, fk:{ sesi:[], folder:[], kursus:[], fail:[], sijil:[] },
     dokumen:[], ringkasan:null, pentadbiran:{ pengguna:[], log:[] }, paparPenuh:false, skopFakulti:'',
-    program:{ senarai:[], kursus:[], fail:[], lantikan:[], item:[], pelajar:[] }, jana:[], pengesahan:{ saya:[], tugasan:[], semua:[], program:[] } };
+    program:{ senarai:[], kursus:[], fail:[], lantikan:[], item:[], pelajar:[] }, jana:[], pengesahan:{ saya:[], tugasan:[], semua:[], program:[] }, mesej:{ belumBaca:0 } };
 }
 let S = keadaanKosong();
 const UI = {
   halaman:'utama',
+  mesej:{ dengan:null, cari:'', perbualan:null, kenalan:null, benang:null, draf:{}, sibuk:false },
   cpd:{ tahun:null, cari:'', fak:'semua', status:'semua', tag:'semua', sort:'jam', dir:-1, buka:{} },
   fk:{ sesi:null, cari:'', fak:'semua', status:'semua' },
   dok:{ cari:'', kat:'semua', susun:'baru' },
@@ -893,7 +933,7 @@ const MODAL = [];
 function bukaModal(o){
   const bg = document.createElement('div');
   bg.className = 'modal-bg';
-  bg.innerHTML = `<div class="modal ${o.lebar ? 'lebar' : ''} ${o.kecil ? 'kecil' : ''}" role="dialog" aria-modal="true">
+  bg.innerHTML = `<div class="modal ${o.lebar ? 'lebar' : ''} ${o.penuh ? 'penuh' : ''} ${o.kecil ? 'kecil' : ''}" role="dialog" aria-modal="true">
     <div class="modal-h"><h2 class="serif">${esc(o.tajuk || '')}</h2>${o.desk ? `<p class="mini">${esc(o.desk)}</p>` : ''}
       ${o.kunci ? '' : `<button class="btn-ikon modal-x" onclick="tutupModal()" aria-label="Tutup">${ik('x', 18)}</button>`}</div>
     <div class="modal-b">${o.isi || ''}</div>
@@ -1241,8 +1281,8 @@ function masukApp(res, kl){
   el('lgKata').value = '';
   el('splash').hidden = true; el('skrinLogin').hidden = true; el('skrinApp').hidden = false;
   let h = ''; try { h = (location.hash || '').replace('#', ''); } catch(e){ h = ''; }
-  if(['utama','failkursus','cpd','ketuaprogram','dokumentasi','pentadbiran'].includes(h)) UI.halaman = h;
-  lukis();
+  if(['utama','failkursus','cpd','ketuaprogram','dokumentasi','mesej','pentadbiran'].includes(h)) UI.halaman = h;
+  lukis(); mulaPantauMesej();
   if(res.akaunBaharu) toast('Akaun anda telah didaftarkan. Sila tetapkan kata laluan peribadi anda.');
   if(S.pengguna.mestiTukar) modalProfil(true);
 }
@@ -1258,6 +1298,7 @@ function resetPenapis(){
   Object.assign(UI.cpd, { cari:'', fak:'semua', status:'semua', tag:'semua', buka:{} });
   Object.assign(UI.fk, { cari:'', fak:'semua', status:'semua', carian:null });
   Object.assign(UI.dok, { cari:'', kat:'semua' });
+  UI.mesej = { dengan:null, cari:'', perbualan:null, kenalan:null, benang:null, draf:{}, sibuk:false };
   Object.assign(UI.kp, { prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua', kohort:'' });
   Object.assign(UI, { jana:null, templat:null, p2lo:{}, p2loEdit:null, pelajar:{}, plTapis:{ kem:'semua', status:'semua', jantina:'semua', cari:'' }, plPilih:new Set() });
   Object.assign(UI.admin, { tab:'pengguna', cari:'', fak:'semua', cariLog:'' });
@@ -1270,11 +1311,12 @@ const NAV = [
   { id:'cpd', label:'CPD Pensyarah', ikon:'anugerah' },
   { id:'ketuaprogram', label:'Ketua Program', ikon:'topi', kp:true },
   { id:'dokumentasi', label:'Dokumentasi', ikon:'buku' },
+  { id:'mesej', label:'Mesej', ikon:'mesej' },
   { id:'pentadbiran', label:'Pentadbiran', ikon:'tetapan', admin:true }
 ];
 function binaNav(){
   el('nav').innerHTML = `<div class="nav-lbl">Menu</div>` + NAV.filter(n => (!n.admin || isAdmin()) && (!n.kp || lihatKP())).map(n =>
-    `<button class="nav-i ${UI.halaman === n.id ? 'aktif' : ''}" onclick="${n.kp ? 'UI.kp.prog=null;' : ''}pergi('${n.id}')" ${UI.halaman === n.id ? 'aria-current="page"' : ''}>${ik(n.ikon, 18)}<span>${n.label}</span>${n.id === 'dokumentasi' && bilTugasanSah() ? `<span class="nav-bil" title="Dokumen menunggu pengesahan anda">${bilTugasanSah()}</span>` : ''}${n.id === 'failkursus' && bilSijilMenunggu() ? `<span class="nav-bil" title="Permohonan sijil fail kursus menunggu pengesahan">${bilSijilMenunggu()}</span>` : ''}</button>`).join('');
+    `<button class="nav-i ${UI.halaman === n.id ? 'aktif' : ''}" onclick="${n.kp ? 'UI.kp.prog=null;' : ''}pergi('${n.id}')" ${UI.halaman === n.id ? 'aria-current="page"' : ''}>${ik(n.ikon, 18)}<span>${n.label}</span>${n.id === 'dokumentasi' && bilTugasanSah() ? `<span class="nav-bil" title="Dokumen menunggu pengesahan anda">${bilTugasanSah()}</span>` : ''}${n.id === 'mesej' && bilMesej() ? `<span class="nav-bil merah" title="Mesej belum dibaca">${bilMesej()}</span>` : ''}${n.id === 'failkursus' && bilSijilMenunggu() ? `<span class="nav-bil" title="Permohonan sijil fail kursus menunggu pengesahan">${bilSijilMenunggu()}</span>` : ''}</button>`).join('');
   const u = S.pengguna;
   el('sisiKaki').innerHTML = `<button class="sisi-pengguna" onclick="modalProfil(false)" title="Profil dan kata laluan">${avatarPengguna(u)}<span class="sp-teks"><b>${esc(u.nama)}</b><small>${esc(labelPeranan(u))}</small></span></button>
     <button class="nav-i" onclick="logKeluar()">${ik('keluar', 18)}<span>Log keluar</span></button>
@@ -1297,7 +1339,7 @@ function lukis(){
   if(UI.halaman === 'pentadbiran' && !isAdmin()) UI.halaman = 'utama';
   if(UI.halaman === 'ketuaprogram' && !lihatKP()) UI.halaman = 'utama';
   binaNav(); hapusCarta();
-  ({ utama:lukisUtama, failkursus:lukisFK, cpd:lukisCPD, ketuaprogram:lukisKP, dokumentasi:lukisDok, pentadbiran:lukisAdmin }[UI.halaman] || lukisUtama)();
+  ({ utama:lukisUtama, failkursus:lukisFK, cpd:lukisCPD, ketuaprogram:lukisKP, dokumentasi:lukisDok, mesej:lukisMesej, pentadbiran:lukisAdmin }[UI.halaman] || lukisUtama)();
 }
 function lukisSemula(){ const y = window.scrollY; lukis(); window.scrollTo(0, y); }
 async function segarData(){
@@ -1449,6 +1491,7 @@ function lukisUtama(){
       ${!A && isKP() ? `<button class="btn btn-ghost" onclick="UI.kp.prog=null;pergi('ketuaprogram')">${ik('topi')}Dokumentasi program</button>` : ''}</div>
   </section>`;
   if(bilTugasanSah()) h += `<div class="notis info" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${bilTugasanSah()} dokumen</b> menunggu pengesahan dan tandatangan anda.</span><button class="btn btn-primary btn-sm" onclick="UI.sahTab='tugasan';pergi('dokumentasi')">Semak dokumen</button></div>`;
+  if(bilMesej()) h += `<div class="notis info" id="notisMesej" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Anda mempunyai <b>${bilMesej()} mesej</b> belum dibaca.</span><button class="btn btn-primary btn-sm" onclick="pergi('mesej')">Buka mesej</button></div>`;
   if(bilSijilMenunggu()) h += `<div class="notis info" id="notisSijil" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${bilSijilMenunggu()} permohonan sijil</b> penghantaran fail kursus menunggu pengesahan anda.</span><button class="btn btn-primary btn-sm" onclick="bukaSijilMenunggu()">Semak permohonan</button></div>`;
   if(saya()) h += statusSaya(thn, sid);
   h += `<section class="blok"><div class="seclabel"><span class="eyebrow">${fakSaya ? 'Modul portal · ' + esc(fakSaya) : 'Modul portal'}</span></div><div class="${lihatKP() ? 'grid-modul4' : 'grid-3'}">
@@ -3063,12 +3106,12 @@ function bahagianPelajarProgram(p, boleh){
       ${statKad('Kemasukan terkini', R.terkini ? fmtNombor(R.terkini.pelajar) : '-', R.terkini ? esc(R.terkini.kemasukan) : '')}
     </div>
     <div class="grid-rumusan" style="margin-top:16px">
-      <div class="card pad"><h3 class="serif h3">Bilangan pelajar setiap kemasukan</h3><div class="mini">Status semasa pelajar bagi setiap sesi kemasukan</div>
+      <div ${atribKlikCarta('kemasukan', p.id)}><h3 class="serif h3">Bilangan pelajar setiap kemasukan</h3><div class="mini">Status semasa pelajar bagi setiap sesi kemasukan</div>${notaHad(rows.length)}
         <div class="carta-kotak" style="height:290px"><canvas id="chPelajar" role="img" aria-label="Carta bilangan pelajar setiap kemasukan mengikut status"></canvas></div></div>
       <div class="card pad"><h3 class="serif h3">Jumlah pelajar keseluruhan dan graduan</h3><div class="mini">Taburan semua pelajar yang diterima masuk</div>
         <div class="carta-kotak" style="height:290px"><canvas id="chStatusPelajar" role="img" aria-label="Carta taburan pelajar aktif, graduan dan tidak aktif"></canvas></div></div>
     </div>
-    ${bahagianJantina(ringkasJantina(rows), 'program')}
+    ${bahagianJantina(ringkasJantina(rows), 'program', 0, p.id)}
     <div class="card" style="overflow:hidden;margin-top:16px"><div class="jadual-skrol"><table class="grid padat"><thead><tr><th>Sesi kemasukan</th><th class="kanan">Diterima masuk</th><th class="kanan">Aktif</th><th class="kanan">Graduan</th><th class="kanan">Tidak aktif</th>${lama.length ? '<th></th>' : ''}</tr></thead><tbody>
       ${rows.map(r => `<tr class="baris"><td><b>${esc(r.kemasukan)}</b>${r.sumber === 'bilangan' ? ' <span class="badge b-kunci" title="Bilangan dimasukkan secara manual sebelum senarai nama digunakan">Bilangan sahaja (data lama)</span>' : ''}</td><td class="kanan tnum">${fmtNombor(r.pelajar)}</td><td class="kanan tnum">${fmtNombor(r.aktif)}</td><td class="kanan tnum">${fmtNombor(r.graduan)}</td><td class="kanan tnum">${fmtNombor(tidakAktif(r))}</td>
         ${lama.length ? `<td>${r.sumber === 'bilangan' && boleh ? `<div class="aksi-baris"><button class="btn-ikon bahaya" onclick="padamPelajarLama(${r.id})" title="Buang bilangan lama" aria-label="Buang bilangan lama kemasukan ${esc(r.kemasukan)}">${ik('padam', 15)}</button></div>` : ''}</td>` : ''}</tr>`).join('')}
@@ -3151,14 +3194,10 @@ function opsyenCartaKemasukan(rows){
 function cartaPelajarProgram(p){
   const rows = pelajarProgram(p.id); if(!rows.length) return;
   const R = ringkasPelajar(rows);
-  carta('chPelajar', 'bar', dataCartaKemasukan(rows), opsyenCartaKemasukan(rows));
+  const terkini = rows.slice(-HAD_KEMASUKAN);
+  carta('chPelajar', 'bar', dataCartaKemasukan(terkini), opsyenCartaKemasukan(terkini));
   const J = ringkasJantina(rows); cartaJantina(J);
-  if(el('chJantinaKem')){
-    const kr = rows.filter(r => r.jantina), JK = kr.map(r => ringkasJantina([r])), set = (label, k, warna) => ({ label, data: JK.map(j => j[k].jumlah), backgroundColor: warna, borderColor:'#FFFFFF', borderWidth:{ top:2 }, borderSkipped:'bottom', maxBarThickness:38 });
-    carta('chJantinaKem', 'bar', { labels: kr.map(r => r.kemasukan), datasets:[set('Lelaki', 'L', WP.lelaki), set('Perempuan', 'P', WP.perempuan)].concat(J.X.jumlah ? [set('Tidak dinyatakan', 'X', WP.tanpaJantina)] : []) },
-      { plugins:{ legend: LEGENDA_BAWAH, tooltip:{ mode:'index', intersect:false } }, interaction:{ mode:'index', intersect:false },
-        scales:{ x:{ stacked:true, grid:{ display:false }, ticks:{ autoSkip:true, maxRotation:40 } }, y:{ stacked:true, beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } } } });
-  }
+  if(el('chJantinaKem')){ const c = cfgJantinaKemasukan(rows.filter(r => r.jantina).slice(-HAD_KEMASUKAN), J.X.jumlah > 0); carta('chJantinaKem', 'bar', c.data, c.opsyen); }
   carta('chStatusPelajar', 'doughnut', { labels:['Pelajar aktif', 'Graduan', 'Tidak aktif'],
     datasets:[{ data:[R.aktif, R.graduan, R.tidakAktif], backgroundColor:[WP.aktif, WP.graduan, WP.tidakAktif], borderColor:'#FFFFFF', borderWidth:2, hoverOffset:4 }] },
     { cutout:'64%', _tengah:{ teks: fmtNombor(R.pelajar), label:'pelajar diterima masuk' },
@@ -3185,19 +3224,19 @@ function bahagianPelajarSemua(){
     <div class="grid-2" style="margin-top:16px">
       <div class="card pad"><h3 class="serif h3">Pelajar aktif dan graduan mengikut program</h3><div class="mini">Jumlah semasa bagi setiap program</div>
         <div class="carta-kotak" style="height:${tinggi}px"><canvas id="chPelajarProg" role="img" aria-label="Carta pelajar aktif dan graduan mengikut program"></canvas></div></div>
-      <div class="card pad"><h3 class="serif h3">Bilangan pelajar setiap kemasukan</h3><div class="mini">Pelajar diterima masuk mengikut tahun kemasukan, semua program</div>
+      <div ${atribKlikCarta('tahun', 0)}><h3 class="serif h3">Bilangan pelajar setiap kemasukan</h3><div class="mini">Pelajar diterima masuk mengikut tahun kemasukan, semua program</div>${notaHad(dataKemasukanThn().ys.length, 'tahun kemasukan')}
         <div class="carta-kotak" style="height:${tinggi}px"><canvas id="chKemasukanThn" role="img" aria-label="Carta bilangan pelajar diterima masuk mengikut tahun"></canvas></div></div>
     </div>
     ${bahagianJantina(ringkasJantina(S.program.pelajar.filter(r => ps.some(p => p.id === r.programId))), 'semua', tinggi)}</section>`;
 }
 /** Analisis pelajar mengikut jantina (Lelaki / Perempuan). skop 'semua' = semua program; 'program' = satu program. */
-function bahagianJantina(J, skop, tinggi){
+function bahagianJantina(J, skop, tinggi, pid){
   const ada = J.L.jumlah + J.P.jumlah + J.X.jumlah;
   if(!ada) return `<div class="card pad" style="margin-top:16px" id="kadJantina"><h3 class="serif h3">Pelajar mengikut jantina</h3><p class="mini" style="margin-top:6px">Belum ada data jantina. Jantina direkodkan bersama senarai nama pelajar (lajur Jantina, atau dikenal pasti daripada nama bin / binti).</p></div>`;
   const kanan = skop === 'semua'
     ? `<div class="card pad"><h3 class="serif h3">Jantina pelajar aktif mengikut program</h3><div class="mini">Bilangan pelajar aktif lelaki dan perempuan bagi setiap program</div>
         <div class="carta-kotak" style="height:${tinggi}px"><canvas id="chJantinaProg" role="img" aria-label="Carta pelajar aktif lelaki dan perempuan mengikut program"></canvas></div></div>`
-    : `<div class="card pad"><h3 class="serif h3">Jantina pelajar setiap kemasukan</h3><div class="mini">Semua pelajar yang diterima masuk, mengikut sesi kemasukan</div>
+    : `<div ${atribKlikCarta('jantina', pid)}><h3 class="serif h3">Jantina pelajar setiap kemasukan</h3><div class="mini">Semua pelajar yang diterima masuk, mengikut sesi kemasukan</div>${notaHad(pelajarProgram(pid).filter(r => r.jantina).length)}
         <div class="carta-kotak" style="height:290px"><canvas id="chJantinaKem" role="img" aria-label="Carta pelajar lelaki dan perempuan setiap kemasukan"></canvas></div></div>`;
   return `<div class="${skop === 'semua' ? 'grid-2' : 'grid-rumusan'}" style="margin-top:16px" id="kadJantina">
       <div class="card pad"><h3 class="serif h3">Pelajar mengikut jantina</h3><div class="mini">Taburan pelajar aktif lelaki dan perempuan${skop === 'semua' ? ', semua program' : ''}</div>
@@ -3240,12 +3279,55 @@ function cartaPelajarSemua(){
       { label:'Graduan', data: R.map(r => r.graduan), backgroundColor: WP.graduan, borderRadius:4, maxBarThickness:16, categoryPercentage:.7, barPercentage:.9 }] },
     { indexAxis:'y', plugins:{ legend: LEGENDA_BAWAH, tooltip:{ callbacks:{ title: it => { const p = ps[it[0].dataIndex]; return p.kod + ' · ' + p.nama; }, label: c => c.dataset.label + ': ' + fmtNombor(c.parsed.x) } } },
       scales:{ x:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } }, y:{ grid:{ display:false } } } });
+  const c = cfgKemasukanThn(dataKemasukanThn().ys.slice(-HAD_KEMASUKAN));
+  carta('chKemasukanThn', 'bar', c.data, c.opsyen);
+}
+/* Carta kemasukan memaparkan 10 kemasukan terkini sahaja; klik pada kad membuka paparan keseluruhan dalam tetingkap timbul. */
+const HAD_KEMASUKAN = 10;
+function atribKlikCarta(jenis, pid){
+  const js = `cartaPenuh('${jenis}',${Number(pid) || 0})`;
+  return `class="card pad klik-carta" role="button" tabindex="0" title="Klik untuk paparan penuh" onclick="${js}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${js}}"`;
+}
+function notaHad(n, unit){
+  return `<div class="nota-had">${ik('besar', 13)}${n > HAD_KEMASUKAN ? `${HAD_KEMASUKAN} ${unit || 'kemasukan'} terkini daripada ${fmtNombor(n)} · klik untuk paparan penuh` : 'Klik untuk paparan penuh'}</div>`;
+}
+function dataKemasukanThn(){
   const thn = {}, ids = new Set(S.program.senarai.map(p => p.id));
   S.program.pelajar.forEach(r => { const y = tahunKemasukan(r.kemasukan); if(y && ids.has(r.programId)) thn[y] = (thn[y] || 0) + (Number(r.pelajar) || 0); });
-  const ys = Object.keys(thn).sort();
-  carta('chKemasukanThn', 'bar', { labels: ys, datasets:[{ label:'Pelajar diterima masuk', data: ys.map(y => thn[y]), backgroundColor: WP.kemasukan, borderRadius:4, maxBarThickness:42 }] },
-    { plugins:{ tooltip:{ callbacks:{ label: c => fmtNombor(c.parsed.y) + ' pelajar diterima masuk' } } },
-      scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } }, x:{ grid:{ display:false } } } });
+  return { thn, ys: Object.keys(thn).sort() };
+}
+function cfgKemasukanThn(ys){
+  const thn = dataKemasukanThn().thn;
+  return { data:{ labels: ys, datasets:[{ label:'Pelajar diterima masuk', data: ys.map(y => thn[y]), backgroundColor: WP.kemasukan, borderRadius:4, maxBarThickness:42 }] },
+    opsyen:{ plugins:{ tooltip:{ callbacks:{ label: c => fmtNombor(c.parsed.y) + ' pelajar diterima masuk' } } },
+      scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } }, x:{ grid:{ display:false } } } } };
+}
+function cfgJantinaKemasukan(kr, adaX){
+  const JK = kr.map(r => ringkasJantina([r])), set = (label, k, warna) => ({ label, data: JK.map(j => j[k].jumlah), backgroundColor: warna, borderColor:'#FFFFFF', borderWidth:{ top:2 }, borderSkipped:'bottom', maxBarThickness:38 });
+  return { data:{ labels: kr.map(r => r.kemasukan), datasets:[set('Lelaki', 'L', WP.lelaki), set('Perempuan', 'P', WP.perempuan)].concat(adaX ? [set('Tidak dinyatakan', 'X', WP.tanpaJantina)] : []) },
+    opsyen:{ plugins:{ legend: LEGENDA_BAWAH, tooltip:{ mode:'index', intersect:false } }, interaction:{ mode:'index', intersect:false },
+      scales:{ x:{ stacked:true, grid:{ display:false }, ticks:{ autoSkip:false, maxRotation:40 } }, y:{ stacked:true, beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } } } } };
+}
+/** Paparan penuh semua kemasukan dalam tetingkap timbul. jenis: 'kemasukan' | 'jantina' (satu program) atau 'tahun' (semua program). */
+function cartaPenuh(jenis, pid){
+  const p = S.program.senarai.find(x => x.id === pid);
+  let tajuk, desk, n, c;
+  if(jenis === 'tahun'){
+    const ys = dataKemasukanThn().ys; n = ys.length; c = cfgKemasukanThn(ys);
+    tajuk = 'Bilangan pelajar setiap kemasukan'; desk = 'Semua program · ' + n + ' tahun kemasukan';
+  } else {
+    if(!p) return;
+    const rows = pelajarProgram(pid);
+    if(jenis === 'jantina'){ const kr = rows.filter(r => r.jantina); n = kr.length; c = cfgJantinaKemasukan(kr, ringkasJantina(rows).X.jumlah > 0); tajuk = 'Jantina pelajar setiap kemasukan'; }
+    else { n = rows.length; c = { data: dataCartaKemasukan(rows), opsyen: opsyenCartaKemasukan(rows) }; tajuk = 'Bilangan pelajar setiap kemasukan'; }
+    desk = p.kod + ' · ' + p.nama + ' · ' + n + ' kemasukan';
+  }
+  if(!n){ toast('Tiada data kemasukan untuk dipaparkan.', 'ralat'); return; }
+  bukaModal({ tajuk, desk, lebar:true, penuh:true,
+    isi:`<div class="jadual-skrol"><div class="carta-kotak" style="height:440px;min-width:${Math.max(560, n * 62)}px"><canvas id="chPenuh" role="img" aria-label="${esc(tajuk)}: paparan penuh"></canvas></div></div>
+      <p class="mini" style="margin-top:8px">Paparan keseluruhan: ${n} ${jenis === 'tahun' ? 'tahun kemasukan' : 'kemasukan'}.${n * 62 > 1100 ? ' Tatal ke kanan untuk melihat kemasukan lain.' : ''}</p>`,
+    kaki:`<button class="btn btn-primary" onclick="tutupModal()">Tutup</button>` });
+  carta('chPenuh', 'bar', c.data, c.opsyen);
 }
 /** Kad modul Ketua Program di halaman Utama. */
 function kadModulKP(){
@@ -3516,7 +3598,7 @@ function modalP2lo(pid, n){
   const data = JSON.parse(JSON.stringify(r ? r.data : p2loKosong(p, UI.kp.kohort, n)));
   (data.kursus || []).forEach(k => { k.clo = (k.clo || []).map(v => v == null ? '' : v); while(k.clo.length < 5) k.clo.push(''); k.plo = k.plo || []; while(k.plo.length < 5) k.plo.push(''); });
   UI.p2loEdit = { pid, kohort: UI.kp.kohort, n, id: r ? r.id : 0, data, boleh };
-  bukaModal({ tajuk:'P2LO · Semester ' + n + ' · Kohort ' + UI.kp.kohort, desk: p.kod + ' · ' + p.nama, lebar:true, kunci: boleh,
+  bukaModal({ tajuk:'P2LO · Semester ' + n + ' · Kohort ' + UI.kp.kohort, desk: p.kod + ' · ' + p.nama, lebar:true, penuh:true, kunci: boleh,
     isi:'<div id="p2loIsi"></div>',
     kaki: boleh ? `${r ? `<button class="btn btn-danger" style="margin-right:auto" onclick="padamP2lo()">${ik('padam', 15)}Padam semester</button>` : ''}<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" onclick="simpanP2lo()">Simpan semester ${n}</button>`
       : `<button class="btn btn-ghost" onclick="tutupModal()">Tutup</button>` });
@@ -3524,15 +3606,15 @@ function modalP2lo(pid, n){
 }
 function lukisModalP2lo(){
   const box = el('p2loIsi'), E = UI.p2loEdit; if(!box || !E) return;
-  const d = E.data, b = E.boleh, f = (label, path, v, o) => b ? mdn(label, path, v, o) : `<div><div class="fld">${esc(label)}</div><div style="white-space:pre-wrap">${esc(v || '-')}</div></div>`;
-  box.innerHTML = `<div oninput="p2loUbah(event)" onchange="p2loUbah(event)" class="borang">
+  const d = E.data, b = E.boleh, f = (label, path, v, o) => b ? mdn(label, path, v, o) : `<div><div class="fld">${esc(label)}</div><div class="p2lo-baca">${esc(v || '-')}</div></div>`;
+  box.innerHTML = `<div oninput="p2loUbah(event)" onchange="p2loUbah(event)" class="borang p2lo-isi">
     <div class="tiga">${f('Tahun / semester pengajian', 'tahunSem', d.tahunSem)}${f('Sesi akademik', 'sesi', d.sesi, { ph:'2024/2025 Sem 1' })}${f('Jumlah pelajar semasa', 'pelajarSemasa', d.pelajarSemasa, { jenis:'number' })}</div>
     ${f('1. Ringkasan pencapaian keseluruhan kohort', 'ringkasan', d.ringkasan, { textarea:true, rows:3, ph:'Ulasan prestasi kohort bagi semester ini' })}
     <div><div class="kad-kepala" style="margin:4px 0 8px"><b>2. Analisis hasil pembelajaran kursus (CLO)</b>
       ${b ? `<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="isiP2loStruktur()">${ik('salin', 14)}Isi daripada struktur</button><button class="btn btn-ghost btn-sm" onclick="modalImportP2lo()">${ik('naik', 14)}Import CSV / Excel</button><button class="btn btn-ghost btn-sm" onclick="ubahP2lo(d => d.kursus.push(kursusP2loKosong()))">${ik('tambah', 14)}Kursus</button></div>` : ''}</div>
-      <div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:${b ? 1000 : 760}px"><thead><tr><th style="width:110px">Kod</th><th>Nama kursus</th><th style="width:80px">Bil. pelajar</th>${[1, 2, 3, 4].map(i => `<th style="width:104px">CLO${i} (%) / PLO</th>`).join('')}<th style="width:96px">Status</th>${b ? '<th style="width:40px"></th>' : ''}</tr></thead><tbody>
+      <div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:${b ? 1000 : 760}px"><thead><tr><th style="width:110px">Kod</th><th style="min-width:200px">Nama kursus</th><th style="width:80px">Bil. pelajar</th>${[1, 2, 3, 4].map(i => `<th style="width:104px">CLO${i} (%) / PLO</th>`).join('')}<th style="width:96px">Status</th>${b ? '<th style="width:40px"></th>' : ''}</tr></thead><tbody>
       ${(d.kursus || []).length ? d.kursus.map((k, i) => { const p = 'kursus.' + i + '.';
-        return `<tr><td>${b ? mdn(null, p + 'kod', k.kod) : '<b>' + esc(k.kod) + '</b>'}</td><td>${b ? mdn(null, p + 'nama', k.nama) : esc(k.nama)}</td><td>${b ? mdn(null, p + 'bil', k.bil, { jenis:'number' }) : esc(k.bil)}</td>
+        return `<tr><td>${b ? mdn(null, p + 'kod', k.kod) : '<b>' + esc(k.kod) + '</b>'}</td><td>${b ? mdn(null, p + 'nama', k.nama, { textarea:true, rows:1 }) : esc(k.nama)}</td><td>${b ? mdn(null, p + 'bil', k.bil, { jenis:'number' }) : esc(k.bil)}</td>
           ${[0, 1, 2, 3].map(j => `<td>${b ? mdn(null, p + 'clo.' + j, k.clo[j], { jenis:'number' }) + '<div style="height:4px"></div>' + mdn(null, p + 'plo.' + j, k.plo[j], { pilihan: PLO_PILIHAN }) : (adaNilai(k.clo[j]) ? fmt(k.clo[j]) + '%' + (k.plo[j] ? '<div class="mini">' + esc(k.plo[j]) + '</div>' : '') : '-')}</td>`).join('')}
           <td id="p2loSt${i}">${chipStatusP2lo(statusKursusP2lo(k))}</td>${b ? `<td><button class="btn-ikon bahaya" onclick="ubahP2lo(d => d.kursus.splice(${i},1))" aria-label="Buang kursus">${ik('x', 14)}</button></td>` : ''}</tr>`; }).join('')
         : `<tr><td colspan="${b ? 9 : 8}"><div class="kosong" style="padding:18px">Belum ada kursus. ${b ? 'Tekan Isi daripada struktur untuk menyenaraikan kursus semester ini.' : ''}</div></td></tr>`}
@@ -3548,8 +3630,12 @@ function lukisModalP2lo(){
           ${b ? `<td><button class="btn-ikon bahaya" onclick="ubahP2lo(d => d.cqi.splice(${i},1))" aria-label="Buang tindakan">${ik('x', 14)}</button></td>` : ''}</tr>`).join('')}</tbody></table></div>` : '<p class="mini">Tiada tindakan penambahbaikan direkodkan.</p>'}</div>
     <div class="dua">${f('Disahkan melalui mesyuarat', 'mesyuarat', d.mesyuarat, { ph:'cth. Mesyuarat Jabatan Bil. 2/2025' })}${f('Tarikh mesyuarat', 'tarikhMesyuarat', d.tarikhMesyuarat)}</div>
   </div>`;
+  box.querySelectorAll('textarea').forEach(tinggiAuto);
   kemasP2loPLO();
 }
+/** Tinggi ruangan tulisan mengikut kandungan supaya teks panjang tidak tersembunyi atau melimpah. */
+function tinggiAuto(t){ if(!t || t.tagName !== 'TEXTAREA') return; t.style.height = 'auto'; t.style.height = (t.scrollHeight + 2) + 'px'; }
+let _tinggiT; window.addEventListener('resize', () => { clearTimeout(_tinggiT); _tinggiT = setTimeout(() => document.querySelectorAll('#p2loIsi textarea, #mbTeks').forEach(tinggiAuto), 120); });
 function chipStatusP2lo(s){ return s ? `<span class="badge ${s === 'Penuh' ? 'b-ya' : (s === 'Sebahagian' ? 'b-hampir' : 'b-tidak')}">${s}</span>` : '<span class="mini">-</span>'; }
 function rekodEdit(){ const E = UI.p2loEdit, rek = Object.assign({}, rekodKohort(E.pid, E.kohort)); rek[E.n] = { data: E.data }; return rek; }
 function kemasP2loPLO(){
@@ -3563,6 +3649,7 @@ function kemasP2loPLO(){
 function p2loUbah(e){
   const t = e.target; if(!t.dataset || !t.dataset.p || !UI.p2loEdit) return;
   setLaluan(UI.p2loEdit.data, t.dataset.p, t.value);
+  tinggiAuto(t);
   if(/^kursus\./.test(t.dataset.p)) kemasP2loPLO();
 }
 function ubahP2lo(fn){ fn(UI.p2loEdit.data); lukisModalP2lo(); }
@@ -5435,6 +5522,148 @@ function lukisJadualLog(){
   const v = (S.pentadbiran.log || []).filter(l => !q || [l.emel, l.tindakan, l.butiran].join(' ').toLowerCase().includes(q));
   el('jadualLog').innerHTML = v.length ? v.map(l => `<tr class="baris"><td class="mini" style="white-space:nowrap">${esc(fmtMasa(l.masa))}</td><td class="mini">${esc(l.emel)}</td><td><b style="font-size:13px">${esc(l.tindakan)}</b></td><td class="mini">${esc(l.butiran)}</td></tr>`).join('')
     : `<tr><td colspan="4"><div class="kosong">Tiada aktiviti.</div></td></tr>`;
+}
+
+/* ============================ MESEJ ============================ */
+/* Mesej peribadi antara akaun portal. Perbualan dimuatkan apabila halaman Mesej dibuka; bilangan mesej belum dibaca
+   disemak setiap 60 saat (setiap 20 saat semasa halaman Mesej dibuka) hanya apabila tab pelayar sedang dipaparkan. */
+const MESEJ_MAKS = 2000;
+function bilMesej(){ return (S.mesej && S.mesej.belumBaca) || 0; }
+function setBelumBaca(n){
+  const lama = bilMesej(); S.mesej = Object.assign({}, S.mesej, { belumBaca: Number(n) || 0 });
+  if(lama !== bilMesej()){ binaNav(); const nt = el('notisMesej'); if(nt && !bilMesej()) nt.remove(); }
+}
+function masaMesej(m, penuh){
+  const [d, t] = String(m || '').split(' '), hhmm = (t || '').slice(0, 5), n = new Date(), hari = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+  if(penuh) return hhmm;
+  return d === hari ? hhmm : fmtTarikh(d);
+}
+function lukisMesej(){
+  tajukAtas('Mesej', 'Mesej antara akaun portal');
+  const M = UI.mesej;
+  el('halaman').innerHTML = `<div class="kepala"><div><div class="eyebrow">Komunikasi</div><h1 class="serif">Mesej</h1>
+      <p class="mini">Hantar mesej kepada staf lain yang mempunyai akaun portal. Hanya pengirim dan penerima boleh membaca perbualan.</p></div>
+    <div class="kepala-aksi"><button class="btn btn-primary" onclick="modalMesejBaharu()">${ik('tambah')}Mesej baharu</button></div></div>
+    <div class="mesej-grid ${M.dengan ? 'buka' : ''}" id="mesejGrid">
+      <div class="card mesej-senarai"><div class="toolbar"><div class="cari">${ik('cari')}<input type="search" id="msCari" placeholder="Cari perbualan" value="${esc(M.cari)}" oninput="UI.mesej.cari=this.value;lukisSenaraiMesej()" aria-label="Cari perbualan"></div></div>
+        <div class="ms-isi" id="msSenarai"><div class="mini" style="padding:16px">Memuatkan perbualan…</div></div></div>
+      <div class="card mesej-benang" id="mbBenang"></div>
+    </div>`;
+  if(M.perbualan) lukisSenaraiMesej();
+  muatSenaraiMesej();
+  if(M.dengan) bukaBenang(M.dengan); else lukisBenangKosong();
+}
+function lukisBenangKosong(){
+  const b = el('mbBenang'); if(!b) return;
+  b.innerHTML = `<div class="kosong" style="margin:auto;padding:30px"><div style="color:var(--muted)">${ik('mesej', 34)}</div><div class="serif kosong-tajuk">Pilih perbualan</div>
+    <p class="mini">Pilih perbualan di sebelah kiri, atau tekan <b>Mesej baharu</b> untuk menghantar mesej kepada staf lain.</p></div>`;
+}
+async function muatSenaraiMesej(){
+  try {
+    const r = await api('mesejSenarai', {}, { senyap:true, tanpaMesej:true });
+    UI.mesej.perbualan = r.perbualan; UI.mesej.kenalan = r.kenalan; setBelumBaca(r.belumBaca); lukisSenaraiMesej();
+  } catch(e){ const b = el('msSenarai'); if(b) b.innerHTML = `<p class="ralat" style="padding:16px">${esc(e.message)}</p>`; }
+}
+function lukisSenaraiMesej(){
+  const box = el('msSenarai'); if(!box || !UI.mesej.perbualan) return;
+  const q = UI.mesej.cari.toLowerCase().trim(), L = UI.mesej.perbualan.filter(c => !q || (c.nama + ' ' + c.label).toLowerCase().includes(q));
+  box.innerHTML = L.length ? L.map(c => `<button class="ms-item ${c.id === UI.mesej.dengan ? 'aktif' : ''} ${c.belumBaca ? 'belum' : ''}" onclick="bukaBenang(${c.id})">
+      <span class="avatar">${esc(inisial(c.nama))}</span>
+      <span class="ms-teks"><span class="ms-baris"><span class="ms-nama">${esc(c.nama)}</span><span class="ms-masa">${esc(masaMesej(c.akhir.masa))}</span></span>
+        <span class="ms-baris"><span class="ms-pratonton">${c.akhir.dariSaya ? 'Anda: ' : ''}${esc(c.akhir.teks)}</span>${c.belumBaca ? `<span class="ms-bil" aria-label="${c.belumBaca} belum dibaca">${c.belumBaca}</span>` : ''}</span></span></button>`).join('')
+    : `<div class="kosong" style="padding:24px 14px"><p class="mini">${q ? 'Tiada perbualan sepadan.' : 'Belum ada perbualan. Tekan Mesej baharu untuk bermula.'}</p></div>`;
+}
+async function bukaBenang(id){
+  const M = UI.mesej, tukar = M.dengan !== id;
+  M.dengan = id; if(tukar) M.benang = null;
+  const g = el('mesejGrid'); if(g) g.classList.add('buka');
+  lukisSenaraiMesej();
+  if(!M.benang && el('mbBenang')) el('mbBenang').innerHTML = '<div class="mini" style="padding:16px">Memuatkan mesej…</div>';
+  try { terimaBenang(await api('mesejBuka', { dengan:id }, { senyap:true, tanpaMesej:true }), true); }
+  catch(e){ toast(e.message, 'ralat'); M.dengan = null; lukisBenangKosong(); if(g) g.classList.remove('buka'); }
+}
+function tutupBenang(){ UI.mesej.dengan = null; UI.mesej.benang = null; const g = el('mesejGrid'); if(g) g.classList.remove('buka'); lukisSenaraiMesej(); lukisBenangKosong(); }
+function terimaBenang(r, penuh){
+  const M = UI.mesej; if(!r || !r.dengan || r.dengan.id !== M.dengan) return;
+  const lama = M.benang, sama = lama && JSON.stringify(lama.mesej) === JSON.stringify(r.mesej);
+  M.benang = r; if(r.perbualan) M.perbualan = r.perbualan; setBelumBaca(r.belumBaca); lukisSenaraiMesej();
+  if(penuh || !el('mbTeks')) lukisBenang(); else if(!sama) lukisIsiBenang();
+}
+function lukisBenang(){
+  const b = el('mbBenang'), B = UI.mesej.benang; if(!b || !B) return;
+  const d = B.dengan, draf = UI.mesej.draf[d.id] || '';
+  b.innerHTML = `<div class="mb-kepala"><button class="btn-ikon mb-kembali" onclick="tutupBenang()" aria-label="Kembali ke senarai perbualan">${ik('kiri', 18)}</button>
+      ${d.gambar ? `<span class="avatar foto"><img src="${esc(d.gambar)}" alt=""></span>` : `<span class="avatar">${esc(inisial(d.nama))}</span>`}
+      <div style="min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.nama)}</b><div class="mini">${esc(d.label || '')}</div></div></div>
+    <div class="mb-isi" id="mbIsi" aria-live="polite"></div>
+    ${d.aktif ? `<div class="mb-tulis"><textarea id="mbTeks" rows="1" maxlength="${MESEJ_MAKS}" placeholder="Tulis mesej kepada ${esc(d.nama)}… (Enter untuk hantar, Shift+Enter untuk baris baharu)" aria-label="Tulis mesej"
+        oninput="UI.mesej.draf[${d.id}]=this.value;tinggiAuto(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();hantarMesej()}">${esc(draf)}</textarea>
+      <button class="btn btn-primary" id="mbHantar" onclick="hantarMesej()" aria-label="Hantar mesej">${ik('hantar', 16)}<span class="sm-sembunyi">Hantar</span></button></div>`
+    : `<div class="notis" style="margin:12px">Akaun ini tidak aktif lagi. Mesej baharu tidak boleh dihantar.</div>`}`;
+  lukisIsiBenang();
+  const t = el('mbTeks'); if(t){ tinggiAuto(t); if(window.innerWidth > 860) t.focus(); }
+}
+function lukisIsiBenang(){
+  const box = el('mbIsi'), B = UI.mesej.benang; if(!box || !B) return;
+  const saya = S.pengguna.id; let tarikh = '', h = B.lebih ? '<div class="mb-tarikh">Mesej yang lebih lama tidak dipaparkan</div>' : '';
+  const akhirSaya = [...B.mesej].reverse().find(m => m.dari === saya);
+  B.mesej.forEach(m => {
+    const d = String(m.masa).slice(0, 10);
+    if(d !== tarikh){ tarikh = d; h += `<div class="mb-tarikh">${esc(fmtTarikh(d))}</div>`; }
+    const milik = m.dari === saya;
+    h += `<div class="gelembung ${milik ? 'saya' : 'dia'}">${esc(m.teks)}<small>${esc(masaMesej(m.masa, true))}${milik && m === akhirSaya ? (m.dibaca ? ' · Dibaca' : ' · Dihantar') : ''}</small></div>`;
+  });
+  if(!B.mesej.length) h += `<div class="mini" style="margin:auto;text-align:center">Belum ada mesej. Mulakan perbualan dengan ${esc(B.dengan.nama)}.</div>`;
+  box.innerHTML = h; box.scrollTop = box.scrollHeight;
+}
+async function hantarMesej(){
+  const M = UI.mesej, t = el('mbTeks'), btn = el('mbHantar'); if(!t || !M.dengan || M.sibuk) return;
+  const teks = t.value.trim(); if(!teks) return;
+  if(teks.length > MESEJ_MAKS){ toast('Mesej terlalu panjang (had ' + MESEJ_MAKS + ' aksara).', 'ralat'); return; }
+  M.sibuk = true; if(btn) btn.disabled = true;
+  try {
+    const r = await api('mesejHantar', { kepada: M.dengan, teks }, { senyap:true, tanpaMesej:true });
+    M.draf[M.dengan] = ''; t.value = ''; tinggiAuto(t);
+    terimaBenang(r);
+    if(!M.perbualan || !M.kenalan) muatSenaraiMesej();
+  } catch(e){ toast(e.message, 'ralat'); }
+  finally { M.sibuk = false; if(el('mbHantar')) el('mbHantar').disabled = false; if(el('mbTeks')) el('mbTeks').focus(); }
+}
+async function modalMesejBaharu(){
+  if(!UI.mesej.kenalan){ try { const r = await api('mesejSenarai', {}, { tanpaMesej:true }); UI.mesej.perbualan = r.perbualan; UI.mesej.kenalan = r.kenalan; } catch(e){ toast(e.message, 'ralat'); return; } }
+  bukaModal({ tajuk:'Mesej baharu', desk:'Pilih penerima mesej', isi:`<div class="cari" style="margin-bottom:10px">${ik('cari')}<input type="search" id="mbCariKenalan" placeholder="Cari nama, jawatan atau fakulti" oninput="lukisKenalanMesej(this.value)" aria-label="Cari penerima"></div>
+    <div id="mbKenalan" style="max-height:52vh;overflow-y:auto;border:1px solid var(--line);border-radius:12px"></div>`,
+    kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button>` });
+  lukisKenalanMesej(''); fokus('mbCariKenalan');
+}
+function lukisKenalanMesej(q){
+  const box = el('mbKenalan'); if(!box) return; q = String(q || '').toLowerCase().trim();
+  const L = (UI.mesej.kenalan || []).filter(k => !q || (k.nama + ' ' + k.label).toLowerCase().includes(q));
+  box.innerHTML = L.length ? L.slice(0, 200).map(k => `<button class="ms-item" onclick="mulaMesejDengan(${k.id})"><span class="avatar">${esc(inisial(k.nama))}</span><span class="ms-teks"><span class="ms-nama">${esc(k.nama)}</span><div class="ms-pratonton">${esc(k.label)}</div></span></button>`).join('')
+    + (L.length > 200 ? `<p class="mini" style="padding:10px 14px">${L.length - 200} lagi. Perhalusi carian.</p>` : '')
+    : `<p class="mini" style="padding:14px">Tiada akaun sepadan.</p>`;
+}
+function mulaMesejDengan(id){
+  tutupModal(); UI.mesej.dengan = id; UI.mesej.benang = null;
+  if(UI.halaman !== 'mesej') pergi('mesej'); else bukaBenang(id);
+}
+function mulaPantauMesej(){
+  clearInterval(UI.pemasaMesej); UI.detikMesej = 0;
+  UI.pemasaMesej = setInterval(pantauMesej, 20000);
+}
+async function pantauMesej(){
+  if(!S.pengguna || !S.token || document.hidden || UI.mesej.sibuk) return;
+  UI.detikMesej = (UI.detikMesej || 0) + 1;
+  try {
+    if(UI.halaman === 'mesej'){
+      if(UI.mesej.dengan) terimaBenang(await api('mesejBuka', { dengan: UI.mesej.dengan }, { senyap:true, tanpaMesej:true }));
+      else await muatSenaraiMesej();
+    } else if(UI.detikMesej % 3 === 0){
+      const lama = bilMesej(), r = await api('mesejBilangan', {}, { senyap:true, tanpaMesej:true });
+      setBelumBaca(r.belumBaca);
+      if(r.belumBaca > lama) toast('Anda menerima mesej baharu.');
+    }
+  } catch(e){ /* cuba lagi pada detik seterusnya */ }
 }
 
 /* ============================ PROFIL & KATA LALUAN ============================ */
