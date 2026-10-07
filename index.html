@@ -3462,7 +3462,7 @@ function bahagianPelajarSemua(){
     return h + kosong('Belum ada data pelajar', urus ? 'Masukkan senarai pelajar (sesi kemasukan, no. matrik dan nama) di halaman program, atau import senarai semua program sekali gus daripada fail CSV atau Excel.' : 'Data pelajar belum dikemas kini oleh Ketua Program.',
       urus ? `<button class="btn btn-primary" onclick="modalImportPelajar(0)">${ik('naik')}Import senarai pelajar</button>` : '') + '</section>';
   }
-  const tinggi = Math.max(220, ada.length * 46 + 80);
+  const tinggi = TINGGI_CARTA;
   return h + `<div class="grid-4">
       ${statKad('Jumlah pelajar keseluruhan', fmtNombor(R.aktif), 'pelajar aktif semua program')}
       ${statKad('Jumlah graduan', fmtNombor(R.graduan), `${R.kemasukan} kemasukan direkodkan`)}
@@ -3470,7 +3470,7 @@ function bahagianPelajarSemua(){
       ${statKad('Tidak aktif', fmtNombor(R.tidakAktif), 'berhenti atau tarik diri')}
     </div>
     <div class="grid-2" style="margin-top:16px">
-      <div class="card pad"><h3 class="serif h3">Pelajar aktif dan graduan mengikut program</h3><div class="mini">Jumlah semasa bagi setiap program</div>
+      <div ${atribKlikCarta('program', 0)}><h3 class="serif h3">Pelajar aktif dan graduan mengikut program</h3><div class="mini">Jumlah semasa bagi setiap program</div>${notaHad(ada.length, 'program', HAD_PROG_CARTA, 'teratas')}
         <div class="carta-kotak" style="height:${tinggi}px"><canvas id="chPelajarProg" role="img" aria-label="Carta pelajar aktif dan graduan mengikut program"></canvas></div></div>
       <div ${atribKlikCarta('tahun', 0)}><h3 class="serif h3">Bilangan pelajar setiap kemasukan</h3><div class="mini">Pelajar diterima masuk mengikut tahun kemasukan, semua program</div>${notaHad(dataKemasukanThn().ys.length, 'tahun kemasukan')}
         <div class="carta-kotak" style="height:${tinggi}px"><canvas id="chKemasukanThn" role="img" aria-label="Carta bilangan pelajar diterima masuk mengikut tahun"></canvas></div></div>
@@ -3482,7 +3482,7 @@ function bahagianJantina(J, skop, tinggi, pid){
   const ada = J.L.jumlah + J.P.jumlah + J.X.jumlah;
   if(!ada) return `<div class="card pad" style="margin-top:16px" id="kadJantina"><h3 class="serif h3">Pelajar mengikut jantina</h3><p class="mini" style="margin-top:6px">Belum ada data jantina. Jantina direkodkan bersama senarai nama pelajar (lajur Jantina, atau dikenal pasti daripada nama bin / binti).</p></div>`;
   const kanan = skop === 'semua'
-    ? `<div class="card pad"><h3 class="serif h3">Jantina pelajar aktif mengikut program</h3><div class="mini">Bilangan pelajar aktif lelaki dan perempuan bagi setiap program</div>
+    ? `<div ${atribKlikCarta('jantinaProg', 0)}><h3 class="serif h3">Jantina pelajar aktif mengikut program</h3><div class="mini">Bilangan pelajar aktif lelaki dan perempuan bagi setiap program</div>${notaHad(progJantina().length, 'program', HAD_PROG_CARTA, 'teratas')}
         <div class="carta-kotak" style="height:${tinggi}px"><canvas id="chJantinaProg" role="img" aria-label="Carta pelajar aktif lelaki dan perempuan mengikut program"></canvas></div></div>`
     : `<div ${atribKlikCarta('jantina', pid)}><h3 class="serif h3">Jantina pelajar setiap kemasukan</h3><div class="mini">Semua pelajar yang diterima masuk, mengikut sesi kemasukan</div>${notaHad(pelajarProgram(pid).filter(r => r.jantina).length)}
         <div class="carta-kotak" style="height:290px"><canvas id="chJantinaKem" role="img" aria-label="Carta pelajar lelaki dan perempuan setiap kemasukan"></canvas></div></div>`;
@@ -3509,24 +3509,41 @@ function cartaJantina(J){
       plugins:{ legend: gabungDalam(LEGENDA_BAWAH, { labels:{ generateLabels: c => Chart.overrides.doughnut.plugins.legend.labels.generateLabels(c).map((l, i) => Object.assign(l, { text: l.text + ': ' + fmtNombor(c.data.datasets[0].data[i]) + ' (' + pct(c.data.datasets[0].data[i], jum) + '%)' })) } }),
         tooltip:{ callbacks:{ label: c => c.label + ': ' + fmtNombor(c.parsed) + ' (' + pct(c.parsed, jum) + '%)' } } } });
 }
+/* Carta mengikut program: kad memaparkan 8 program teratas (lajur menegak, tinggi tetap); klik kad untuk senarai penuh. */
+const HAD_PROG_CARTA = 8, TINGGI_CARTA = 280;
+function progPelajar(){
+  return S.program.senarai.filter(p => pelajarProgram(p.id).length).map(p => ({ p, r: ringkasPelajar(pelajarProgram(p.id)) }))
+    .sort((a, b) => (b.r.aktif + b.r.graduan) - (a.r.aktif + a.r.graduan) || a.p.kod.localeCompare(b.p.kod));
+}
+function progJantina(){
+  return S.program.senarai.map(p => ({ p, j: ringkasJantina(pelajarProgram(p.id)) })).filter(x => x.j.L.aktif + x.j.P.aktif + x.j.X.aktif > 0)
+    .sort((a, b) => (b.j.L.aktif + b.j.P.aktif) - (a.j.L.aktif + a.j.P.aktif) || a.p.kod.localeCompare(b.p.kod));
+}
+/** Pilihan paksi bagi carta bar program: menegak (kad) atau mendatar (paparan penuh). */
+function paksiProg(mendatar, tindan){
+  const nilai = { beginAtZero:true, stacked: !!tindan, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } }, kategori = { stacked: !!tindan, grid:{ display:false }, ticks:{ autoSkip:false, maxRotation: mendatar ? 0 : 45, font:{ size:11 } } };
+  return mendatar ? { indexAxis:'y', scales:{ x: nilai, y: kategori } } : { scales:{ x: kategori, y: nilai } };
+}
+function cfgPelajarProg(L, mendatar){
+  const set = (label, data, warna) => ({ label, data, backgroundColor: warna, borderRadius:4, maxBarThickness: mendatar ? 14 : 26, categoryPercentage:.72, barPercentage:.9 });
+  return { data:{ labels: L.map(x => x.p.kod), datasets:[set('Pelajar aktif', L.map(x => x.r.aktif), WP.aktif), set('Graduan', L.map(x => x.r.graduan), WP.graduan)] },
+    opsyen: Object.assign(paksiProg(mendatar), { plugins:{ legend: LEGENDA_BAWAH, tooltip:{ callbacks:{ title: it => { const x = L[it[0].dataIndex]; return x.p.kod + ' · ' + x.p.nama; },
+      label: c => c.dataset.label + ': ' + fmtNombor(mendatar ? c.parsed.x : c.parsed.y) } } } }) };
+}
+function cfgJantinaProg(L, mendatar){
+  const set = (label, k, warna) => ({ label, data: L.map(x => x.j[k].aktif), backgroundColor: warna, borderColor:'#FFFFFF', borderWidth: mendatar ? { right:2 } : { top:2 }, borderSkipped: mendatar ? 'left' : 'bottom', maxBarThickness: mendatar ? 16 : 34 });
+  const adaX = L.some(x => x.j.X.aktif);
+  return { data:{ labels: L.map(x => x.p.kod), datasets:[set('Lelaki', 'L', WP.lelaki), set('Perempuan', 'P', WP.perempuan)].concat(adaX ? [set('Tidak dinyatakan', 'X', WP.tanpaJantina)] : []) },
+    opsyen: Object.assign(paksiProg(mendatar, true), { interaction:{ mode:'index', intersect:false }, plugins:{ legend: LEGENDA_BAWAH, tooltip:{ mode:'index', intersect:false, callbacks:{
+      title: it => { const x = L[it[0].dataIndex]; return x.p.kod + ' · ' + x.p.nama; },
+      label: c => { const j = L[c.dataIndex].j, t = j.L.aktif + j.P.aktif + j.X.aktif, v = mendatar ? c.parsed.x : c.parsed.y; return c.dataset.label + ': ' + fmtNombor(v) + ' (' + pct(v, t) + '%)'; } } } } }) };
+}
 function cartaPelajarSemua(){
   const ps = S.program.senarai.filter(p => pelajarProgram(p.id).length); if(!ps.length) return;
-  const R = ps.map(p => ringkasPelajar(pelajarProgram(p.id)));
   cartaJantina(ringkasJantina(S.program.pelajar.filter(r => ps.some(p => p.id === r.programId))));
-  if(el('chJantinaProg')){
-    const JP = ps.map(p => ringkasJantina(pelajarProgram(p.id)));
-    carta('chJantinaProg', 'bar', { labels: ps.map(p => p.kod), datasets:[
-        { label:'Lelaki', data: JP.map(j => j.L.aktif), backgroundColor: WP.lelaki, borderRadius:4, maxBarThickness:16, categoryPercentage:.7, barPercentage:.9 },
-        { label:'Perempuan', data: JP.map(j => j.P.aktif), backgroundColor: WP.perempuan, borderRadius:4, maxBarThickness:16, categoryPercentage:.7, barPercentage:.9 }] },
-      { indexAxis:'y', plugins:{ legend: LEGENDA_BAWAH, tooltip:{ callbacks:{ title: it => { const p = ps[it[0].dataIndex]; return p.kod + ' · ' + p.nama; },
-          label: c => { const j = JP[c.dataIndex], t = j.L.aktif + j.P.aktif; return c.dataset.label + ': ' + fmtNombor(c.parsed.x) + ' (' + pct(c.parsed.x, t) + '%)'; } } } },
-        scales:{ x:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } }, y:{ grid:{ display:false } } } });
-  }
-  carta('chPelajarProg', 'bar', { labels: ps.map(p => p.kod), datasets:[
-      { label:'Pelajar aktif', data: R.map(r => r.aktif), backgroundColor: WP.aktif, borderRadius:4, maxBarThickness:16, categoryPercentage:.7, barPercentage:.9 },
-      { label:'Graduan', data: R.map(r => r.graduan), backgroundColor: WP.graduan, borderRadius:4, maxBarThickness:16, categoryPercentage:.7, barPercentage:.9 }] },
-    { indexAxis:'y', plugins:{ legend: LEGENDA_BAWAH, tooltip:{ callbacks:{ title: it => { const p = ps[it[0].dataIndex]; return p.kod + ' · ' + p.nama; }, label: c => c.dataset.label + ': ' + fmtNombor(c.parsed.x) } } },
-      scales:{ x:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } }, y:{ grid:{ display:false } } } });
+  if(el('chJantinaProg')){ const c = cfgJantinaProg(progJantina().slice(0, HAD_PROG_CARTA), false); carta('chJantinaProg', 'bar', c.data, c.opsyen); }
+  const cp = cfgPelajarProg(progPelajar().slice(0, HAD_PROG_CARTA), false);
+  carta('chPelajarProg', 'bar', cp.data, cp.opsyen);
   const c = cfgKemasukanThn(dataKemasukanThn().ys.slice(-HAD_KEMASUKAN));
   carta('chKemasukanThn', 'bar', c.data, c.opsyen);
 }
@@ -3536,8 +3553,9 @@ function atribKlikCarta(jenis, pid){
   const js = `cartaPenuh('${jenis}',${Number(pid) || 0})`;
   return `class="card pad klik-carta" role="button" tabindex="0" title="Klik untuk paparan penuh" onclick="${js}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${js}}"`;
 }
-function notaHad(n, unit){
-  return `<div class="nota-had">${ik('besar', 13)}${n > HAD_KEMASUKAN ? `${HAD_KEMASUKAN} ${unit || 'kemasukan'} terkini daripada ${fmtNombor(n)} · klik untuk paparan penuh` : 'Klik untuk paparan penuh'}</div>`;
+function notaHad(n, unit, had, sifat){
+  had = had || HAD_KEMASUKAN;
+  return `<div class="nota-had">${ik('besar', 13)}${n > had ? `${had} ${unit || 'kemasukan'} ${sifat || 'terkini'} daripada ${fmtNombor(n)} · klik untuk paparan penuh` : 'Klik untuk paparan penuh'}</div>`;
 }
 function dataKemasukanThn(){
   const thn = {}, ids = new Set(S.program.senarai.map(p => p.id));
@@ -3559,8 +3577,12 @@ function cfgJantinaKemasukan(kr, adaX){
 /** Paparan penuh semua kemasukan dalam tetingkap timbul. jenis: 'kemasukan' | 'jantina' (satu program) atau 'tahun' (semua program). */
 function cartaPenuh(jenis, pid){
   const p = S.program.senarai.find(x => x.id === pid);
-  let tajuk, desk, n, c;
-  if(jenis === 'tahun'){
+  let tajuk, desk, n, c, mendatar = false;
+  if(jenis === 'program' || jenis === 'jantinaProg'){
+    const L = jenis === 'program' ? progPelajar() : progJantina();
+    n = L.length; c = jenis === 'program' ? cfgPelajarProg(L, true) : cfgJantinaProg(L, true); mendatar = true;
+    tajuk = jenis === 'program' ? 'Pelajar aktif dan graduan mengikut program' : 'Jantina pelajar aktif mengikut program'; desk = 'Semua program · ' + n + ' program';
+  } else if(jenis === 'tahun'){
     const ys = dataKemasukanThn().ys; n = ys.length; c = cfgKemasukanThn(ys);
     tajuk = 'Bilangan pelajar setiap kemasukan'; desk = 'Semua program · ' + n + ' tahun kemasukan';
   } else {
@@ -3570,10 +3592,13 @@ function cartaPenuh(jenis, pid){
     else { n = rows.length; c = { data: dataCartaKemasukan(rows), opsyen: opsyenCartaKemasukan(rows) }; tajuk = 'Bilangan pelajar setiap kemasukan'; }
     desk = p.kod + ' · ' + p.nama + ' · ' + n + ' kemasukan';
   }
-  if(!n){ toast('Tiada data kemasukan untuk dipaparkan.', 'ralat'); return; }
+  if(!n){ toast('Tiada data untuk dipaparkan.', 'ralat'); return; }
+  const unit = mendatar ? 'program' : (jenis === 'tahun' ? 'tahun kemasukan' : 'kemasukan'), h = Math.max(260, n * (jenis === 'program' ? 40 : 30) + 90);
   bukaModal({ tajuk, desk, lebar:true, penuh:true,
-    isi:`<div class="jadual-skrol"><div class="carta-kotak" style="height:440px;min-width:${Math.max(560, n * 62)}px"><canvas id="chPenuh" role="img" aria-label="${esc(tajuk)}: paparan penuh"></canvas></div></div>
-      <p class="mini" style="margin-top:8px">Paparan keseluruhan: ${n} ${jenis === 'tahun' ? 'tahun kemasukan' : 'kemasukan'}.${n * 62 > 1100 ? ' Tatal ke kanan untuk melihat kemasukan lain.' : ''}</p>`,
+    isi: mendatar ? `<div style="max-height:66vh;overflow-y:auto;padding-right:4px"><div class="carta-kotak" style="height:${h}px"><canvas id="chPenuh" role="img" aria-label="${esc(tajuk)}: paparan penuh"></canvas></div></div>
+      <p class="mini" style="margin-top:8px">Paparan keseluruhan: ${n} program, disusun mengikut bilangan pelajar.${h > 560 ? ' Tatal ke bawah untuk melihat program lain.' : ''}</p>`
+    : `<div class="jadual-skrol"><div class="carta-kotak" style="height:440px;min-width:${Math.max(560, n * 62)}px"><canvas id="chPenuh" role="img" aria-label="${esc(tajuk)}: paparan penuh"></canvas></div></div>
+      <p class="mini" style="margin-top:8px">Paparan keseluruhan: ${n} ${unit}.${n * 62 > 1100 ? ' Tatal ke kanan untuk melihat kemasukan lain.' : ''}</p>`,
     kaki:`<button class="btn btn-primary" onclick="tutupModal()">Tutup</button>` });
   carta('chPenuh', 'bar', c.data, c.opsyen);
 }
@@ -5826,8 +5851,10 @@ async function muatStatistikAwam(){
 function lukisStatistikAwam(r){
   const box = el('statAwam'); if(!box || !r) return;
   const J = r.jantina || { L:0, P:0, X:0 }, P = r.program || [], fk = r.fk, cpd = r.cpd, T = r.jumlah || {};
-  const tinggi = n => Math.max(200, n * 34 + 70);
   const pa = P.filter(p => p.aktif).sort((a, b) => b.aktif - a.aktif), pg = P.filter(p => p.graduan).sort((a, b) => b.graduan - a.graduan);
+  /* 8 program teratas; selebihnya digabungkan sebagai "Lain-lain" supaya carta kekal padat */
+  const padat = (L, k) => L.length <= HAD_PROG_CARTA ? L : L.slice(0, HAD_PROG_CARTA - 1).concat([{ kod:'Lain-lain', nama: (L.length - HAD_PROG_CARTA + 1) + ' program lain', [k]: L.slice(HAD_PROG_CARTA - 1).reduce((a, x) => a + x[k], 0), lain:true }]);
+  const notaLain = L => L.length > HAD_PROG_CARTA ? `<p class="mini" style="margin-top:6px">${HAD_PROG_CARTA - 1} program teratas; ${L.length - HAD_PROG_CARTA + 1} program lain digabungkan sebagai "Lain-lain".</p>` : '';
   const kad = (tajuk, sub, isi) => `<div class="card pad sa-kad"><h3 class="serif h3">${esc(tajuk)}</h3><div class="mini">${sub}</div>${isi}</div>`;
   const kanvas = (id, h, label) => `<div class="carta-kotak" style="height:${h}px"><canvas id="${id}" role="img" aria-label="${esc(label)}"></canvas></div>`;
   const kosongC = t => `<p class="mini" style="padding:28px 0;text-align:center">${t}</p>`;
@@ -5837,8 +5864,8 @@ function lukisStatistikAwam(r){
     <div class="grid-4">${statKad('Program akademik', fmtNombor(T.program || 0), 'program aktif')}${statKad('Pelajar aktif', fmtNombor(T.aktif || 0), 'semua program', 'var(--brand)')}
       ${statKad('Graduan', fmtNombor(T.graduan || 0), 'kumulatif semua program', 'var(--gold)')}${statKad('Pensyarah', fmtNombor(T.pensyarah || 0), 'staf akademik berdaftar')}</div>
     <div class="grid-2">
-      ${kad('Pelajar aktif mengikut program', 'Bilangan pelajar aktif semasa bagi setiap program', pa.length ? kanvas('saAktif', tinggi(pa.length), 'Carta pelajar aktif mengikut program') : kosongC('Belum ada data pelajar.'))}
-      ${kad('Graduan mengikut program', 'Bilangan graduan kumulatif bagi setiap program', pg.length ? kanvas('saGraduan', tinggi(pg.length), 'Carta graduan mengikut program') : kosongC('Belum ada data graduan.'))}
+      ${kad('Pelajar aktif mengikut program', 'Bilangan pelajar aktif semasa bagi setiap program', pa.length ? kanvas('saAktif', 260, 'Carta pelajar aktif mengikut program') + notaLain(pa) : kosongC('Belum ada data pelajar.'))}
+      ${kad('Graduan mengikut program', 'Bilangan graduan kumulatif bagi setiap program', pg.length ? kanvas('saGraduan', 260, 'Carta graduan mengikut program') + notaLain(pg) : kosongC('Belum ada data graduan.'))}
     </div>
     <div class="grid-3">
       ${kad('Pelajar aktif mengikut jantina', 'Semua program', J.L + J.P + J.X ? kanvas('saJantina', 250, 'Carta pelajar aktif mengikut jantina') : kosongC('Belum ada data jantina.'))}
@@ -5850,11 +5877,12 @@ function lukisStatistikAwam(r){
   box.hidden = false;
   const lp = el('lgStatPautan'); if(lp) lp.hidden = false;
   if(typeof Chart === 'undefined') return;
-  const hbar = (id, L, kunci, label, warna) => carta(id, 'bar', { labels: L.map(p => p.kod), datasets:[{ label, data: L.map(p => p[kunci]), backgroundColor: warna, borderRadius:5, maxBarThickness:22 }] },
-    { indexAxis:'y', plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ title: it => { const p = L[it[0].dataIndex]; return p.kod + ' · ' + p.nama; }, label: c => label + ': ' + fmtNombor(c.parsed.x) } } },
-      scales:{ x:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } }, y:{ grid:{ display:false } } } });
-  if(pa.length) hbar('saAktif', pa, 'aktif', 'Pelajar aktif', WP.aktif);
-  if(pg.length) hbar('saGraduan', pg, 'graduan', 'Graduan', WP.graduan);
+  const lajur = (id, L0, kunci, label, warna) => { const L = padat(L0, kunci);
+    carta(id, 'bar', { labels: L.map(p => p.kod), datasets:[{ label, data: L.map(p => p[kunci]), backgroundColor: L.map(p => p.lain ? WP.tidakAktif : warna), borderRadius:5, maxBarThickness:30 }] },
+      { plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ title: it => { const p = L[it[0].dataIndex]; return p.lain ? p.nama : p.kod + ' · ' + p.nama; }, label: c => label + ': ' + fmtNombor(c.parsed.y) } } },
+        scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#EFEAD9' } }, x:{ grid:{ display:false }, ticks:{ autoSkip:false, maxRotation:45, font:{ size:11 } } } } }); };
+  if(pa.length) lajur('saAktif', pa, 'aktif', 'Pelajar aktif', WP.aktif);
+  if(pg.length) lajur('saGraduan', pg, 'graduan', 'Graduan', WP.graduan);
   const donat = (id, label, data, warna, tengah, tlabel) => { const jum = data.reduce((a, b) => a + b, 0);
     carta(id, 'doughnut', { labels: label, datasets:[{ data, backgroundColor: warna, borderColor:'#FFFFFF', borderWidth:2, hoverOffset:4 }] },
       { cutout:'62%', _tengah:{ teks: tengah, label: tlabel },
