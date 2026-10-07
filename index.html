@@ -796,16 +796,16 @@ function keadaanKosong(){
     tetapan:{ sasaranCPD:40, stafLihatSemua:false, kategoriDokumen:[], namaInstitusi:'', daftarKendiri:true, statistikAwam:true, sijilPengarah:'', sijilTtdUid:0 },
     fakulti:[], pensyarah:[], cpd:{ rekod:[], roster:[] }, fk:{ sesi:[], folder:[], kursus:[], fail:[], sijil:[] },
     dokumen:[], ringkasan:null, pentadbiran:{ pengguna:[], log:[] }, paparPenuh:false, skopFakulti:'',
-    program:{ senarai:[], kursus:[], fail:[], lantikan:[], item:[], pelajar:[] }, jana:[], pengesahan:{ saya:[], tugasan:[], semua:[], program:[] }, mesej:{ belumBaca:0 } };
+    program:{ senarai:[], kursus:[], fail:[], lantikan:[], item:[], pelajar:[], struktur:[], pilihFK:[] }, jana:[], pengesahan:{ saya:[], tugasan:[], semua:[], program:[] }, mesej:{ belumBaca:0 } };
 }
 let S = keadaanKosong();
 const UI = {
   halaman:'utama',
   mesej:{ dengan:null, cari:'', perbualan:null, kenalan:null, benang:null, draf:{}, sibuk:false },
-  cpd:{ tahun:null, cari:'', fak:'semua', status:'semua', tag:'semua', sort:'jam', dir:-1, buka:{} },
+  cpd:{ tahun:null, cari:'', fak:'semua', status:'semua', tag:'semua', sort:'jam', dir:-1, buka:{}, progAk:null },
   fk:{ sesi:null, cari:'', fak:'semua', status:'semua' },
   dok:{ cari:'', kat:'semua', susun:'baru' },
-  kp:{ prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua', kohort:'' },
+  kp:{ prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua', kohort:'', struktur:{}, fkStruktur:{}, pkPilih:new Set() },
   jana:null, templat:null, p2lo:{}, p2loEdit:null, importFn:null, sahTab:'tugasan', ttd:null, sijilTab:'menunggu', pelajar:{}, plTapis:{ kem:'semua', status:'semua', jantina:'semua', cari:'' }, plPilih:new Set(),
   admin:{ tab:'pengguna', cari:'', fak:'semua', cariLog:'' },
   sandaran:null, folderDraf:[], fakDraf:[], dokJenis:'fail', dokFail:null
@@ -1081,15 +1081,28 @@ function pecahKod(s){ return String(s || '').split(/[,;]+/).map(normKod).filter(
 /** Kod fail kursus (cth. "USL1013 : AKIDAH") sepadan dengan kod struktur program (cth. "USL1013")? */
 function kodSepadan(fkKod, kod){ const s = normKod(fkKod), c = normKod(kod); return !!c && s.indexOf(c) === 0 && !/[A-Z0-9]/.test(s.charAt(c.length)); }
 function programIni(){ return S.program.senarai.find(p => p.id === UI.kp.prog) || null; }
-function kursusProgram(pid){
-  return S.program.kursus.filter(k => k.programId === pid).sort((a, b) =>
-    (!a.semester - !b.semester) || String(a.semester || '').localeCompare(String(b.semester || ''), 'ms', { numeric:true }) || (a.susunan - b.susunan) || a.kod.localeCompare(b.kod));
+function strukturProg(pid){ return (S.program.struktur || []).filter(x => x.programId === pid).sort((a, b) => (a.susunan - b.susunan) || (a.id - b.id)); }
+/** Kursus struktur program. Dengan stId: kursus dalam struktur itu sahaja; tanpa stId: gabungan semua struktur (satu baris bagi setiap kod). */
+function kursusProgram(pid, stId){
+  let L = S.program.kursus.filter(k => k.programId === pid && (!stId || k.strukturId === stId));
+  if(!stId){
+    const urut = {}; strukturProg(pid).forEach((x, i) => { urut[x.id] = i; });
+    const dah = new Set();
+    L = L.slice().sort((a, b) => (urut[a.strukturId] ?? 99) - (urut[b.strukturId] ?? 99) || (a.susunan - b.susunan))
+      .filter(k => { const x = kodAsas(k.kod); if(dah.has(x)) return false; dah.add(x); return true; });
+  }
+  return L.sort((a, b) => (!a.semester - !b.semester) || String(a.semester || '').localeCompare(String(b.semester || ''), 'ms', { numeric:true }) || (a.susunan - b.susunan) || a.kod.localeCompare(b.kod));
 }
-/** Kursus fail kursus yang sepadan dengan kod semasa atau kod terdahulu kursus struktur program. */
-function fkBagiKursusProgram(c, sid){
+/** Pilihan Ketua Program bagi pensyarah sesuatu kursus (sesi tertentu), atau null jika semua pensyarah dipaparkan. */
+function pilihanFK(pid, sid, kod){ return (S.program.pilihFK || []).find(x => x.programId === pid && x.sesi === sid && x.kod === kodAsas(kod)) || null; }
+/** Kursus fail kursus yang sepadan dengan kod semasa atau kod terdahulu kursus struktur program.
+    Jika Ketua Program telah memilih pensyarah bagi kursus itu (kursus dikongsi seperti MPU), hanya pendaftaran yang dipilih dikira; semua=true mengabaikan pilihan. */
+function fkBagiKursusProgram(c, sid, semua){
   const kods = [c.kod, ...pecahKod(c.kodLama)];
-  return S.fk.kursus.filter(k => (sid == null || k.sesi === sid) && kods.some(x => kodSepadan(k.kod, x)));
+  return S.fk.kursus.filter(k => (sid == null || k.sesi === sid) && kods.some(x => kodSepadan(k.kod, x)))
+    .filter(k => { if(semua || !c.programId) return true; const pil = pilihanFK(c.programId, k.sesi, c.kod); return !pil || pil.fkIds.includes(k.id); });
 }
+const CORAK_KURSUS_KONGSI = /wajib|mpu|ppt|elektif\s*(terbuka|bebas)|open|universiti|institusi|umum/i;
 function failProgram(pid, key){ return S.program.fail.filter(f => f.programId === pid && (key == null || f.itemKey === key)); }
 function statusItemProg(p, key){ return (p.status || {})[key] === 'TB' ? 'TB' : (failProgram(p.id, key).length ? 'YA' : 'TIDAK'); }
 function ringkasDokProg(p){
@@ -1311,12 +1324,12 @@ async function logKeluar(){
 function sesiTamat(){ simpan.del('ppa_token'); S = keadaanKosong(); tutupSemuaModal(); resetPenapis(); tunjukLogin('Sesi anda telah tamat. Sila log masuk semula.'); }
 /** Kosongkan penapis dan carian supaya tidak terbawa kepada pengguna seterusnya. */
 function resetPenapis(){
-  Object.assign(UI.cpd, { cari:'', fak:'semua', status:'semua', tag:'semua', buka:{} });
+  Object.assign(UI.cpd, { cari:'', fak:'semua', status:'semua', tag:'semua', buka:{}, progAk:null });
   Object.assign(UI.fk, { cari:'', fak:'semua', status:'semua', carian:null });
   Object.assign(UI.dok, { cari:'', kat:'semua' });
   UI.mesej = { dengan:null, cari:'', perbualan:null, kenalan:null, benang:null, draf:{}, sibuk:false };
   UI.t4 = null;
-  Object.assign(UI.kp, { prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua', kohort:'' });
+  Object.assign(UI.kp, { prog:null, sesi:null, cari:'', tapis:'semua', cariProg:'', fak:'semua', kohort:'', struktur:{}, fkStruktur:{}, pkPilih:new Set() });
   Object.assign(UI, { jana:null, templat:null, p2lo:{}, p2loEdit:null, pelajar:{}, plTapis:{ kem:'semua', status:'semua', jantina:'semua', cari:'' }, plPilih:new Set() });
   Object.assign(UI.admin, { tab:'pengguna', cari:'', fak:'semua', cariLog:'' });
 }
@@ -2369,6 +2382,7 @@ function lukisCPD(){
   const tahunList = tahunCPDSenarai(), A = isAdmin();
   if(!UI.cpd.tahun || !tahunList.includes(UI.cpd.tahun)) UI.cpd.tahun = (S.ringkasan && tahunList.includes(S.ringkasan.tahunCPD)) ? S.ringkasan.tahunCPD : tahunList[0];
   const thn = UI.cpd.tahun;
+  if(UI.cpd.progAk && S.paparPenuh) return lukisCPDProgAk(tahunList);
   let h = `<div class="kepala"><div><div class="eyebrow">Modul · CPD Pensyarah</div><h1 class="serif">Laporan CPD Pensyarah</h1>
       <p class="mini">Sasaran ${S.tetapan.sasaranCPD} jam CPD setahun bagi setiap pensyarah. Tahap: <b style="color:var(--brand-deep)">Tercapai</b> (sama atau melebihi sasaran), <b style="color:#7E4C0E">Hampir</b> (75% hingga bawah sasaran), <b style="color:#9C321E">Rendah</b> (bawah 75%).</p></div>
     <div class="kepala-aksi">
@@ -2389,6 +2403,7 @@ function menuCPD(thn){
     <button onclick="csvCPD('ringkas',${thn})">${ik('jadual')}CSV ringkasan</button>
     <button onclick="csvCPD('terperinci',${thn})">${ik('jadual')}CSV terperinci</button>
     <button onclick="modalLaporanCPD()">${ik('carta')}Laporan fakulti / individu / program</button>
+    ${S.program.senarai.length ? `<button onclick="bukaCPDProgAk()">${ik('topi')}Laporan CPD staf pengajar program akademik</button>` : ''}
     ${A ? `<div class="dd-sep"></div><button onclick="modalPensyarahCPD(0)">${ik('pengguna')}Tambah pensyarah ke tahun ${thn}</button><button onclick="modalImportCPD()">${ik('naik')}Import rekod (CSV)</button><button onclick="modalSasaran()">${ik('tetapan')}Sasaran jam CPD</button>` : ''}
   </div></div>`;
 }
@@ -2731,7 +2746,8 @@ let LAP_FORMAT = 'pdf';
 function modalLaporanCPD(){
   LAP_FORMAT = 'pdf';
   bukaModal({ tajuk:'Laporan fakulti / individu / program', desk:'Muat turun laporan CPD bagi tahun ' + UI.cpd.tahun + '.', isi:`<div class="borang">
-    <div><label class="fld" for="lapJenis">Jenis laporan</label><select id="lapJenis" onchange="lapKemas()"><option value="fakulti">Mengikut fakulti</option><option value="individu">Mengikut individu</option><option value="program">Mengikut program / kursus</option></select></div>
+    <div><label class="fld" for="lapJenis">Jenis laporan</label><select id="lapJenis" onchange="lapKemas()"><option value="fakulti">Mengikut fakulti</option><option value="individu">Mengikut individu</option><option value="program">Mengikut program / kursus CPD</option>${S.program.senarai.length ? '<option value="progak">Staf pengajar program akademik</option>' : ''}</select></div>
+    <div id="lapSesiWrap" hidden><label class="fld" for="lapSesi">Sesi pengajian</label><select id="lapSesi"><option value="0">Semua sesi</option>${sesiTersusun().map(x => `<option value="${x.id}">${esc(x.nama)}</option>`).join('')}</select></div>
     <div><label class="fld" for="lapSasaran" id="lapSasaranLbl">Pilih fakulti</label><select id="lapSasaran" onchange="lapProgram()"></select></div>
     <div id="lapProgWrap" hidden><label class="fld" for="lapProg">Program / kursus</label><select id="lapProg"></select></div>
     <div><span class="fld" style="display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:6px">Format fail</span><div class="seg" id="lapFormat"><button type="button" class="aktif" onclick="lapSetFormat('pdf',this)">PDF</button><button type="button" onclick="lapSetFormat('csv',this)">CSV</button></div></div>
@@ -2742,8 +2758,11 @@ function modalLaporanCPD(){
 function lapSetFormat(f, b){ LAP_FORMAT = f; document.querySelectorAll('#lapFormat button').forEach(x => x.classList.remove('aktif')); b.classList.add('aktif'); }
 function lapKemas(){
   const j = el('lapJenis').value, sel = el('lapSasaran'), thn = UI.cpd.tahun, rows = barisCPD(thn);
-  el('lapProgWrap').hidden = j !== 'program';
-  if(j === 'fakulti'){
+  el('lapProgWrap').hidden = j !== 'program'; el('lapSesiWrap').hidden = j !== 'progak';
+  if(j === 'progak'){
+    el('lapSasaranLbl').textContent = 'Pilih program akademik';
+    sel.innerHTML = S.program.senarai.map(p => `<option value="${p.id}">${esc(p.kod)} · ${esc(p.nama)}</option>`).join('') || '<option value="">Tiada program</option>';
+  } else if(j === 'fakulti'){
     el('lapSasaranLbl').textContent = 'Pilih fakulti';
     const ada = senaraiFakID().filter(f => rows.some(r => r.p.fakulti === f));
     sel.innerHTML = ada.map(f => `<option value="${esc(f)}">${esc(f)} - ${esc(namaFak(f))}</option>`).join('') || '<option value="">Tiada data</option>';
@@ -2772,6 +2791,11 @@ function janaLaporan(){
   if(!v){ err.textContent = 'Tiada data bagi pilihan ini.'; err.hidden = false; return; }
   if(j === 'fakulti'){ if(pdf) pdfCPDFakulti(v, thn); else csvCPDFakulti(v, thn); }
   else if(j === 'individu'){ if(pdf) pdfCPDIndividu(Number(v), thn); else csvCPDIndividu(Number(v), thn); }
+  else if(j === 'progak'){
+    const sid = Number(el('lapSesi').value) || 0;
+    if(!barisCPDProgAk(Number(v), sid, thn).length){ err.textContent = 'Tiada staf pengajar bagi program dan sesi ini. Pastikan struktur program telah ditetapkan dalam modul Ketua Program.'; err.hidden = false; return; }
+    if(pdf) pdfCPDProgAk(Number(v), sid, thn); else csvCPDProgAk(Number(v), sid, thn);
+  }
   else {
     const k = el('lapProg').value || 'semua';
     if(!rekodProgram(v, k, thn).length){ err.textContent = 'Tiada rekod program bagi pilihan ini.'; err.hidden = false; return; }
@@ -2811,6 +2835,119 @@ function csvCPDProgram(kat, kursus, thn){
   muatTurunCSV('Laporan_Program_CPD_' + thn + '.csv', [['Kategori','Kursus / Bengkel','Hashtag','Catatan','Jam Program','Nama Peserta','Fakulti','Jawatan','Status Jawatan','Tarikh Mula','Tarikh Tamat','Jam Peserta'],
     ...recs.map(x => [x.r.kategori, x.r.kursus, x.r.tag || '', x.r.catatan || '', fmt(jamProg[x.r.kursus]), x.p.nama, x.p.fakulti, x.p.jawatan, x.p.status, x.r.tarikh || '', x.r.tarikhTamat || '', fmt(x.r.jam)])]);
   toast('Laporan program (CSV) dimuat turun.');
+}
+
+/* ---------- Laporan CPD staf pengajar program akademik ----------
+   Staf dikenal pasti daripada rekod modul Ketua Program: kursus dalam struktur program (semua struktur) dipadankan dengan
+   pendaftaran fail kursus pensyarah mengikut kod kursus, termasuk pilihan pensyarah oleh KP bagi kursus yang dikongsi. */
+function pengajarProgram(pid, sid){
+  const out = new Map();
+  kursusProgram(pid).forEach(c => fkBagiKursusProgram(c, sid || null).forEach(k => {
+    let o = out.get(k.pid); if(!o){ o = { pid: k.pid, kursus: new Map() }; out.set(k.pid, o); }
+    const kod = kodAsas(c.kod), e = o.kursus.get(kod) || { kod: c.kod, nama: c.nama || '', sesi: new Set() };
+    e.sesi.add(k.sesi); o.kursus.set(kod, e);
+  }));
+  return [...out.values()];
+}
+function barisCPDProgAk(pid, sid, thn){
+  const s = S.tetapan.sasaranCPD, jam = {}, fak = skopFak(), urut = {};
+  sesiTersusun().forEach((x, i) => { urut[x.id] = i; });
+  S.cpd.rekod.forEach(r => { if(r.tahun === thn) jam[r.pid] = (jam[r.pid] || 0) + (Number(r.jam) || 0); });
+  return pengajarProgram(pid, sid).map(o => {
+    const p = pensyarahThn(o.pid, thn), luar = !!fak && p.fakulti !== fak, j = jam[o.pid] || 0;
+    const kursus = [...o.kursus.values()].map(e => ({ kod: e.kod, nama: e.nama, sesi: [...e.sesi].sort((a, b) => (urut[a] ?? 99) - (urut[b] ?? 99)) })).sort((a, b) => a.kod.localeCompare(b.kod));
+    return { p, jam: luar ? 0 : j, tier: luar ? 'luar' : tierCPD(j), jurang: luar ? 0 : Math.max(0, s - j), luar, kursus };
+  }).sort((a, b) => (a.luar - b.luar) || (b.jam - a.jam) || a.p.nama.localeCompare(b.p.nama));
+}
+function ringkasCPDProgAk(rows){
+  const dlm = rows.filter(r => !r.luar), c = { capai:0, hampir:0, rendah:0 }; dlm.forEach(r => { c[r.tier]++; });
+  return { n: dlm.length, luar: rows.length - dlm.length, c, belum: dlm.filter(r => r.jam <= 0).length,
+    kadar: dlm.length ? Math.round(c.capai / dlm.length * 100) : 0, purata: dlm.length ? dlm.reduce((a, r) => a + r.jam, 0) / dlm.length : 0 };
+}
+function teksKursusProgAk(r, sid){ return r.kursus.map(k => k.kod + (sid ? '' : ' (' + k.sesi.map(tajukSesi).join(', ') + ')')).join('; '); }
+function namaSesiProgAk(sid){ const x = S.fk.sesi.find(y => y.id === sid); return sid && x ? 'Sesi ' + x.nama : 'Semua sesi'; }
+function bukaCPDProgAk(){
+  const ps = S.program.senarai; if(!ps.length) return;
+  const lama = UI.cpd.progAk || {};
+  UI.cpd.progAk = { prog: ps.some(p => p.id === lama.prog) ? lama.prog : ps[0].id, sesi: lama.sesi != null ? lama.sesi : (sesiTersusun()[0] || {}).id || 0, cari:'' };
+  window.scrollTo(0, 0); lukisCPD();
+}
+function tutupCPDProgAk(){ UI.cpd.progAk = null; lukisCPD(); window.scrollTo(0, 0); }
+function lukisCPDProgAk(tahunList){
+  const G = UI.cpd.progAk, ps = S.program.senarai, thn = UI.cpd.tahun, s = S.tetapan.sasaranCPD;
+  if(!ps.some(p => p.id === G.prog)) G.prog = ps[0].id;
+  const p = ps.find(x => x.id === G.prog), rows = barisCPDProgAk(p.id, G.sesi, thn), R = ringkasCPDProgAk(rows), adaStruktur = kursusProgram(p.id).length > 0;
+  let h = `<div class="kepala"><div><button class="btn-teks" style="margin:0 0 6px -6px;display:inline-flex;align-items:center;gap:4px" onclick="tutupCPDProgAk()">${ik('kiri', 14)}Laporan CPD Pensyarah</button>
+      <div class="eyebrow">Modul · CPD Pensyarah</div><h1 class="serif">CPD staf pengajar program</h1>
+      <p class="mini">Pencapaian CPD bagi staf akademik yang mengajar kursus dalam program terpilih. Staf dikenal pasti daripada struktur program dan pendaftaran fail kursus dalam modul Ketua Program, termasuk pilihan pensyarah oleh KP bagi kursus yang dikongsi.</p></div>
+    <div class="kepala-aksi"><select class="auto" style="font-weight:700" onchange="UI.cpd.tahun=+this.value;lukisCPD()" aria-label="Tahun CPD">${tahunList.map(y => `<option value="${y}" ${y === thn ? 'selected' : ''}>CPD ${y}</option>`).join('')}</select>
+      <div class="dd"><button class="btn btn-ghost" onclick="togolDD(event,this)">${ik('turun')}<span class="sm-sembunyi">Laporan</span></button><div class="dd-menu">
+        <button onclick="pdfCPDProgAk(${p.id},${G.sesi},${thn})">${ik('fail')}Laporan PDF</button><button onclick="csvCPDProgAk(${p.id},${G.sesi},${thn},'xlsx')">${ik('jadual')}Excel (.xlsx)</button><button onclick="csvCPDProgAk(${p.id},${G.sesi},${thn},'csv')">${ik('jadual')}CSV</button></div></div></div></div>
+    <div class="card" style="overflow:hidden;margin-bottom:16px"><div class="toolbar" style="flex-wrap:wrap;gap:8px">
+      <select class="auto" id="cpaProg" style="font-weight:700;max-width:100%" onchange="UI.cpd.progAk.prog=Number(this.value);lukisCPD()" aria-label="Program akademik">${ps.map(x => `<option value="${x.id}" ${x.id === p.id ? 'selected' : ''}>${esc(x.kod)} · ${esc(x.nama)}</option>`).join('')}</select>
+      <select class="auto" id="cpaSesi" onchange="UI.cpd.progAk.sesi=Number(this.value);lukisCPD()" aria-label="Sesi pengajian"><option value="0" ${!G.sesi ? 'selected' : ''}>Semua sesi</option>${sesiTersusun().map(x => `<option value="${x.id}" ${x.id === G.sesi ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}</select>
+      <div class="cari" style="min-width:200px;flex:1">${ik('cari')}<input type="search" placeholder="Cari nama atau kod kursus" value="${esc(G.cari)}" oninput="UI.cpd.progAk.cari=this.value;lukisJadualCPDProgAk()" aria-label="Cari staf"></div></div></div>`;
+  h += notisSkop();
+  if(!adaStruktur) h += kosong('Struktur program belum ditetapkan', 'Staf pengajar dikenal pasti melalui kod kursus dalam struktur program. Ketua Program atau pentadbir PPA boleh menetapkannya di tab Ketua Program.');
+  else if(!rows.length) h += kosong('Tiada staf pengajar', 'Tiada pendaftaran fail kursus yang sepadan dengan kursus program ini bagi ' + namaSesiProgAk(G.sesi).toLowerCase() + '.');
+  else {
+    h += `<section class="blok"><div class="grid-4">
+      ${statKad('Staf pengajar', fmtNombor(R.n), esc(p.kod) + ' · ' + esc(namaSesiProgAk(G.sesi)))}
+      ${statKad('Capai sasaran', R.c.capai + ' (' + R.kadar + '%)', 'sasaran ' + s + ' jam setahun', warnaPct(R.kadar))}
+      ${statKad('Purata jam CPD', fmt(R.purata), 'tahun ' + thn)}
+      ${statKad('Belum ada CPD', fmtNombor(R.belum), R.belum ? 'perlu disusuli' : 'semua telah mengikuti CPD', R.belum ? 'var(--clay)' : '')}</div>
+      ${R.luar ? `<div class="notis info" style="margin-top:12px">${R.luar} staf pengajar program ini berada di luar fakulti anda; rekod CPD mereka tidak dipaparkan.</div>` : ''}</section>
+    <div class="grid-rumusan blok"><div class="card pad"><h3 class="serif h3">Taburan pencapaian</h3><div class="mini">Staf pengajar program bagi tahun ${thn}</div><div class="carta-kotak" style="height:260px"><canvas id="chCpaTier" role="img" aria-label="Carta taburan pencapaian CPD staf pengajar"></canvas></div></div>
+      <div class="card pad"><h3 class="serif h3">Jam CPD setiap staf</h3><div class="mini">Garis putus: sasaran ${s} jam</div><div class="carta-kotak" style="height:${Math.max(260, R.n * 26 + 70)}px"><canvas id="chCpaJam" role="img" aria-label="Carta jam CPD setiap staf pengajar"></canvas></div></div></div>
+    <section class="blok"><div class="seclabel" style="justify-content:space-between"><span class="eyebrow">Senarai staf pengajar</span><span class="mini" id="cpaBil"></span></div>
+      <div class="card" style="overflow:hidden"><div class="jadual-skrol"><table class="grid"><thead><tr><th style="width:44px">Bil</th><th>Nama</th><th class="sm-sembunyi">Fakulti</th><th>Kursus diajar dalam program</th><th class="kanan">Jam CPD</th><th class="kanan sm-sembunyi">Jurang</th><th>Status</th></tr></thead><tbody id="cpaBaris"></tbody></table></div></div></section>`;
+  }
+  el('halaman').innerHTML = h;
+  if(rows.length){ lukisJadualCPDProgAk(); cartaCPDProgAk(rows, R); }
+}
+function lukisJadualCPDProgAk(){
+  const box = el('cpaBaris'), G = UI.cpd.progAk; if(!box || !G) return;
+  const rows = barisCPDProgAk(G.prog, G.sesi, UI.cpd.tahun), q = (G.cari || '').toLowerCase().trim();
+  const v = rows.filter(r => !q || (r.p.nama + ' ' + r.kursus.map(k => k.kod + ' ' + k.nama).join(' ')).toLowerCase().includes(q));
+  box.innerHTML = v.length ? v.map((r, i) => `<tr class="baris"><td class="tnum">${i + 1}</td><td><b style="font-weight:600">${esc(r.p.nama)}</b><div class="mini">${esc(r.p.jawatan || '')}</div></td><td class="sm-sembunyi mini">${esc(r.p.fakulti || '-')}</td>
+      <td class="mini">${r.kursus.map(k => `<span class="badge b-neutral" title="${esc(k.nama)}${G.sesi ? '' : ' · ' + esc(k.sesi.map(tajukSesi).join(', '))}">${esc(k.kod)}</span>`).join(' ')}</td>
+      <td class="kanan tnum">${r.luar ? '-' : fmt(r.jam)}${r.luar ? '' : meterSasaran(r.jam)}</td><td class="kanan tnum sm-sembunyi">${r.luar ? '-' : (r.jurang > 0 ? fmt(r.jurang) : '-')}</td>
+      <td>${r.luar ? '<span class="badge b-neutral">Luar skop fakulti</span>' : `<span class="badge ${r.tier === 'capai' ? 'b-ya' : r.tier === 'hampir' ? 'b-hampir' : 'b-tidak'}">${esc(statusLbl(r))}</span>`}</td></tr>`).join('')
+    : `<tr><td colspan="7"><div class="kosong">Tiada staf sepadan dengan carian.</div></td></tr>`;
+  const b = el('cpaBil'); if(b) b.textContent = v.length === rows.length ? rows.length + ' staf' : v.length + ' daripada ' + rows.length;
+}
+function cartaCPDProgAk(rows, R){
+  const s = S.tetapan.sasaranCPD, d = rows.filter(r => !r.luar);
+  carta('chCpaTier', 'doughnut', { labels:['Tercapai', 'Hampir', 'Rendah'], datasets:[{ data:[R.c.capai, R.c.hampir, R.c.rendah], backgroundColor:[TIER_WARNA.capai, TIER_WARNA.hampir, TIER_WARNA.rendah], borderColor:'#FFFFFF', borderWidth:2 }] },
+    { cutout:'62%', _tengah:{ teks: String(R.n), label:'staf pengajar' }, plugins:{ legend: LEGENDA_BAWAH } });
+  carta('chCpaJam', 'bar', { labels: d.map(r => r.p.nama), datasets:[{ label:'Jam CPD', data: d.map(r => r.jam), backgroundColor: d.map(r => TIER_WARNA[r.tier]), borderRadius:4, maxBarThickness:18 }] },
+    { indexAxis:'y', _sasaranX: s, plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c => fmt(c.parsed.x) + ' jam (' + statusLbl(d[c.dataIndex]) + ')' } } },
+      scales:{ x:{ beginAtZero:true, suggestedMax: s * 1.15, grid:{ color:'#EFEAD9' } }, y:{ grid:{ display:false }, ticks:{ autoSkip:false, font:{ size:11 } } } } });
+}
+function csvCPDProgAk(pid, sid, thn, fmtF){
+  const p = S.program.senarai.find(x => x.id === pid), rows = barisCPDProgAk(pid, sid, thn);
+  const data = [['Bil', 'Nama', 'Fakulti', 'Jawatan', 'Status Jawatan', 'Program', 'Sesi', 'Kursus Diajar', 'Tahun CPD', 'Jumlah Jam CPD', 'Sasaran', 'Jurang', 'Status']];
+  rows.forEach((r, i) => data.push([i + 1, r.p.nama, r.p.fakulti, r.p.jawatan, r.p.status, p.kod, namaSesiProgAk(sid), teksKursusProgAk(r, sid), thn, r.luar ? '' : fmt(r.jam), S.tetapan.sasaranCPD, r.luar ? '' : fmt(r.jurang), r.luar ? 'Luar skop fakulti' : statusLbl(r)]));
+  muatTurunJadual('Laporan_CPD_Pengajar_' + namaFailSelamat(p.kod) + '_' + (sid ? namaFailSelamat(tajukSesi(sid)) : 'Semua_Sesi') + '_' + thn, data, fmtF || 'csv');
+}
+async function pdfCPDProgAk(pid, sid, thn){
+  const doc = pdfBaru(); if(!doc) return;
+  const p = S.program.senarai.find(x => x.id === pid), rows = barisCPDProgAk(pid, sid, thn), R = ringkasCPDProgAk(rows), s = S.tetapan.sasaranCPD;
+  if(!rows.length){ toast('Tiada staf pengajar bagi program dan sesi ini.', 'ralat'); return; }
+  const img = await buatCartaImej({ type:'doughnut', data:{ labels:['Tercapai', 'Hampir', 'Rendah'], datasets:[{ data:[R.c.capai, R.c.hampir, R.c.rendah], backgroundColor:['#136254', '#C77A12', '#B23D26'], borderColor:'#fff', borderWidth:2 }] },
+    options:{ cutout:'58%', plugins:{ legend:{ position:'bottom', labels:{ font:{ size:16 }, boxWidth:14, padding:12 } } } } }, 460, 340);
+  pdfKepala(doc, 'Laporan CPD Staf Pengajar Program', p.kod + ' · ' + namaSesiProgAk(sid) + ' · CPD ' + thn + ' · Sasaran ' + s + ' jam');
+  pdfKad(doc, [['Staf pengajar', R.n], ['Capai sasaran', R.c.capai + ' (' + R.kadar + '%)'], ['Purata jam', fmt(R.purata)], ['Belum ada CPD', R.belum]], 36);
+  doc.setFontSize(9); doc.setTextColor(40); doc.setFont('helvetica', 'bold'); doc.text(doc.splitTextToSize(p.nama, 120), 14, 62);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(110);
+  doc.text(doc.splitTextToSize('Staf dikenal pasti daripada struktur program dan pendaftaran fail kursus (modul Ketua Program), termasuk pilihan pensyarah oleh KP bagi kursus yang dikongsi.' + (R.luar ? ' ' + R.luar + ' staf di luar fakulti tidak dinilai.' : ''), 120), 14, 68);
+  if(img) doc.addImage(img, 'JPEG', 140, 56, 56, 41);
+  doc.autoTable(Object.assign({}, PDF_JADUAL, { startY: 102, head:[['Bil', 'Nama', 'Fakulti', 'Kursus diajar', 'Jam CPD', 'Jurang', 'Status']],
+    body: rows.map((r, i) => [i + 1, r.p.nama + (r.p.jawatan ? '\n' + r.p.jawatan : ''), r.p.fakulti || '-', teksKursusProgAk(r, sid), r.luar ? '-' : fmt(r.jam), r.luar || r.jurang <= 0 ? '-' : fmt(r.jurang), r.luar ? 'Luar skop' : statusLbl(r)]),
+    styles:{ font:'helvetica', fontSize:7.8, cellPadding:2, textColor:40, valign:'top' },
+    columnStyles:{ 0:{ cellWidth:10, halign:'center' }, 1:{ cellWidth:48 }, 2:{ cellWidth:16 }, 4:{ halign:'right', cellWidth:16 }, 5:{ halign:'right', cellWidth:14 }, 6:{ cellWidth:20 } },
+    didParseCell: pdfWarnaStatus(6), didDrawPage: pdfKaki(doc) }));
+  doc.save('Laporan_CPD_Pengajar_' + namaFailSelamat(p.kod) + '_' + (sid ? namaFailSelamat(tajukSesi(sid)) : 'Semua_Sesi') + '_' + thn + '.pdf'); toast('Laporan CPD staf pengajar program (PDF) dijana.');
 }
 
 /* ============================ HALAMAN: KETUA PROGRAM ============================ */
@@ -2930,7 +3067,7 @@ function bahagianDokProgram(p, boleh){
   const d = ringkasDokProg(p);
   return `<section class="blok"><div class="seclabel" style="justify-content:space-between"><span class="eyebrow">Dokumentasi program</span><span class="mini">${d.ya} daripada ${d.perlu} dokumen diperlukan telah dimuat naik</span></div>
     <div class="card pad">
-      ${boleh ? `<p class="mini" style="margin:0 0 12px">Tekan <b>Muat naik</b> atau seret fail ke item berkenaan (had ${CONFIG.MAKS_MB} MB setiap fail). Dokumen disimpan dalam folder program di Google Drive PPA. Tandakan <b>TB</b> bagi dokumen yang tidak berkaitan dengan program ini.</p>` : ''}
+      ${boleh ? `<p class="mini" style="margin:0 0 12px">Tekan <b>Muat naik</b> untuk memilih fail, atau <b>Folder</b> untuk memuat naik keseluruhan folder dari komputer anda (termasuk subfolder). Anda juga boleh menyeret fail atau folder ke item berkenaan (had ${CONFIG.MAKS_MB} MB setiap fail). Dokumen disimpan dalam folder program di Google Drive PPA. Tandakan <b>TB</b> bagi dokumen yang tidak berkaitan dengan program ini.</p>` : ''}
       ${S.program.item.map((it, i) => itemDokProgram(p, it, i, boleh)).join('')}</div></section>`;
 }
 function itemDokProgram(p, it, i, boleh){
@@ -2940,24 +3077,25 @@ function itemDokProgram(p, it, i, boleh){
     <div class="fk-item-baris">
       <span class="fk-lbl">${i + 1}</span>
       <div class="fk-item-teks"><b>${esc(it.label)}</b><div class="mini">${it.nota ? esc('(' + it.nota + ') · ') : ''}${fail.length ? fail.length + ' fail' : 'Tiada fail'}</div></div>
-      <div class="fk-item-kawal">${kawal}${boleh ? `<label class="btn btn-ghost btn-sm">${ik('naik', 14)}Muat naik<input type="file" multiple hidden onchange="muatNaikProg(${p.id},'${it.key}',this.files,this)"></label>` : ''}</div>
+      <div class="fk-item-kawal">${kawal}${boleh ? `<label class="btn btn-ghost btn-sm">${ik('naik', 14)}Muat naik<input type="file" multiple hidden onchange="muatNaikProg(${p.id},'${it.key}',this.files,this)"></label><label class="btn btn-ghost btn-sm" title="Muat naik semua fail dalam satu folder (termasuk subfolder)">${ik('folder', 14)}Folder<input type="file" webkitdirectory directory multiple hidden onchange="muatNaikFolderProg(${p.id},'${it.key}',this.files,this)"></label>` : ''}</div>
     </div>
     ${fail.length ? `<div class="fk-fail">${fail.map(x => `<span class="fail-cip" title="${esc('Dimuat naik oleh ' + (x.oleh || '-') + ' pada ' + fmtMasa(x.tarikh))}">${ikonFail(x.mime, x.nama)}<button class="cip-nama" onclick="lihatFail('prog',${x.id})" title="Lihat ${esc(x.nama)}">${esc(x.nama)}</button><small>${fmtSaiz(x.saiz)}</small>${boleh ? `<button class="cip-x" onclick="padamFailProg(${x.id})" aria-label="Padam ${esc(x.nama)}" title="Padam fail">${ik('x', 12)}</button>` : ''}</span>`).join('')}</div>` : ''}
     <div class="fk-prog" id="pp-${it.key}" hidden></div>
   </div>`;
 }
 function bahagianFKProgram(p, sesi){
-  const pk = kursusProgram(p.id);
+  const pk = kursusProgram(p.id), L = strukturProg(p.id), fs = UI.kp.fkStruktur[p.id] || 0;
   return `<section class="blok"><div class="seclabel" style="justify-content:space-between"><span class="eyebrow">Laporan penghantaran fail kursus${sesi ? ' · ' + esc(sesi.nama) : ''}</span><span class="mini" id="kpFKBil"></span></div>
     <div class="card" style="overflow:hidden">
       ${pk.length && sesi ? `<div class="toolbar"><div class="cari">${ik('cari')}<input type="search" placeholder="Cari kod, nama kursus atau pensyarah…" value="${esc(UI.kp.cari)}" oninput="UI.kp.cari=this.value;lukisSenaraiKPFK()" aria-label="Cari kursus program"></div>
+        ${L.length > 1 ? `<select class="auto" aria-label="Struktur" onchange="UI.kp.fkStruktur[${p.id}]=Number(this.value);lukisSenaraiKPFK()"><option value="0">Semua struktur</option>${L.map(x => `<option value="${x.id}" ${fs === x.id ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}</select>` : ''}
         <div class="seg" id="kpSeg">${[['semua','Semua'],['belum','Belum lengkap'],['tiada','Tiada pendaftaran']].map(([v, l]) => `<button data-v="${v}" onclick="UI.kp.tapis='${v}';lukisSenaraiKPFK()">${l}</button>`).join('')}</div></div>` : ''}
       <div id="kpFK"></div></div>
     <p class="mini" style="margin-top:10px;line-height:1.7">Fail kursus dipadankan melalui kod kursus dalam struktur program, termasuk kod terdahulu. Tekan nama pensyarah untuk melihat fail yang dimuat naik. Petak mewakili item folder: <i class="kotak k-ya">YA</i> lengkap, <i class="kotak k-tidak">X</i> belum, <i class="kotak k-tb">TB</i> tidak berkaitan.</p></section>`;
 }
 function lukisSenaraiKPFK(){
   const box = el('kpFK'), p = programIni(); if(!box || !p) return;
-  const sid = sesiKP(), fol = folderSesi(sid), pm = petaP(), q = (UI.kp.cari || '').toLowerCase().trim(), pk = kursusProgram(p.id), bil = el('kpFKBil');
+  const sid = sesiKP(), fol = folderSesi(sid), pm = petaP(), q = (UI.kp.cari || '').toLowerCase().trim(), pk = kursusProgram(p.id, UI.kp.fkStruktur[p.id] || 0), bil = el('kpFKBil');
   if(!pk.length){
     box.innerHTML = `<div class="kosong"><div class="serif kosong-tajuk">Struktur program belum ditetapkan</div><p class="mini">${p.bolehUrus ? 'Tambah kod kursus dalam bahagian Struktur program di bawah. Fail kursus pensyarah dipadankan secara automatik mengikut kod kursus.' : 'Kod kursus bagi program ini belum ditetapkan oleh Ketua Program.'}</p></div>`;
     return;
@@ -2975,24 +3113,103 @@ function lukisSenaraiKPFK(){
   baris.forEach(b => {
     const sem = b.c.semester || 'Semester belum ditetapkan';
     if(adaSem && sem !== semLalu){ h += `<div class="kp-kump">${esc(sem)}</div>`; semLalu = sem; }
-    h += `<div class="kp-k"><div><div class="kp-k-kod">${esc(b.c.kod)}</div><div class="mini" style="color:var(--ink-2)">${esc(b.c.nama || '-')}</div>${b.c.kodLama ? `<div class="mini">Kod terdahulu: ${esc(b.c.kodLama)}</div>` : ''}</div>
+    const calon = fkBagiKursusProgram(b.c, sid, true), pil = pilihanFK(p.id, sid, b.c.kod), kongsi = CORAK_KURSUS_KONGSI.test(b.c.klasifikasi || '');
+    const tPilih = p.bolehUrus && calon.length && (calon.length > 1 || pil || kongsi) ? `<button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick='modalPilihFK(${p.id},${esc(JSON.stringify(b.c.kod))})'>${ik('pengguna', 14)}Pilih pensyarah</button>` : '';
+    const nPilih = pil ? `<div class="mini" style="margin-top:4px"><span class="badge b-hampir" title="Dipilih oleh ${esc(pil.oleh || '')}">${b.fk.length} daripada ${calon.length} pensyarah dipilih</span></div>` : (calon.length > 1 ? `<div class="mini" style="margin-top:4px">${calon.length} pensyarah mendaftar kod ini${kongsi ? ' (kursus dikongsi)' : ''}</div>` : '');
+    h += `<div class="kp-k"><div><div class="kp-k-kod">${esc(b.c.kod)}</div><div class="mini" style="color:var(--ink-2)">${esc(b.c.nama || '-')}</div>${b.c.kodLama ? `<div class="mini">Kod terdahulu: ${esc(b.c.kodLama)}</div>` : ''}${nPilih}${tPilih}</div>
       <div class="fk-p-tengah">${b.fk.length ? b.fk.map(k => { const pct = kemajuan(k, fol), n = failKursus(k.id).length, ps = pm[k.pid];
         return `<button class="fk-k" onclick="bukaKursus(${k.id})" title="${esc(k.kod)}"><span class="fk-k-kod">${esc(ps ? ps.nama : 'Pensyarah')}</span><span class="kotak-set">${kotakFolder(k, fol)}</span><span class="fk-k-pct" style="color:${warnaPct(pct)}">${pct}%</span><span class="fk-k-fail mini" title="${n} fail dimuat naik">${ik('fail', 12)}${n}</span></button>`; }).join('')
         : `<div style="padding:4px 0"><span class="badge b-neutral">Tiada pendaftaran fail kursus bagi sesi ini</span></div>`}</div></div>`;
   });
   box.innerHTML = h || `<div class="kosong">Tiada kursus sepadan dengan carian atau penapis.</div>`;
 }
+/** Struktur yang dipilih bagi program (UI.kp.struktur[pid]); lalai: struktur pertama. */
+function strukturPilihan(p){
+  const L = p ? strukturProg(p.id) : []; let id = p ? (UI.kp.struktur || {})[p.id] : 0;
+  if(!L.some(x => x.id === id)) id = L.length ? L[0].id : 0;
+  return { L, id, st: L.find(x => x.id === id) || null };
+}
+function pilihStruktur(pid, id){ UI.kp.struktur[pid] = id; UI.kp.pkPilih = new Set(); lukisSemula(); }
+/** Pilih pensyarah yang benar-benar mengajar kursus ini bagi program (kursus dikongsi seperti Wajib PPT, MPU dan Elektif Terbuka). */
+function modalPilihFK(pid, kod){
+  const p = S.program.senarai.find(x => x.id === pid), sid = sesiKP(), sesi = S.fk.sesi.find(x => x.id === sid), c = kursusProgram(pid).find(x => kodAsas(x.kod) === kodAsas(kod)); if(!p || !c) return;
+  const calon = fkBagiKursusProgram(c, sid, true), pil = pilihanFK(pid, sid, c.kod), pm = petaP(), fol = folderSesi(sid);
+  calon.sort((a, b) => String((pm[a.pid] || {}).nama || '').localeCompare(String((pm[b.pid] || {}).nama || '')));
+  bukaModal({ tajuk:'Pilih pensyarah · ' + c.kod, desk: p.kod + ' · ' + (sesi ? sesi.nama : ''), isi:`
+    <p class="mini" style="margin:0 0 10px;line-height:1.6">Tandakan pensyarah yang mengajar <b>${esc(c.kod)} ${esc(c.nama || '')}</b> kepada pelajar program ${esc(p.kod)} bagi sesi ini. Hanya pendaftaran yang ditanda dikira dalam laporan penghantaran fail kursus program. Pilihan dibuat bagi setiap sesi.</p>
+    ${calon.length > 6 ? `<div class="cari" style="margin-bottom:8px">${ik('cari')}<input type="search" placeholder="Cari nama, fakulti atau catatan" oninput="tapisPilihFK(this.value)" aria-label="Cari pensyarah"></div>` : ''}
+    <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn-teks" onclick="document.querySelectorAll('#pfSenarai input').forEach(x => { if(!x.closest('label').hidden) x.checked = true; })">Tanda semua</button><button class="btn-teks" onclick="document.querySelectorAll('#pfSenarai input').forEach(x => { x.checked = false; })">Kosongkan</button></div>
+    <div id="pfSenarai" style="max-height:52vh;overflow-y:auto;border:1px solid var(--line);border-radius:12px">${calon.map(k => { const ps = pm[k.pid] || {}, pct = kemajuan(k, fol);
+      return `<label class="semak" data-cari="${esc(((ps.nama || '') + ' ' + (ps.fakulti || '') + ' ' + (k.catatan || '') + ' ' + k.kod).toLowerCase())}" style="padding:10px 14px;border-bottom:1px solid var(--line);margin:0"><input type="checkbox" value="${k.id}" ${!pil || pil.fkIds.includes(k.id) ? 'checked' : ''}>
+        <span style="flex:1;min-width:0"><b>${esc(ps.nama || 'Pensyarah')}</b> <span class="mini">${esc(ps.fakulti || '')}</span><br><span class="mini">${esc(k.kod)}${k.catatan ? ' · ' + esc(k.catatan) : ''} · ${pct}% lengkap</span></span></label>`; }).join('')}</div>
+    <p class="ralat" id="pfErr" hidden></p>`,
+    kaki:`${pil ? `<button class="btn btn-ghost" style="margin-right:auto" onclick='simpanPilihFK(${pid},${esc(JSON.stringify(c.kod))},true)'>Papar semua pensyarah</button>` : ''}<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" id="pfBtn" onclick='simpanPilihFK(${pid},${esc(JSON.stringify(c.kod))},false)'>Simpan pilihan</button>` });
+}
+function tapisPilihFK(q){ q = String(q || '').toLowerCase().trim(); document.querySelectorAll('#pfSenarai label').forEach(l => { l.hidden = !!q && !l.dataset.cari.includes(q); }); }
+async function simpanPilihFK(pid, kod, semua){
+  const err = el('pfErr'), fkIds = [...document.querySelectorAll('#pfSenarai input:checked')].map(x => Number(x.value));
+  if(!semua && !fkIds.length){ err.textContent = 'Tandakan sekurang-kurangnya seorang pensyarah, atau tekan Papar semua pensyarah.'; err.hidden = false; return; }
+  try { await api('progFKPilih', { programId: pid, sesi: sesiKP(), kod, fkIds, semua: !!semua }); tutupModal(); lukisSemula(); }
+  catch(e){ err.textContent = e.message; err.hidden = false; }
+}
 function bahagianStrukturProgram(p, boleh){
-  const pk = kursusProgram(p.id);
-  return `<section class="blok"><div class="seclabel" style="justify-content:space-between"><span class="eyebrow">Struktur program · kod kursus</span><span class="mini">${pk.length} kursus</span></div>
+  const { L, id, st } = strukturPilihan(p), pk = id ? kursusProgram(p.id, id) : [], pilih = UI.kp.pkPilih;
+  [...pilih].forEach(x => { if(!pk.some(c => c.id === x)) pilih.delete(x); });
+  const semua = pk.length > 0 && pk.every(c => pilih.has(c.id));
+  return `<section class="blok" id="secStruktur"><div class="seclabel" style="justify-content:space-between"><span class="eyebrow">Struktur program · kod kursus</span><span class="mini">${L.length} struktur${st ? ' · ' + pk.length + ' kursus dalam "' + esc(st.nama) + '"' : ''}</span></div>
     <div class="card" style="overflow:hidden">
-      ${boleh ? `<div class="toolbar"><span class="mini" style="flex:1;min-width:220px">Kod kursus di sini menentukan fail kursus yang dipantau. Jika kod kursus bertukar, sunting kod tersebut; kod asal disimpan sebagai <b>kod terdahulu</b> supaya rekod sesi lepas kekal dipadankan.</span>
-        <button class="btn btn-ghost" onclick="modalImportStruktur(${p.id})">${ik('naik')}Import</button><button class="btn btn-primary" onclick="modalKursusProg(${p.id},0)">${ik('tambah')}Tambah kursus</button></div>` : ''}
-      <div class="jadual-skrol"><table class="grid"><thead><tr><th>Semester</th><th>Kod kursus</th><th>Nama kursus</th><th class="sm-sembunyi">Kod terdahulu</th><th class="sm-sembunyi">Kredit</th><th class="sm-sembunyi">CLO → PLO</th><th class="kanan" title="Bilangan pendaftaran fail kursus yang sepadan bagi semua sesi">Padanan</th>${boleh ? '<th></th>' : ''}</tr></thead><tbody>
-      ${pk.length ? pk.map(c => `<tr class="baris"><td class="mini">${esc(c.semester || '-')}</td><td><b>${esc(c.kod)}</b></td><td>${esc(c.nama || '-')}</td><td class="sm-sembunyi mini">${esc(c.kodLama || '-')}</td><td class="sm-sembunyi mini">${esc(c.kredit || '-')}</td><td class="sm-sembunyi mini">${(Array.isArray(c.plo) ? c.plo : []).map((pl, i) => pl ? 'CLO' + (i + 1) + '→' + pl.replace('PLO', '') : '').filter(Boolean).join(' · ') || '-'}</td><td class="kanan tnum" title="Pendaftaran fail kursus sepadan (semua sesi)">${fkBagiKursusProgram(c).length}</td>
+      <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+        <div class="seg" id="segStruktur" role="tablist" style="flex-wrap:wrap">${L.map(x => `<button role="tab" class="${x.id === id ? 'aktif' : ''}" aria-selected="${x.id === id}" onclick="pilihStruktur(${p.id},${x.id})">${esc(x.nama)} <span class="mini">(${kursusProgram(p.id, x.id).length})</span></button>`).join('')}</div>
+        ${boleh ? `<button class="btn btn-ghost btn-sm" onclick="modalStruktur(${p.id},0)">${ik('tambah', 14)}Struktur baharu</button>` : ''}
+      </div>
+      ${st && (st.catatan || boleh) ? `<div class="toolbar" style="flex-wrap:wrap;gap:8px;border-top:1px solid var(--line)">
+        <span class="mini" style="flex:1;min-width:220px">${st.catatan ? '<b>' + esc(st.catatan) + '</b>. ' : ''}${boleh ? 'Kod kursus di sini menentukan fail kursus yang dipantau. Jika kod kursus bertukar, sunting kod tersebut; kod asal disimpan sebagai <b>kod terdahulu</b>.' : ''}</span>
+        ${boleh ? `<button class="btn btn-ghost btn-sm" onclick="modalStruktur(${p.id},${st.id})">${ik('sunting', 14)}Nama & catatan</button>
+          ${L.length > 1 ? `<button class="btn btn-ghost btn-sm bahaya" onclick="padamStruktur(${st.id})">${ik('padam', 14)}Padam struktur</button>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick="modalImportStruktur(${p.id})">${ik('naik', 14)}Tampal / import</button><button class="btn btn-primary btn-sm" onclick="modalKursusProg(${p.id},0)">${ik('tambah', 14)}Tambah kursus</button>` : ''}</div>` : ''}
+      ${boleh && pilih.size ? `<div class="pl-pukal" id="pkPukal"><span class="mini">${pilih.size} kursus dipilih</span><button class="btn btn-ghost btn-sm bahaya" onclick="buangKursusDipilih()">${ik('padam', 14)}Buang daripada struktur</button><button class="btn btn-ghost btn-sm" onclick="UI.kp.pkPilih = new Set(); lukisSemula()">Batal pilihan</button></div>` : ''}
+      <div class="jadual-skrol"><table class="grid"><thead><tr>${boleh ? `<th style="width:34px"><input type="checkbox" ${semua ? 'checked' : ''} onchange="pilihSemuaPK(${p.id},this.checked)" aria-label="Pilih semua kursus dalam struktur"></th>` : ''}<th>Semester</th><th>Kod kursus</th><th>Nama kursus</th><th class="sm-sembunyi">Kod terdahulu</th><th class="sm-sembunyi">Kredit</th><th class="sm-sembunyi">Klasifikasi</th><th class="sm-sembunyi">CLO → PLO</th><th class="kanan" title="Bilangan pendaftaran fail kursus yang sepadan (semua sesi)">FK</th>${boleh ? '<th></th>' : ''}</tr></thead><tbody>
+      ${pk.length ? pk.map(c => `<tr class="baris">${boleh ? `<td><input type="checkbox" ${pilih.has(c.id) ? 'checked' : ''} onchange="pilihPK(${c.id},this.checked)" aria-label="Pilih ${esc(c.kod)}"></td>` : ''}<td class="mini">${esc(c.semester || '-')}</td><td><b>${esc(c.kod)}</b></td><td>${esc(c.nama || '-')}</td><td class="sm-sembunyi mini">${esc(c.kodLama || '-')}</td><td class="sm-sembunyi mini">${esc(c.kredit || '-')}</td><td class="sm-sembunyi mini">${esc(c.klasifikasi || '-')}</td>
+        <td class="sm-sembunyi mini">${(Array.isArray(c.plo) ? c.plo : []).map((x, i) => x ? 'CLO' + (i + 1) + '→' + x : '').filter(Boolean).join(', ') || '-'}</td><td class="kanan tnum">${fkBagiKursusProgram(c, null, true).length}</td>
         ${boleh ? `<td><div class="aksi-baris"><button class="btn-ikon" onclick="modalKursusProg(${p.id},${c.id})" title="Sunting atau tukar kod" aria-label="Sunting kursus ${esc(c.kod)}">${ik('sunting', 15)}</button><button class="btn-ikon bahaya" onclick="padamKursusProg(${c.id})" title="Buang daripada struktur" aria-label="Buang kursus ${esc(c.kod)}">${ik('padam', 15)}</button></div></td>` : ''}</tr>`).join('')
-        : `<tr><td colspan="${boleh ? 8 : 7}"><div class="kosong">Belum ada kursus dalam struktur program.</div></td></tr>`}
-      </tbody></table></div></div></section>`;
+        : `<tr><td colspan="${boleh ? 10 : 8}"><div class="kosong">${L.length ? 'Belum ada kursus dalam struktur ini.' + (boleh ? ' Tekan <b>Tambah kursus</b>, atau <b>Tampal / import</b> untuk menampal senarai kursus daripada Excel.' : '') : 'Belum ada struktur program.' + (boleh ? ' Tekan <b>Struktur baharu</b> untuk bermula.' : '')}</div></td></tr>`}
+      </tbody></table></div></div>
+    <p class="mini" style="margin-top:10px;line-height:1.7">Satu program boleh mempunyai beberapa struktur, contohnya mengikut kohort kemasukan. Laporan fail kursus dan Bank Maklumat Kursus menggabungkan kursus daripada semua struktur (satu baris bagi setiap kod kursus).</p></section>`;
+}
+function pilihPK(id, ya){ if(ya) UI.kp.pkPilih.add(id); else UI.kp.pkPilih.delete(id); lukisSemula(); }
+function pilihSemuaPK(pid, ya){ const p = S.program.senarai.find(x => x.id === pid), { id } = strukturPilihan(p); UI.kp.pkPilih = new Set(ya ? kursusProgram(pid, id).map(c => c.id) : []); lukisSemula(); }
+async function buangKursusDipilih(){
+  const ids = [...UI.kp.pkPilih]; if(!ids.length) return;
+  const kod = S.program.kursus.filter(c => ids.includes(c.id)).map(c => c.kod);
+  if(!await sahkan({ tajuk:'Buang ' + ids.length + ' kursus daripada struktur?', mesej: kod.join(', ') + '. Kursus ini tidak lagi dipantau melalui struktur ini. Fail kursus pensyarah tidak dipadam.', butang:'Buang kursus', bahaya:true })) return;
+  await cuba(async () => { await api('progKursusPadam', { ids }); UI.kp.pkPilih = new Set(); lukisSemula(); });
+}
+function modalStruktur(pid, id){
+  const p = S.program.senarai.find(x => x.id === pid), st = id ? (S.program.struktur || []).find(x => x.id === id) : null; if(!p) return;
+  const sendiri = strukturProg(pid), lain = S.program.senarai.filter(x => x.id !== pid).map(x => ({ p: x, L: strukturProg(x.id) })).filter(x => x.L.length);
+  bukaModal({ tajuk: st ? 'Sunting struktur' : 'Struktur baharu', desk: p.kod + ' · ' + p.nama, isi:`<div class="borang">
+    <div><label class="fld" for="stNama">Nama struktur</label><input id="stNama" type="text" value="${st ? esc(st.nama) : ''}" placeholder="cth. Struktur Kohort 2024/2025" autocomplete="off"></div>
+    <div><label class="fld" for="stCat">Catatan (pilihan)</label><input id="stCat" type="text" value="${st ? esc(st.catatan || '') : ''}" placeholder="cth. Untuk pelajar kemasukan 2024/2025 dan ke atas"></div>
+    ${st ? '' : `<div><label class="fld" for="stSalin">Mula dengan</label><select id="stSalin"><option value="0">Struktur kosong</option>
+      ${sendiri.length ? `<optgroup label="Salin daripada struktur ${esc(p.kod)}">${sendiri.map(x => `<option value="${x.id}">${esc(x.nama)} (${kursusProgram(pid, x.id).length} kursus)</option>`).join('')}</optgroup>` : ''}
+      ${lain.map(x => `<optgroup label="Salin daripada ${esc(x.p.kod)}">${x.L.map(y => `<option value="${y.id}">${esc(x.p.kod)} · ${esc(y.nama)} (${kursusProgram(x.p.id, y.id).length} kursus)</option>`).join('')}</optgroup>`).join('')}</select>
+      <div class="mini" style="margin-top:5px">Salin struktur sedia ada, kemudian tambah atau buang kursus yang berbeza. Anda juga boleh menampal senarai kursus daripada Excel melalui <b>Tampal / import</b>.</div></div>`}
+    <p class="ralat" id="stErr" hidden></p></div>`,
+    kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" id="stBtn" onclick="simpanStruktur(${pid},${st ? st.id : 0})">${st ? 'Simpan' : 'Tambah struktur'}</button>` });
+  fokus('stNama');
+}
+async function simpanStruktur(pid, id){
+  const err = el('stErr'), d = { programId: pid, id, nama: el('stNama').value.trim(), catatan: el('stCat').value.trim(), salinDari: el('stSalin') ? Number(el('stSalin').value) || 0 : 0 };
+  if(!d.nama){ err.textContent = 'Sila isi nama struktur.'; err.hidden = false; return; }
+  el('stBtn').disabled = true;
+  try { const r = await api('progStrukturSimpan', d); tutupModal(); if(r.id) UI.kp.struktur[pid] = r.id; UI.kp.pkPilih = new Set(); lukisSemula(); }
+  catch(e){ err.textContent = e.message; err.hidden = false; el('stBtn').disabled = false; }
+}
+async function padamStruktur(id){
+  const st = (S.program.struktur || []).find(x => x.id === id); if(!st) return;
+  const n = kursusProgram(st.programId, id).length;
+  if(!await sahkan({ tajuk:'Padam struktur "' + st.nama + '"?', mesej:'Struktur ini dan ' + n + ' kursus di dalamnya akan dipadam. Struktur lain dan fail kursus pensyarah tidak terjejas.', butang:'Padam struktur', bahaya:true })) return;
+  await cuba(async () => { await api('progStrukturPadam', { id }); delete UI.kp.struktur[st.programId]; lukisSemula(); });
 }
 function senaraiLantikan(l, denganSasaran){
   return `<ul class="senarai-ringkas">${l.map(x => `<li><span class="ikon-bulat" style="background:${x.tamat ? 'var(--surface-2)' : 'var(--brand-soft)'};color:${x.tamat ? 'var(--muted)' : 'var(--brand)'}">${ik('pengguna', 16)}</span>
@@ -3044,8 +3261,8 @@ async function padamProgram(id){
 /* ---------- struktur program (Ketua Program / pentadbir PPA) ---------- */
 function modalKursusProg(pid, id){
   const p = S.program.senarai.find(x => x.id === pid), c = id ? S.program.kursus.find(x => x.id === id) : null; if(!p) return;
-  const sem = [...new Set(kursusProgram(pid).map(k => k.semester).filter(Boolean))];
-  bukaModal({ tajuk: c ? 'Sunting kursus ' + c.kod : 'Tambah kursus ke struktur', desk: p.kod + ' · ' + p.nama, isi:`<div class="borang">
+  const sem = [...new Set(kursusProgram(pid).map(k => k.semester).filter(Boolean))], st = strukturPilihan(p), nmSt = ((S.program.struktur || []).find(x => x.id === (c ? c.strukturId : st.id)) || {}).nama;
+  bukaModal({ tajuk: c ? 'Sunting kursus ' + c.kod : 'Tambah kursus ke struktur', desk: p.kod + ' · ' + p.nama + (nmSt ? ' · ' + nmSt : ''), isi:`<div class="borang">
     <div class="dua"><div><label class="fld" for="pkKod">Kod kursus</label><input id="pkKod" type="text" value="${c ? esc(c.kod) : ''}" placeholder="cth. USL1013" style="text-transform:uppercase" autocomplete="off"></div>
       <div><label class="fld" for="pkSem">Semester / tahun</label><input id="pkSem" type="text" list="pkSemSenarai" value="${c ? esc(c.semester || '') : ''}" placeholder="cth. Tahun 1 Semester 1"><datalist id="pkSemSenarai">${sem.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div></div>
     <div><label class="fld" for="pkNama">Nama kursus</label><input id="pkNama" type="text" value="${c ? esc(c.nama || '') : ''}" placeholder="cth. Akidah Islamiah"></div>
@@ -3060,7 +3277,7 @@ function modalKursusProg(pid, id){
   fokus('pkKod');
 }
 async function simpanKursusProg(pid, id){
-  const err = el('pkErr'), d = { programId: pid, id, kod: normKod(el('pkKod').value), nama: el('pkNama').value.trim(), semester: el('pkSem').value.trim(), kodLama: el('pkLama').value.trim(),
+  const err = el('pkErr'), d = { programId: pid, id, strukturId: strukturPilihan(S.program.senarai.find(x => x.id === pid)).id || '', kod: normKod(el('pkKod').value), nama: el('pkNama').value.trim(), semester: el('pkSem').value.trim(), kodLama: el('pkLama').value.trim(),
     kredit: el('pkKredit').value.trim(), klasifikasi: el('pkKlas').value.trim(), plo: [0, 1, 2, 3, 4].map(i => el('pkPlo' + i).value) };
   if(!/^[A-Z0-9-]{2,15}$/.test(d.kod)){ err.textContent = 'Kod kursus tidak sah. Gunakan huruf dan nombor sahaja, contohnya USL1013.'; err.hidden = false; return; }
   try { await api('progKursusSimpan', d); tutupModal(); lukisSemula(); }
@@ -3073,11 +3290,15 @@ async function padamKursusProg(id){
 }
 function modalImportStruktur(pid){
   const p = S.program.senarai.find(x => x.id === pid); if(!p) return;
-  bukaModal({ tajuk:'Import struktur program', desk: p.kod + ' · ' + p.nama, isi:`
+  const st = strukturPilihan(p);
+  bukaModal({ tajuk:'Tampal / import kursus', desk: p.kod + ' · ' + p.nama + (st.st ? ' · ' + st.st.nama : ''), isi:`
     <div class="notis info">Lajur: <b>Kod</b>, <b>Nama</b>, <b>Semester</b>, dan pilihan <b>KodTerdahulu</b>, <b>Kredit</b>, <b>Klasifikasi</b> serta <b>PLO</b> (pemetaan CLO1, CLO2, … mengikut susunan, cth. PLO1, PLO5, PLO4). Kursus yang kodnya atau kod terdahulunya sudah ada akan dikemas kini; kod baharu ditambah. Tiada kursus dibuang.</div>
     <div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" onclick="templatStruktur(${pid})">${ik('turun', 14)}Muat turun templat${kursusProgram(pid).length ? ' (struktur semasa)' : ''}</button></div>
     <div class="borang"><div><label class="fld" for="isFail">Fail CSV atau Excel</label><input type="file" id="isFail" accept="${TERIMA_JADUAL}"></div>
     <div><label class="fld" for="isTampal">atau tampal terus dari Excel / Google Sheets</label><textarea id="isTampal" rows="6" style="font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea></div>
+    <div><label class="fld">Cara kemas kini</label>
+      <label class="semak"><input type="radio" name="isMod" value="gabung" checked><span><b>Tambah dan kemas kini</b><br><span class="mini">Kursus baharu ditambah; kursus sedia ada dikemas kini; kursus lain dalam struktur kekal.</span></span></label>
+      <label class="semak"><input type="radio" name="isMod" value="ganti"><span><b>Gantikan keseluruhan struktur</b><br><span class="mini">Struktur menjadi sama dengan senarai yang ditampal; kursus yang tiada dalam senarai dibuang daripada struktur ini.</span></span></label></div>
     <p class="ralat" id="isErr" hidden></p></div>`,
     kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" onclick="importStruktur(${pid})">Import</button>` });
 }
@@ -3101,12 +3322,14 @@ async function importStruktur(pid){
     if(!teks.trim()) throw new Error('Sila pilih fail atau tampal data.');
     const baris = parseStruktur(teks);
     if(!baris.length) throw new Error('Tiada baris yang sah ditemui. Pastikan lajur pertama ialah kod kursus.');
-    await api('progKursusImport', { programId: pid, baris });
+    const mod = (document.querySelector('input[name="isMod"]:checked') || {}).value || 'gabung';
+    if(mod === 'ganti' && !await sahkan({ tajuk:'Gantikan keseluruhan struktur?', mesej:'Kursus dalam struktur ini yang tiada dalam senarai (' + baris.length + ' kursus) akan dibuang daripada struktur.', butang:'Gantikan', bahaya:true })) return;
+    await api('progKursusImport', { programId: pid, strukturId: strukturPilihan(S.program.senarai.find(x => x.id === pid)).id || '', mod, baris });
     tutupModal(); lukisSemula();
   } catch(e){ err.textContent = e.message; err.hidden = false; }
 }
 function templatStruktur(pid){
-  const p = S.program.senarai.find(x => x.id === pid), pk = kursusProgram(pid);
+  const p = S.program.senarai.find(x => x.id === pid), pk = kursusProgram(pid, strukturPilihan(p).id);
   muatTurunCSV('Struktur_' + namaFailSelamat(p ? p.kod : 'Program') + '.csv', [['Kod','Nama','Semester','KodTerdahulu','Kredit','Klasifikasi','PLO'],
     ...(pk.length ? pk.map(c => [c.kod, c.nama, c.semester, c.kodLama, c.kredit || '', c.klasifikasi || '', (Array.isArray(c.plo) ? c.plo : []).join(', ')])
       : [['USL1013','Akidah Islamiah','Tahun 1 Semester 1','','3','Teras Program','PLO1, PLO2, PLO5'], ['USL1023','Ulum al-Quran','Tahun 1 Semester 1','USU1023','3','Teras Program','PLO1, PLO4']])]);
@@ -3687,7 +3910,7 @@ function cadangP2lo(){
 }
 /** Kursus bagi semester ke-n kohort mengikut kumpulan semester dalam struktur program. */
 function kursusSemesterStruktur(pid, n){
-  const ks = kursusProgram(pid), label = [...new Set(ks.map(k => k.semester).filter(Boolean))];
+  const p = S.program.senarai.find(x => x.id === pid), st = p ? strukturPilihan(p) : { id:0 }, ks = kursusProgram(pid, st.L && st.L.length > 1 ? st.id : 0), label = [...new Set(ks.map(k => k.semester).filter(Boolean))];
   return label.length ? ks.filter(k => k.semester === label[n - 1]) : [];
 }
 function pensyarahKursusProgram(c){
@@ -3708,7 +3931,8 @@ function isiP2loStruktur(){
     (Array.isArray(c.plo) ? c.plo : []).forEach((pl, j) => { if(pl && !k.plo[j]) k.plo[j] = pl; });
   });
   lukisModalP2lo();
-  toast(baru + ' kursus ditambah daripada struktur (' + (ks[0].semester || '') + ').');
+  const st = strukturPilihan(S.program.senarai.find(x => x.id === E.pid));
+  toast(baru + ' kursus ditambah daripada struktur' + (st.L.length > 1 && st.st ? ' "' + st.st.nama + '"' : '') + ' (' + (ks[0].semester || '') + ').');
 }
 const LAJUR_P2LO = { kod:['kodkursus', 'kod'], nama:['namakursus', 'nama', 'kursus'], bil:['bilpelajar', 'bil', 'pelajar'], pensyarah:['pensyarah', 'namapensyarah'],
   klasifikasi:['klasifikasi'], kredit:['kredit', 'nilaikredit'] };
@@ -3765,28 +3989,61 @@ async function padamP2lo(){
 /* ---------- dokumen program ---------- */
 async function setItemProg(pid, key, nilai){ await cuba(async () => { await api('progItemSet', { programId: pid, key, nilai }); lukisSemula(); }); }
 async function muatNaikProg(pid, key, files, input){
-  const senarai = [...(files || [])];
+  const senarai = [...(files || [])].map(f => ({ f, laluan:'' }));
   if(input) input.value = '';
+  return muatNaikSenaraiProg(pid, key, senarai);
+}
+/* Muat naik folder: struktur subfolder dikekalkan dalam Google Drive (folder item > nama folder > subfolder). */
+const MAKS_FAIL_FOLDER = 200;
+function failSistem(nama){ return /^[.]|^~[$]|^(thumbs[.]db|desktop[.]ini|icon\r?)$/i.test(nama); }
+async function muatNaikFolderProg(pid, key, files, input){
+  const senarai = [...(files || [])].map(f => { const r = String(f.webkitRelativePath || f.name).split('/'); return { f, laluan: r.slice(0, -1).join('/') }; })
+    .filter(x => !failSistem(x.f.name) && !x.laluan.split('/').some(failSistem));
+  if(input) input.value = '';
+  return sahkanFolderProg(pid, key, senarai);
+}
+async function sahkanFolderProg(pid, key, senarai){
+  if(!senarai.length){ toast('Folder ini tidak mengandungi fail untuk dimuat naik.', 'ralat'); return; }
+  if(senarai.length > MAKS_FAIL_FOLDER){ toast('Folder mengandungi ' + senarai.length + ' fail. Had ' + MAKS_FAIL_FOLDER + ' fail bagi setiap muat naik; pecahkan kepada beberapa folder.', 'ralat'); return; }
+  const saiz = senarai.reduce((a, x) => a + x.f.size, 0), akar = [...new Set(senarai.map(x => x.laluan.split('/')[0]).filter(Boolean))];
+  if(!await sahkan({ tajuk:'Muat naik folder?', mesej: senarai.length + ' fail (' + fmtSaiz(saiz) + ')' + (akar.length ? ' daripada folder "' + akar.join('", "') + '"' : '') + ' akan dimuat naik. Struktur subfolder dikekalkan dalam Google Drive.', butang:'Muat naik' })) return;
+  return muatNaikSenaraiProg(pid, key, senarai);
+}
+async function muatNaikSenaraiProg(pid, key, senarai){
   if(!senarai.length) return;
   let berjaya = 0;
   mulaMuat();
   for(let i = 0; i < senarai.length; i++){
-    const f = senarai[i];
-    const tunjuk = x => { const pr = el('pp-' + key); if(pr){ pr.hidden = false; pr.innerHTML = progHTML(f.name, x, i + 1, senarai.length); } };
+    const { f, laluan } = senarai[i], nama = (laluan ? laluan + '/' : '') + f.name;
+    const tunjuk = x => { const pr = el('pp-' + key); if(pr){ pr.hidden = false; pr.innerHTML = progHTML(nama, x, i + 1, senarai.length); } };
     try {
       tunjuk(0);
-      const res = await muatNaikFail(f, { jenis:'prog', programId: pid, key }, tunjuk);
+      const res = await muatNaikFail(f, Object.assign({ jenis:'prog', programId: pid, key }, laluan ? { laluan } : {}), tunjuk);
       if(res && res.data) gabung(res.data);
       berjaya++;
-    } catch(e){ toast(f.name + ': ' + e.message, 'ralat'); }
+    } catch(e){ toast(nama + ': ' + e.message, 'ralat'); }
   }
   tamatMuat();
-  if(berjaya) toast(berjaya > 1 ? berjaya + ' dokumen dimuat naik.' : 'Dokumen dimuat naik ke Google Drive.');
+  if(berjaya) toast(berjaya > 1 ? berjaya + ' dokumen dimuat naik' + (berjaya < senarai.length ? ' (' + (senarai.length - berjaya) + ' gagal).' : '.') : 'Dokumen dimuat naik ke Google Drive.');
   lukisSemula();
 }
 function jatuhFailProg(e, pid, key, n){
   e.preventDefault(); n.classList.remove('seret');
-  if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) muatNaikProg(pid, key, e.dataTransfer.files);
+  const dt = e.dataTransfer; if(!dt) return;
+  /* Entri mesti diambil serta-merta semasa acara drop (sebelum sebarang await) */
+  const ent = [...(dt.items || [])].map(i => i.webkitGetAsEntry ? i.webkitGetAsEntry() : null).filter(Boolean);
+  if(ent.some(x => x.isDirectory)) return kumpulEntriSeret(ent).then(L => sahkanFolderProg(pid, key, L.filter(x => !failSistem(x.f.name) && !x.laluan.split('/').some(failSistem)))).catch(err => toast(err.message || String(err), 'ralat'));
+  if(dt.files && dt.files.length) muatNaikProg(pid, key, dt.files);
+}
+/** Kumpul semua fail dalam folder yang diseret (termasuk subfolder) bersama laluan relatifnya. */
+async function kumpulEntriSeret(ent){
+  const out = [], bacaDir = d => new Promise((ok, gagal) => { const r = d.createReader(), semua = []; const ambil = () => r.readEntries(b => { if(!b.length) ok(semua); else { semua.push(...b); ambil(); } }, gagal); ambil(); });
+  const jalan = async (x, laluan) => {
+    if(x.isFile) out.push({ f: await new Promise((ok, gagal) => x.file(ok, gagal)), laluan });
+    else if(x.isDirectory){ const sub = laluan ? laluan + '/' + x.name : x.name; for(const y of await bacaDir(x)) await jalan(y, sub); }
+  };
+  for(const x of ent) await jalan(x, '');
+  return out;
 }
 async function padamFailProg(fid){
   const f = S.program.fail.find(x => x.id === fid); if(!f) return;
