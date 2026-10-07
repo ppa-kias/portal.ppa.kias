@@ -563,18 +563,18 @@ table.grid tr.baris-jumlah td{font-weight:800;background:var(--surface-2);border
   --r:26px;
   --clay-luar:10px 14px 28px -6px rgba(66,58,36,.20), -6px -6px 18px rgba(255,255,255,.75);
   --clay-dalam:inset 5px 5px 12px rgba(255,255,255,.9), inset -6px -7px 14px rgba(120,104,70,.10);
-  --clay:var(--clay-luar), var(--clay-dalam);
+  --clay-bayang:var(--clay-luar), var(--clay-dalam);
   --clay-kecil:5px 7px 14px -4px rgba(66,58,36,.18), -3px -3px 10px rgba(255,255,255,.7), inset 3px 3px 7px rgba(255,255,255,.85), inset -3px -4px 8px rgba(120,104,70,.10);
   --clay-tekan:inset 4px 5px 10px rgba(120,104,70,.16), inset -4px -4px 10px rgba(255,255,255,.85);
-  --shadow:var(--clay);
+  --shadow:var(--clay-bayang);
 }
 body{background:radial-gradient(900px 600px at 0% 0%,#E2EEE6 0,transparent 55%),radial-gradient(800px 600px at 100% 100%,#F4E8CF 0,transparent 55%),radial-gradient(700px 500px at 100% 0%,#EAE4F3 0,transparent 50%),var(--bg);background-attachment:fixed}
 
 /* ---- kad dan permukaan ---- */
-.card{border:none;border-radius:var(--r);background:linear-gradient(150deg,#FFFFFF 0%,#F8F5EE 100%);box-shadow:var(--clay)}
+.card{border:none;border-radius:var(--r);background:linear-gradient(150deg,#FFFFFF 0%,#F8F5EE 100%);box-shadow:var(--clay-bayang)}
 .kad-btn:hover{transform:translateY(-3px);box-shadow:14px 20px 34px -8px rgba(66,58,36,.24), -6px -6px 18px rgba(255,255,255,.8), var(--clay-dalam)}
 .kad-btn:active{transform:translateY(0);box-shadow:var(--clay-tekan)}
-.klik-carta:hover,.klik-carta:focus-visible{box-shadow:0 0 0 3px var(--brand-soft), var(--clay)}
+.klik-carta:hover,.klik-carta:focus-visible{box-shadow:0 0 0 3px var(--brand-soft), var(--clay-bayang)}
 .stat{padding:18px 20px}
 .stat .v{letter-spacing:-.01em}
 details.card>summary{border-radius:var(--r)}
@@ -610,6 +610,10 @@ input:focus,select:focus,textarea:focus{border-color:rgba(19,98,84,.45);backgrou
 .seg{background:#EEEAE0;border:none;border-radius:999px;padding:4px;box-shadow:var(--clay-tekan)}
 .seg button{border-radius:999px}
 .seg button.aktif{background:linear-gradient(145deg,#FFFFFF,#F5F1E8);box-shadow:var(--clay-kecil)}
+.seg button.aktif.s-ya{background:linear-gradient(145deg,#1B7A68,#0F5446);color:#fff}
+.seg button.aktif.s-tidak{background:linear-gradient(145deg,#C9523A,#9E321D);color:#fff}
+.seg button.aktif.s-tb{background:linear-gradient(145deg,#3E72A5,#284F76);color:#fff}
+.seg button.aktif.s-ya,.seg button.aktif.s-tidak,.seg button.aktif.s-tb{box-shadow:3px 5px 10px -4px rgba(40,30,10,.45), inset 2px 2px 5px rgba(255,255,255,.28), inset -3px -3px 6px rgba(0,0,0,.2)}
 .tabs{border-bottom:none;gap:6px;padding:4px;background:#EEEAE0;border-radius:999px;box-shadow:var(--clay-tekan);width:max-content;max-width:100%}
 .tabs button{border-bottom:none;border-radius:999px;margin-bottom:0}
 .tabs button.aktif{background:linear-gradient(145deg,#FFFFFF,#F5F1E8);box-shadow:var(--clay-kecil)}
