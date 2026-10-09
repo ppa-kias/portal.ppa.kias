@@ -500,6 +500,9 @@ tr.klik{cursor:pointer}
 .jana-sub{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--surface-2)}
 .jadual-input td{vertical-align:top;padding:6px!important}
 .jadual-input input,.jadual-input select,.jadual-input textarea{padding:6px 8px;font-size:13px;border-radius:8px}
+.jadual-input input.jsu-cek{width:18px;height:18px;padding:0;margin-top:8px;accent-color:var(--amber);cursor:pointer;box-shadow:none}
+.jadual-input tr.jsu-pilihan td{background:var(--amber-soft)}
+.jadual-input tr.jsu-pilihan td:nth-child(4) input{font-weight:700;color:var(--amber)}
 .jana-bar{position:sticky;bottom:0;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px;box-shadow:0 -6px 20px -12px rgba(19,48,42,.3);margin:8px 0 12px}
 .jana-pilih{padding:18px;display:flex;flex-direction:column;gap:14px}
 .jana-pilih-kaki{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto}
@@ -1703,7 +1706,7 @@ function lukisUtama(){
       : (saya() ? `<button class="btn btn-primary" onclick="pergi('failkursus')">${ik('naik')}Muat naik fail kursus</button>` : ''))}
       ${!A && isKP() ? `<button class="btn btn-ghost" onclick="UI.kp.prog=null;pergi('ketuaprogram')">${ik('topi')}Dokumentasi program</button>` : ''}</div>
   </section>`;
-  if(bilTugasanSah()) h += `<div class="notis info" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${bilTugasanSah()} dokumen</b> menunggu pengesahan dan tandatangan anda.</span><button class="btn btn-primary btn-sm" onclick="UI.sahTab='tugasan';pergi('dokumentasi')">Semak dokumen</button></div>`;
+  if(bilTugasanSah()) h += `<div class="notis info" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${bilTugasanSah()} dokumen</b> menunggu pengesahan dan tandatangan anda.</span><button class="btn btn-primary btn-sm" onclick="UI.sahTab='tugasan';UI.lipat.dokSah=true;pergi('dokumentasi')">Semak dokumen</button></div>`;
   if(bilMesej()) h += `<div class="notis info" id="notisMesej" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Anda mempunyai <b>${bilMesej()} mesej</b> belum dibaca.</span><button class="btn btn-primary btn-sm" onclick="pergi('mesej')">Buka mesej</button></div>`;
   if(bilSijilMenunggu()) h += `<div class="notis info" id="notisSijil" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${bilSijilMenunggu()} permohonan sijil</b> penghantaran fail kursus menunggu pengesahan anda.</span><button class="btn btn-primary btn-sm" onclick="bukaSijilMenunggu()">Semak permohonan</button></div>`;
   if(saya()) h += statusSaya(thn, sid);
@@ -3243,10 +3246,10 @@ function lukisProgramKP(){
 }
 function bahagianDokProgram(p, boleh){
   const d = ringkasDokProg(p);
-  return `<section class="blok"><div class="seclabel" style="justify-content:space-between"><span class="eyebrow">Dokumentasi program</span><span class="mini">${d.ya} daripada ${d.perlu} dokumen diperlukan telah dimuat naik</span></div>
-    <div class="card pad">
+  return lipat({ kunci:'kpDok', id:'secDokProg', ikon:'fail', tajuk:'Dokumentasi program', ringkas: d.ya + ' daripada ' + d.perlu + ' dokumen diperlukan telah dimuat naik' + (d.belum ? ' · ' + d.belum + ' belum' : ''), isi:`
+    <div style="padding:14px 16px 16px">
       ${boleh ? `<p class="mini" style="margin:0 0 12px">Tekan <b>Muat naik</b> untuk memilih fail, atau <b>Folder</b> untuk memuat naik keseluruhan folder dari komputer anda (termasuk subfolder). Anda juga boleh menyeret fail atau folder ke item berkenaan (had ${CONFIG.MAKS_MB} MB setiap fail). Dokumen disimpan dalam folder program di Google Drive PPA. Tandakan <b>TB</b> bagi dokumen yang tidak berkaitan dengan program ini.</p>` : ''}
-      ${S.program.item.map((it, i) => itemDokProgram(p, it, i, boleh)).join('')}</div></section>`;
+      ${S.program.item.map((it, i) => itemDokProgram(p, it, i, boleh)).join('')}</div>` });
 }
 function itemDokProgram(p, it, i, boleh){
   const v = statusItemProg(p, it.key), fail = failProgram(p.id, it.key);
@@ -4842,10 +4845,15 @@ async function janaJSU(d, ttd){
       if(!q) continue;
       String(q.topik || '').split(/[,;\s]+/).map(Number).filter(n => n >= 1 && n <= 14).forEach(n => tulisX(h, TOPIK_KOL[n - 1] + r, '/'));
       const bi = BLOOM.indexOf(q.aras);
-      if(bi >= 0) tulisX(h, BLOOM_KOL[bi] + r, Number(q.markah) || 0);
+      /* Soalan pilihan: markah ditulis sebagai teks "10*" supaya formula SUM templat (jumlah markah dan agihan aras) tidak mengiranya. */
+      if(bi >= 0) tulisX(h, BLOOM_KOL[bi] + r, q.pilihan ? fmt(Number(q.markah) || 0) + '*' : Number(q.markah) || 0);
     }
     if(soal.length < a - m + 1) sembunyiBarisX(h, m + soal.length, a);
   });
+  /* Nota soalan pilihan pada baris kosong selepas "Peratus Jumlah Soalan & Aras" */
+  const rNota = L.C[1] + 4;
+  if(['A', 'B', 'C'].some(b => (((d.bahagian || {})[b] || {}).soalan || []).some(q => q.pilihan)) && !String(bacaX(X, h, 'A' + rNota) || '').trim())
+    tulisX(h, 'A' + rNota, '* Soalan pilihan: markah tidak dikira dalam jumlah markah dan agihan aras soalan.');
   if(ttd){
     const cari = re => { for(let r = 100; r <= 125; r++) if(re.test(bacaX(X, h, 'A' + r))) return r; return 0; };
     const p = cari(/Tanda\s*Tangan\s*Pensyarah/i), k = cari(/Tanda\s*Tangan\s*KP/i);
@@ -5034,7 +5042,7 @@ function janaKosong(jenis){
     berterusan:[{ nama:'', pemberat:'', clo:'', f2f:'', nf2f:'' }], akhir:[{ nama:'Peperiksaan Akhir', pemberat:'', clo:'', f2f:'', nf2f:'' }],
     rujukanUtama:'', rujukanTambahan:'', rujukanBaharu:'' };
   if(jenis === 'jsu') return { tahap:'ijazah', sesi:'', program:'', kod:'', nama:'', semTahun:'', clo:[{ teks:'' }, { teks:'' }, { teks:'' }],
-    topik: Array.from({ length:14 }, () => ({ nama:'', slt:'' })),
+    topik: Array.from({ length: JSU_TOPIK.min }, () => ({ nama:'', slt:'' })),
     bahagian:{ A:{ jenis:'OBJEKTIF', soalan:[] }, B:{ jenis:'STRUKTUR', soalan:[] }, C:{ jenis:'ESEI', soalan:[] } } };
   return { tahap:'ijazah', program:'', kod:'', nama:'', pensyarah: nama, pemeriksa:'TIADA', tahunKemasukan:'', sesi:'',
     clo:[0, 1, 2].map(() => ({ teks:'', item:'', deskripsi:'', plo:'', pemberat:'' })),
@@ -5092,6 +5100,7 @@ async function bukaJana(jenis, id){
     if(!r) return;
     data = Object.assign(janaKosong(jenis), r.draf.data || {});
   }
+  if(jenis === 'jsu') normalJSU(data);
   UI.jana = { jenis, id: id || 0, data, ubah:false };
   window.scrollTo(0, 0);
   lukisDok();
@@ -5135,7 +5144,8 @@ function sumberIsiJana(){
 }
 function janaUbah(e){
   const t = e.target; if(!t.dataset || !t.dataset.p) return;
-  setLaluan(UI.jana.data, t.dataset.p, t.value);
+  setLaluan(UI.jana.data, t.dataset.p, t.type === 'checkbox' ? t.checked : t.value);
+  if(t.type === 'checkbox' && t.closest('tr')) t.closest('tr').classList.toggle('jsu-pilihan', t.checked);
   if(!UI.jana.ubah){ UI.jana.ubah = true; const s = el('janaStatus'); if(s) s.textContent = 'Perubahan belum disimpan'; }
   if(t.dataset.p === 'tahap' && UI.jana.jenis === 'jsu') lukisSemulaJana(); else kemasRingkasanJana();
 }
@@ -5171,7 +5181,7 @@ async function salinDaripadaRP(id){
   if(UI.jana.jenis === 'jsu'){
     const topik = [];
     (s.minggu || []).forEach(m => (m.baris || []).forEach(b => { const t = String(b.topik || '').split('\n')[0].trim(); if(t && !topik.includes(t)) topik.push(t); }));
-    topik.slice(0, 14).forEach((t, i) => { d.topik[i].nama = t; });
+    topik.slice(0, JSU_TOPIK.maks).forEach((t, i) => { if(!d.topik[i]) d.topik[i] = { nama:'', slt:'' }; d.topik[i].nama = t; });
   }
   if(UI.jana.jenis === 's3p'){
     d.pensyarah = String(s.pensyarah || d.pensyarah).split('\n')[0];
@@ -5228,23 +5238,55 @@ function borangRP(d){
 
 /* ---------- borang JSU ---------- */
 const HAD_JSU = { A:40, B:20, C:5 };
+/* Borang memaparkan 5 baris topik; templat JSU menyokong sehingga 14 topik (lajur TOPIK 1-14). */
+const JSU_TOPIK = { min:5, maks:14 };
+function topikDirujukJSU(d){
+  let n = 0;
+  ['A', 'B', 'C'].forEach(b => (((d.bahagian || {})[b] || {}).soalan || []).forEach(q => String(q.topik || '').split(/[,;\s]+/).map(Number).forEach(x => { if(x >= 1 && x <= JSU_TOPIK.maks && x > n) n = x; })));
+  return n;
+}
+/** Draf lama (14 baris topik): buang baris kosong di hujung, tetapi kekalkan sekurang-kurangnya 5 baris dan semua topik yang dirujuk soalan. */
+function normalJSU(d){
+  const t = (Array.isArray(d.topik) ? d.topik : []).slice(0, JSU_TOPIK.maks).map(x => Object.assign({ nama:'', slt:'' }, x));
+  const kosong = x => !String(x.nama || '').trim() && (x.slt === '' || x.slt == null);
+  let n = t.length; const min = Math.max(JSU_TOPIK.min, topikDirujukJSU(d));
+  while(n > min && kosong(t[n - 1])) n--;
+  d.topik = t.slice(0, n);
+  while(d.topik.length < JSU_TOPIK.min) d.topik.push({ nama:'', slt:'' });
+  ['A', 'B', 'C'].forEach(b => (((d.bahagian || {})[b] || {}).soalan || []).forEach(q => { q.pilihan = q.pilihan === true || q.pilihan === 'true'; }));
+  return d;
+}
+function tambahTopikJSU(){
+  const n = UI.jana.data.topik.length; if(n >= JSU_TOPIK.maks) return;
+  ubahStrukturJana(d => d.topik.push({ nama:'', slt:'' }));
+  const e = el('j_topik_' + n + '_nama'); if(e) e.focus();
+}
+async function buangTopikJSU(){
+  const d = UI.jana.data, n = d.topik.length, t = d.topik[n - 1] || {}; if(n <= JSU_TOPIK.min) return;
+  const isi = String(t.nama || '').trim() || (t.slt !== '' && t.slt != null), dirujuk = topikDirujukJSU(d) >= n;
+  if((isi || dirujuk) && !await sahkan({ tajuk:'Buang topik ' + n + '?', mesej:(isi ? 'Topik ini telah diisi. ' : '') + (dirujuk ? 'Terdapat soalan yang merujuk topik ' + n + '; padankan semula nombor topik soalan tersebut. ' : '') + 'Topik lain tidak terjejas.', butang:'Buang topik', bahaya:true })) return;
+  ubahStrukturJana(x => x.topik.pop());
+}
 function borangJSU(d){
-  const diploma = d.tahap === 'diploma';
+  const diploma = d.tahap === 'diploma', nT = d.topik.length;
   let h = kadJana('Maklumat kursus', `<div class="borang">
     <div class="tiga">${mdn('Templat', 'tahap', d.tahap, { pilihan:[['ijazah', 'Asasi dan Ijazah Sarjana Muda'], ['diploma', 'Diploma']] })}${mdn('Sesi', 'sesi', d.sesi, { ph:'SEMESTER I SESI 2025/2026' })}${mdn('Sem & tahun semasa pelajar', 'semTahun', d.semTahun, { ph:'Tahun 1 Semester 1' })}</div>
     ${mdn('Program', 'program', d.program)}
     <div class="dua">${mdn('Kod kursus', 'kod', d.kod)}${mdn('Nama kursus', 'nama', d.nama)}</div></div>`);
   h += kadJana('Hasil pembelajaran kursus (CLO)', `<div class="borang">${[0, 1, 2].map(i => mdn('CLO' + (i + 1), 'clo.' + i + '.teks', (d.clo[i] || {}).teks, { textarea:true, rows:2 })).join('')}</div>`);
-  h += kadJana('Topik / kandungan kursus', `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:${diploma ? 520 : 640}px"><thead><tr><th style="width:74px">Topik</th><th>Topik / kandungan (yang terlibat dengan peperiksaan akhir)</th>${diploma ? '' : '<th style="width:90px">SLT</th><th style="width:70px" class="kanan">%</th>'}</tr></thead><tbody>
-    ${d.topik.map((t, i) => `<tr><td><b>${i + 1}</b></td><td>${mdn(null, 'topik.' + i + '.nama', t.nama)}</td>${diploma ? '' : `<td>${mdn(null, 'topik.' + i + '.slt', t.slt, { jenis:'number' })}</td><td class="kanan tnum" id="jPct${i}"></td>`}</tr>`).join('')}
-    ${diploma ? '' : '<tr class="baris-jumlah"><td colspan="2">Jumlah</td><td class="tnum" id="jSltJum">0</td><td></td></tr>'}</tbody></table></div>`);
+  h += kadJana('Topik / kandungan kursus', `<div class="jadual-skrol"><table class="grid padat jadual-input" id="jsuTopik" style="min-width:${diploma ? 560 : 680}px"><thead><tr><th style="width:74px">Topik</th><th>Topik / kandungan (yang terlibat dengan peperiksaan akhir)</th>${diploma ? '' : '<th style="width:90px">SLT</th><th style="width:70px" class="kanan">%</th>'}<th style="width:40px"></th></tr></thead><tbody>
+    ${d.topik.map((t, i) => `<tr><td><b>${i + 1}</b></td><td>${mdn(null, 'topik.' + i + '.nama', t.nama)}</td>${diploma ? '' : `<td>${mdn(null, 'topik.' + i + '.slt', t.slt, { jenis:'number' })}</td><td class="kanan tnum" id="jPct${i}"></td>`}
+      <td>${i === nT - 1 && nT > JSU_TOPIK.min ? `<button class="btn-ikon bahaya" onclick="buangTopikJSU()" title="Buang topik terakhir" aria-label="Buang topik ${i + 1}">${ik('x', 14)}</button>` : ''}</td></tr>`).join('')}
+    ${diploma ? '' : '<tr class="baris-jumlah"><td colspan="2">Jumlah</td><td class="tnum" id="jSltJum">0</td><td></td><td></td></tr>'}</tbody></table></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px">${nT < JSU_TOPIK.maks ? `<button class="btn btn-ghost btn-sm" id="jsuTambahTopik" onclick="tambahTopikJSU()">${ik('tambah', 14)}Tambah topik</button>` : ''}<span class="mini">${nT} topik · maksimum ${JSU_TOPIK.maks} topik mengikut templat JSU</span></div>`);
   ['A', 'B', 'C'].forEach(b => {
     const sek = d.bahagian[b], soal = sek.soalan || [];
-    h += kadJana('Bahagian ' + b, `<div class="dua" style="margin-bottom:10px">${mdn('Item soalan', 'bahagian.' + b + '.jenis', sek.jenis, { pilihan:[['OBJEKTIF', 'Objektif'], ['STRUKTUR', 'Struktur'], ['ESEI', 'Esei']] })}<div class="mini" style="align-self:end">Maksimum ${HAD_JSU[b]} baris soalan. Topik: nombor topik 1 hingga 14 (pisahkan dengan koma jika lebih daripada satu).</div></div>
-      ${soal.length ? `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:520px"><thead><tr><th style="width:110px">No. soalan</th><th>Topik</th><th style="width:150px">Aras Bloom</th><th style="width:100px">Markah</th><th style="width:40px"></th></tr></thead><tbody>
+    h += kadJana('Bahagian ' + b, `<div class="dua" style="margin-bottom:10px">${mdn('Item soalan', 'bahagian.' + b + '.jenis', sek.jenis, { pilihan:[['OBJEKTIF', 'Objektif'], ['STRUKTUR', 'Struktur'], ['ESEI', 'Esei']] })}<div class="mini" style="align-self:end;line-height:1.55">Maksimum ${HAD_JSU[b]} baris soalan. Topik: nombor topik 1 hingga ${nT} (pisahkan dengan koma jika lebih daripada satu). Tandakan <b>Pilihan</b> bagi soalan pilihan: markahnya ditanda * dalam templat dan tidak dikira dalam jumlah markah dan agihan aras.</div></div>
+      ${soal.length ? `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:600px"><thead><tr><th style="width:110px">No. soalan</th><th>Topik</th><th style="width:150px">Aras Bloom</th><th style="width:100px">Markah</th><th style="width:72px;text-align:center" title="Soalan pilihan: markah ditanda * dan tidak dikira dalam agihan aras">Pilihan</th><th style="width:40px"></th></tr></thead><tbody>
       ${soal.map((q, i) => { const p = 'bahagian.' + b + '.soalan.' + i + '.';
-        return `<tr><td>${mdn(null, p + 'no', q.no)}</td><td>${mdn(null, p + 'topik', q.topik, { ph:'1' })}</td><td>${mdn(null, p + 'aras', q.aras, { pilihan:[['', '-']].concat(BLOOM.map((c, k) => [c, c + ' ' + ['Mengingat', 'Memahami', 'Mengaplikasi', 'Menganalisis', 'Menilai', 'Mencipta'][k]])) })}</td>
-          <td>${mdn(null, p + 'markah', q.markah, { jenis:'number' })}</td><td><button class="btn-ikon bahaya" onclick="ubahStrukturJana(d => d.bahagian.${b}.soalan.splice(${i},1))" aria-label="Buang soalan">${ik('x', 14)}</button></td></tr>`; }).join('')}
+        return `<tr class="${q.pilihan ? 'jsu-pilihan' : ''}"><td>${mdn(null, p + 'no', q.no)}</td><td>${mdn(null, p + 'topik', q.topik, { ph:'1' })}</td><td>${mdn(null, p + 'aras', q.aras, { pilihan:[['', '-']].concat(BLOOM.map((c, k) => [c, c + ' ' + ['Mengingat', 'Memahami', 'Mengaplikasi', 'Menganalisis', 'Menilai', 'Mencipta'][k]])) })}</td>
+          <td>${mdn(null, p + 'markah', q.markah, { jenis:'number' })}</td><td class="tengah"><input type="checkbox" class="jsu-cek" id="j_${b}_pilihan_${i}" data-p="${p}pilihan" ${q.pilihan ? 'checked' : ''} aria-label="Soalan pilihan ${esc(q.no || String(i + 1))}"></td>
+          <td><button class="btn-ikon bahaya" onclick="ubahStrukturJana(d => d.bahagian.${b}.soalan.splice(${i},1))" aria-label="Buang soalan">${ik('x', 14)}</button></td></tr>`; }).join('')}
       </tbody></table></div>` : '<p class="mini">Belum ada soalan dalam bahagian ini.</p>'}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${soal.length < HAD_JSU[b] ? `<button class="btn btn-ghost btn-sm" onclick="tambahSoalanJSU('${b}',1)">${ik('tambah', 14)}Tambah soalan</button>` : ''}
         ${soal.length + 5 <= HAD_JSU[b] ? `<button class="btn btn-ghost btn-sm" onclick="tambahSoalanJSU('${b}',${b === 'A' ? 10 : 5})">${ik('tambah', 14)}Tambah ${b === 'A' ? 10 : 5} soalan</button>` : ''}</div>`);
@@ -5257,17 +5299,20 @@ function tambahSoalanJSU(b, n){
     const s = d.bahagian[b].soalan, akhir = s[s.length - 1] || {};
     for(let i = 0; i < n && s.length < HAD_JSU[b]; i++){
       const no = b === 'B' ? (Math.floor(s.length / 4) + 1) + '(' + 'abcd'[s.length % 4] + ')' : String(s.length + 1);
-      s.push({ no, topik:'', aras: akhir.aras || '', markah: akhir.markah || '' });
+      s.push({ no, topik:'', aras: akhir.aras || '', markah: akhir.markah || '', pilihan:false });
     }
   });
 }
 function ringkasanJSU(d){
   const diploma = d.tahap === 'diploma', m = [0, 0, 0, 0, 0, 0], bil = {};
-  ['A', 'B', 'C'].forEach(b => { bil[b] = (d.bahagian[b].soalan || []).length; (d.bahagian[b].soalan || []).forEach(q => { const i = BLOOM.indexOf(q.aras); if(i >= 0) m[i] += Number(q.markah) || 0; }); });
+  let pil = 0, mPil = 0;
+  ['A', 'B', 'C'].forEach(b => { bil[b] = (d.bahagian[b].soalan || []).length; (d.bahagian[b].soalan || []).forEach(q => {
+    if(q.pilihan){ pil++; mPil += Number(q.markah) || 0; return; }
+    const i = BLOOM.indexOf(q.aras); if(i >= 0) m[i] += Number(q.markah) || 0; }); });
   const jum = m.reduce((a, x) => a + x, 0), pct = x => jum ? Math.round(x / jum * 1000) / 10 : 0;
   const ag = diploma ? [['Rendah (C1)', m[0]], ['Sederhana (C2, C3)', m[1] + m[2]], ['Tinggi (C4)', m[3]]] : [['Rendah (C1, C2)', m[0] + m[1]], ['Sederhana (C3, C4)', m[2] + m[3]], ['Tinggi (C5, C6)', m[4] + m[5]]];
-  return `<div class="grid-4">${statKad('Jumlah soalan', bil.A + bil.B + bil.C, `A: ${bil.A} · B: ${bil.B} · C: ${bil.C}`)}${ag.map(([l, v]) => statKad(l, pct(v) + '%', fmt(v) + ' markah')).join('')}</div>
-    <p class="mini" style="margin-top:10px">Jumlah markah keseluruhan: <b>${fmt(jum)}</b>. ${diploma && (m[4] || m[5]) ? 'Templat Diploma tidak mengambil kira aras C5 dan C6 dalam agihan aras.' : ''}</p>`;
+  return `<div class="grid-4">${statKad('Jumlah soalan', bil.A + bil.B + bil.C, `A: ${bil.A} · B: ${bil.B} · C: ${bil.C}${pil ? ' · ' + pil + ' pilihan' : ''}`)}${ag.map(([l, v]) => statKad(l, pct(v) + '%', fmt(v) + ' markah')).join('')}</div>
+    <p class="mini" style="margin-top:10px">Jumlah markah keseluruhan: <b>${fmt(jum)}</b>.${pil ? ` <span id="jsuNotaPilihan">${pil} soalan pilihan (${fmt(mPil)} markah, bertanda *) tidak dikira dalam jumlah markah dan agihan aras.</span>` : ''} ${diploma && (m[4] || m[5]) ? 'Templat Diploma tidak mengambil kira aras C5 dan C6 dalam agihan aras.' : ''}</p>`;
 }
 
 /* ---------- borang S3P ---------- */
@@ -5594,7 +5639,7 @@ async function alirTandatangan(o){
     const ttd = { kodSah:m.kodSah, sedia:{ nama:S.pengguna.nama, tarikh:hariIniTeks(), png: await ttdSaya() }, sah:null };
     const pdf = await jadiPdf(await binaDokumen(o.jenis, o.data, ttd));
     await api('pengesahanHantar', { id:m.id, pdf, data:o.data }, { senyap:true });
-    UI.sahTab = 'saya';
+    UI.sahTab = 'saya'; UI.lipat.dokSah = true;
     lukisSemula();
     lihatFail('sah', m.id);
     return true;
@@ -5657,8 +5702,8 @@ function bahagianPengesahan(){
   if(!tabs.some(t => t[2].length)) return '';
   if(!tabs.some(t => t[0] === UI.sahTab && t[2].length)) UI.sahTab = (tabs.find(t => t[2].length) || tabs[0])[0];
   const senarai = (tabs.find(t => t[0] === UI.sahTab) || tabs[0])[2].slice().sort((a, b) => b.id - a.id);
-  return `<section class="blok" id="secSah"><div class="seclabel"><span class="eyebrow">Dokumen PDF bertandatangan</span><span class="mini">RP, JSU dan S3P ditandatangani oleh penyedia; Laporan P2LO disahkan oleh Dekan</span></div>
-    <div class="card" style="overflow:hidden"><div class="tabs" role="tablist" style="padding:0 12px;margin:0">${tabs.map(([k, l, a]) => `<button role="tab" aria-selected="${UI.sahTab === k}" class="${UI.sahTab === k ? 'aktif' : ''}" onclick="UI.sahTab='${k}';lukisSemula()">${l} (${a.length})</button>`).join('')}</div>
+  const ringkas = [P.saya.length + ' dokumen saya'].concat(A ? [P.semua.length + ' semua dokumen'] : []).join(' · ') + (P.tugasan.length ? ` · <b style="color:var(--clay)">${P.tugasan.length} menunggu pengesahan anda</b>` : '');
+  return lipat({ kunci:'dokSah', id:'secSah', ikon:'semak', tajuk:'Dokumen PDF bertandatangan', ringkas, isi:`<div class="tabs" role="tablist" style="padding:0 12px;margin:0">${tabs.map(([k, l, a]) => `<button role="tab" aria-selected="${UI.sahTab === k}" class="${UI.sahTab === k ? 'aktif' : ''}" onclick="UI.sahTab='${k}';lukisSemula()">${l} (${a.length})</button>`).join('')}</div>
     <div class="jadual-skrol"><table class="grid padat"><thead><tr><th>Dokumen</th><th class="sm-sembunyi">Disediakan oleh</th><th>Pengesah</th><th>Status</th><th></th></tr></thead><tbody>
     ${senarai.length ? senarai.map(r => { const pengesah = UI.sahTab === 'tugasan' && r.status === 'menunggu', pemohon = r.pemohonUid === S.pengguna.id;
       return `<tr class="baris"><td><span class="badge b-neutral">${esc((r.jenis || '').toUpperCase())}</span> <b>${esc(r.tajuk)}</b><div class="mini">${esc(r.kodSah)} · ${esc(fmtMasa(r.dihantar))}</div></td>
@@ -5669,7 +5714,8 @@ function bahagianPengesahan(){
           ${pengesah ? `<button class="btn btn-primary btn-sm" onclick="sahkanPengesahan(${r.id})">${ik('semak', 14)}Sahkan</button><button class="btn btn-ghost btn-sm" onclick="kembalikanPengesahan(${r.id})">Kembalikan</button>` : ''}
           ${(pemohon && r.status !== 'disahkan') || A ? `<button class="btn-ikon bahaya" onclick="padamPengesahan(${r.id})" title="Padam" aria-label="Padam permohonan">${ik('padam', 15)}</button>` : ''}
         </div></td></tr>`; }).join('') : `<tr><td colspan="5"><div class="kosong">Tiada dokumen.</div></td></tr>`}
-    </tbody></table></div></div></section>`;
+    </tbody></table></div>
+    <p class="mini lipat-nota">RP, JSU dan S3P ditandatangani oleh penyedia; Laporan P2LO disahkan oleh Dekan.</p>` });
 }
 async function hantarJana(){
   const J = UI.jana, d = J.data, I = JANA_INFO[J.jenis];
