@@ -3390,15 +3390,58 @@ async function padamStruktur(id){
   if(!await sahkan({ tajuk:'Padam struktur "' + st.nama + '"?', mesej:'Struktur ini dan ' + n + ' kursus di dalamnya akan dipadam. Struktur lain dan fail kursus pensyarah tidak terjejas.', butang:'Padam struktur', bahaya:true })) return;
   await cuba(async () => { await api('progStrukturPadam', { id }); delete UI.kp.struktur[st.programId]; lukisSemula(); });
 }
-function senaraiLantikan(l, denganSasaran){
-  return `<ul class="senarai-ringkas">${l.map(x => `<li><span class="ikon-bulat" style="background:${x.tamat ? 'var(--surface-2)' : 'var(--brand-soft)'};color:${x.tamat ? 'var(--muted)' : 'var(--brand)'}">${ik('pengguna', 16)}</span>
-    <div class="isi"><b>${denganSasaran ? esc(x.sasaran) + ' · ' : ''}${esc(x.nama || '-')}</b><span class="mini">${fmtTarikh(x.mula)} hingga ${x.tamat ? fmtTarikh(x.tamat) : 'kini'}${x.oleh ? ' · oleh ' + esc(x.oleh) : ''}</span></div>${x.tamat ? '' : '<span class="badge b-ya">Semasa</span>'}</li>`).join('')}</ul>`;
+function hariIniISO(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+/** Lantikan berkuat kuasa: tiada tarikh tamat, atau tarikh tamat tempoh belum tiba (sama seperti lantikanBuka_ di pelayan). */
+function lantikanAktif(x){ return !x.tamat || String(x.tamat) > hariIniISO(); }
+function senaraiLantikan(l, denganSasaran, aksi){
+  return `<ul class="senarai-ringkas">${l.map(x => { const on = lantikanAktif(x);
+    return `<li><span class="ikon-bulat" style="background:${on ? 'var(--brand-soft)' : 'var(--surface-2)'};color:${on ? 'var(--brand)' : 'var(--muted)'}">${ik('pengguna', 16)}</span>
+    <div class="isi"><b>${denganSasaran ? esc(x.sasaran) + ' · ' : ''}${esc(x.nama || '-')}</b><span class="mini">${fmtTarikh(x.mula)} hingga ${x.tamat ? fmtTarikh(x.tamat) + (on ? ' (tamat tempoh)' : '') : 'kini'}${x.oleh ? ' · oleh ' + esc(x.oleh) : ''}</span></div>${on ? '<span class="badge b-ya">Semasa</span>' : ''}${aksi ? aksi(x) : ''}</li>`; }).join('')}</ul>`;
 }
 function lantikanKP(pid){ return S.program.lantikan.filter(x => x.jenis === 'kp' && Number(x.sasaran) === pid).sort((a, b) => String(b.mula).localeCompare(String(a.mula)) || b.id - a.id); }
 function bahagianLantikanProgram(p){
-  const l = lantikanKP(p.id); if(!l.length) return '';
-  const kini = l.find(x => !x.tamat);
-  return lipat({ kunci:'kpLantikan', ikon:'pengguna', tajuk:'Sejarah lantikan Ketua Program', ringkas: l.length + ' rekod lantikan' + (kini ? ' · Semasa: ' + esc(kini.nama || '-') : ''), isi:`<div style="padding:4px 18px 12px">${senaraiLantikan(l)}</div>` });
+  const l = lantikanKP(p.id), boleh = !!p.bolehUrus; if(!l.length && !boleh) return '';
+  const kini = l.find(lantikanAktif), luput = !!p.kp && !kini && l.some(x => Number(x.pid) === p.kp);
+  const aksi = boleh ? x => `<div class="aksi-baris"><button class="btn-ikon" onclick="modalLantikan(${p.id},${x.id})" title="Sunting nama dan tempoh lantikan" aria-label="Sunting lantikan ${esc(x.nama || '')}">${ik('sunting', 15)}</button>${lantikanAktif(x) ? '' : `<button class="btn-ikon bahaya" onclick="padamLantikan(${x.id})" title="Padam rekod" aria-label="Padam rekod lantikan ${esc(x.nama || '')}">${ik('padam', 15)}</button>`}</div>` : null;
+  return lipat({ kunci:'kpLantikan', id:'secLantikan', ikon:'pengguna', tajuk:'Sejarah lantikan Ketua Program',
+    ringkas: l.length + ' rekod lantikan' + (kini ? ' · Semasa: ' + esc(kini.nama || '-') : '') + (luput ? ' · <b style="color:var(--amber)">tempoh lantikan semasa telah tamat</b>' : ''),
+    isi:`<div style="padding:4px 18px 12px">${l.length ? senaraiLantikan(l, false, aksi) : '<p class="mini" style="margin:12px 0">Belum ada rekod lantikan.</p>'}</div>
+    ${boleh ? `<div class="lipat-nota" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="ltTambah" onclick="modalLantikan(${p.id},0)">${ik('tambah', 14)}Tambah lantikan terdahulu</button>
+      <span class="mini" style="flex:1;min-width:220px">Tekan ${ik('sunting', 12)} untuk mengemas kini nama dan tempoh lantikan. ${isAdmin() ? 'Untuk melantik Ketua Program baharu, gunakan Tetapan program.' : 'Penukaran Ketua Program semasa dibuat oleh pentadbir PPA.'}</span></div>` : ''}` });
+}
+function modalLantikan(progId, id){
+  const p = S.program.senarai.find(x => x.id === progId), x = id ? S.program.lantikan.find(l => l.id === id) : null; if(!p || (id && !x)) return;
+  const semasa = !!x && lantikanAktif(x), A = isAdmin(), kunci = semasa && !A, hari = hariIniISO();
+  const esok = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+  const staf = Object.values(petaP()).filter(s => s && s.nama).sort((a, b) => a.nama.localeCompare(b.nama));
+  bukaModal({ tajuk: x ? 'Kemas kini lantikan Ketua Program' : 'Tambah lantikan terdahulu', desk: p.kod + ' · ' + p.nama, isi:`<div class="borang">
+    <div class="notis info" style="margin:0">${semasa ? 'Ini lantikan semasa. ' + (A ? 'Menukar nama di sini membetulkan rekod dan menukar Ketua Program semasa bagi program ini.' : 'Anda boleh mengemas kini tarikh mula dan tarikh tamat tempoh. Nama Ketua Program semasa hanya boleh ditukar oleh pentadbir PPA.')
+      : (x ? 'Rekod lantikan terdahulu.' : 'Rekod Ketua Program sebelum ini, contohnya sebelum portal digunakan.') + ' Untuk melantik Ketua Program baharu, pentadbir PPA menggunakan Tetapan program.'}</div>
+    <div><label class="fld" for="ltNama">Nama Ketua Program</label><input id="ltNama" type="text" list="dlLtNama" value="${esc(x ? x.nama : '')}" ${kunci ? 'disabled' : ''} autocomplete="off" placeholder="Pilih staf atau taip nama">
+      <datalist id="dlLtNama">${staf.map(s => `<option value="${esc(s.nama)}">`).join('')}</datalist>
+      <div class="mini" style="margin-top:4px">${semasa ? 'Ketua Program semasa mesti staf akademik yang berdaftar.' : 'Pilih daripada senarai staf, atau taip nama bekas Ketua Program yang tiada dalam senarai.'}</div></div>
+    <div class="dua"><div><label class="fld" for="ltMula">Tarikh mula</label><input id="ltMula" type="date" value="${esc(x ? x.mula : '')}"></div>
+      <div><label class="fld" for="ltTamat">${semasa ? 'Tarikh tamat tempoh (pilihan)' : 'Tarikh tamat'}</label><input id="ltTamat" type="date" value="${esc(x ? x.tamat || '' : '')}" ${semasa ? `min="${esok}"` : `max="${hari}"`}></div></div>
+    ${semasa ? '<div class="mini">Biarkan tarikh tamat kosong jika tempoh lantikan tidak ditetapkan dalam surat lantikan.</div>' : ''}
+    <p class="ralat" id="ltErr" hidden></p></div>`,
+    kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" id="ltBtn" onclick="simpanLantikan(${progId},${id || 0})">${ik('semak')}Simpan</button>` });
+  fokus(kunci ? 'ltMula' : 'ltNama');
+}
+async function simpanLantikan(progId, id){
+  const err = el('ltErr'), salah = m => { err.textContent = m; err.hidden = false; };
+  const nama = el('ltNama').value.replace(/\s+/g, ' ').trim(), mula = el('ltMula').value, tamat = el('ltTamat').value;
+  const s = Object.values(petaP()).find(x => x && x.nama && x.nama.toLowerCase() === nama.toLowerCase());
+  if(!nama) return salah('Sila isi nama Ketua Program.');
+  if(!mula) return salah('Sila isi tarikh mula lantikan.');
+  if(tamat && tamat < mula) return salah('Tarikh tamat mesti selepas tarikh mula.');
+  err.hidden = true; el('ltBtn').disabled = true;
+  try { await api('progLantikanSimpan', { programId: progId, id, pid: s ? s.id : 0, nama, mula, tamat }); UI.lipat.kpLantikan = true; tutupModal(); lukisSemula(); }
+  catch(e){ salah(e.message); el('ltBtn').disabled = false; }
+}
+async function padamLantikan(id){
+  const x = S.program.lantikan.find(l => l.id === id); if(!x) return;
+  if(!await sahkan({ tajuk:'Padam rekod lantikan?', mesej: (x.nama || '-') + ' (' + fmtTarikh(x.mula) + ' hingga ' + (x.tamat ? fmtTarikh(x.tamat) : 'kini') + '). Rekod ini akan dibuang daripada sejarah lantikan Ketua Program.', butang:'Padam rekod', bahaya:true })) return;
+  await cuba(async () => { await api('progLantikanPadam', { id }); lukisSemula(); });
 }
 
 /* ---------- tetapan program (pentadbir PPA) ---------- */
@@ -4288,13 +4331,11 @@ function lukisDok(){
     ${bahagianPengesahan()}
     ${bahagianJanaDok()}
     ${bahagianT4()}
-    <div class="seclabel"><span class="eyebrow">Dokumen rasmi PPA</span></div>
-    <div class="card" style="overflow:hidden"><div class="toolbar" style="border-bottom:none">
+    ${lipat({ kunci:'dokRasmi', id:'secDokRasmi', ikon:'buku', tajuk:'Dokumen rasmi PPA', ringkas: S.dokumen.length + ' dokumen · ' + kategoriDok().length + ' kategori', isi:`<div class="toolbar">
       <div class="cari">${ik('cari')}<input type="search" placeholder="Cari tajuk, keterangan atau hashtag…" value="${esc(UI.dok.cari)}" oninput="UI.dok.cari=this.value;lukisSenaraiDok()" aria-label="Cari dokumen"></div>
       <select class="auto" onchange="UI.dok.susun=this.value;lukisSenaraiDok()" aria-label="Susunan"><option value="baru" ${UI.dok.susun === 'baru' ? 'selected' : ''}>Terkini dahulu</option><option value="lama" ${UI.dok.susun === 'lama' ? 'selected' : ''}>Terlama dahulu</option><option value="tajuk" ${UI.dok.susun === 'tajuk' ? 'selected' : ''}>Tajuk (A-Z)</option></select>
-    </div></div>
-    <div class="kat-cip" id="dokKat"></div>
-    <div id="dokGrid"></div>`;
+    </div>
+    <div style="padding:14px 16px 16px"><div class="kat-cip" id="dokKat" style="margin-top:0"></div><div id="dokGrid"></div></div>` })}`;
   lukisSenaraiDok();
   muatStatusTemplat().then(() => { Object.keys(JANA_INFO).forEach(j => { const e = el('stTemplat-' + j); if(e) e.innerHTML = statusTemplatJana(j); }); const t = el('stTemplat-table4'); if(t) t.innerHTML = statusTemplatT4(); });
 }
@@ -4382,7 +4423,7 @@ async function simpanDok(id){
       const r2 = await muatNaikFail(f, { jenis:'dok', id: r.id }, p => { const pr = el('dProg'); if(pr){ pr.hidden = false; pr.innerHTML = progHTML(f.name, p, 1, 1); } });
       if(r2 && r2.data) gabung(r2.data);
     }
-    tutupModal(); lukisSemula(); toast(id ? 'Dokumen dikemas kini.' : 'Dokumen diterbitkan.');
+    UI.lipat.dokRasmi = true; tutupModal(); lukisSemula(); toast(id ? 'Dokumen dikemas kini.' : 'Dokumen diterbitkan.');
   } catch(e){
     if(!id && idBaru){ try { const r3 = await panggil('dokPadam', { id: idBaru }); gabung(r3.data); } catch(x){ /* abaikan */ } }
     salah(e.message); if(el('dSimpan')) el('dSimpan').disabled = false;
@@ -6288,7 +6329,9 @@ function lukisT4Edit(){
   const isiAuto = b ? `<div class="dd"><button class="btn btn-ghost" onclick="togolDD(event,this)">${ik('salin')}<span>Isi automatik</span></button><div class="dd-menu">
       ${cad.rp ? `<button onclick="isiT4DaripadaRP()">${ik('buku')}Daripada draf RP saya${cad.rp.sesi ? ' (' + esc(cad.rp.sesi) + ')' : ''}</button>` : ''}
       ${(cad.pensyarah || []).length ? `<button onclick="ubahT4(d => { const p = UI.t4.edit.info.cadangan.pensyarah; d.staf = [0, 1, 2].map(i => p[i] || ''); })">${ik('pengguna')}Nama pensyarah daripada Fail Kursus</button>` : ''}
-      <button onclick="isiT4Struktur()">${ik('topi')}Klasifikasi, tahun/semester dan PLO daripada struktur program</button></div></div>` : '';
+      <button onclick="isiT4Struktur()">${ik('topi')}Klasifikasi, tahun/semester dan PLO daripada struktur program</button>
+      <div class="dd-sep"></div><button onclick="el('t4ImportFail').click()">${ik('jadual')}Daripada fail Excel Table 4 (.xlsx / .xlsm)</button></div></div>
+    <label class="btn btn-ghost" title="Muat naik Table 4 yang telah diisi dalam Excel (borang MQA) untuk mengisi borang ini secara automatik">${ik('naik')}<span>Import Excel</span><input type="file" id="t4ImportFail" hidden accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12" onchange="importT4Xlsx(this)"></label>` : '';
   const kepalaJam = `<th style="width:54px">L</th><th style="width:54px">T</th><th style="width:54px">P</th><th style="width:54px">O</th>`;
   const jadualNilai = (senarai, tajuk) => `<div class="fld" style="margin:6px 0 6px">${tajuk}</div><div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:${b ? 760 : 640}px"><thead><tr><th style="width:44px">No.</th><th>Komponen pentaksiran</th><th style="width:70px">%</th><th style="width:96px">F2F fizikal</th><th style="width:96px">F2F dalam talian</th><th style="width:96px">NF2F kendiri</th><th style="width:70px">Jumlah SLT</th>${b ? '<th style="width:40px"></th>' : ''}</tr></thead><tbody>
     ${d[senarai].map((x, i) => `<tr><td class="tnum">${i + 1}</td><td>${sel(senarai + '.' + i + '.komponen', x.komponen, { ph:'cth. Kuiz' })}</td><td>${nom(senarai + '.' + i + '.peratus', x.peratus)}</td><td>${nom(senarai + '.' + i + '.fizikal', x.fizikal)}</td><td>${nom(senarai + '.' + i + '.talian', x.talian)}</td><td>${nom(senarai + '.' + i + '.nf2f', x.nf2f)}</td><td class="kanan tnum" id="t4J${senarai}${i}"></td>${buang(senarai, i)}</tr>`).join('')}
@@ -6296,7 +6339,7 @@ function lukisT4Edit(){
   el('halaman').innerHTML = `<div class="kepala"><div>
       <button class="btn-teks" style="margin:0 0 6px -6px;display:inline-flex;align-items:center;gap:4px" onclick="tutupT4()">${ik('kiri', 14)}Bank Maklumat Kursus</button>
       <div class="eyebrow">Table 4 · ${esc(I.program.kod)} · ${esc(K.klasifikasi || 'Tanpa klasifikasi')}</div><h1 class="serif">${esc(K.kod)} ${esc(K.nama || '')}</h1>
-      <p class="mini">${b ? 'Isi mengikut borang rasmi MQA <i>Table 4: Summary of Course Information</i>. Tekan <b>Simpan</b> untuk menyimpan dalam Bank Maklumat Kursus, atau <b>Simpan & muat turun PDF</b> untuk menjana PDF borang rasmi.' : 'Paparan sahaja. Table 4 kursus ini diisi oleh Ketua Program atau pensyarah kursus.'}
+      <p class="mini">${b ? 'Isi mengikut borang rasmi MQA <i>Table 4: Summary of Course Information</i>. Jika Table 4 telah diisi dalam Excel, tekan <b>Import Excel</b> untuk mengisi borang secara automatik. Tekan <b>Simpan</b> untuk menyimpan dalam Bank Maklumat Kursus, atau <b>Simpan & muat turun PDF</b> untuk menjana PDF borang rasmi.' : 'Paparan sahaja. Table 4 kursus ini diisi oleh Ketua Program atau pensyarah kursus.'}
         ${R ? ' Kemas kini terakhir: ' + esc(fmtMasa(R.dikemaskini)) + (R.oleh ? ' oleh ' + esc(R.oleh) : '') + '.' : ''}</p></div>
     <div class="kepala-aksi">${isiAuto}${!b && R ? `<button class="btn btn-primary" onclick='pdfT4(${E.pid},${esc(JSON.stringify(E.kod))})'>${ik('turun')}Muat turun PDF</button>` : ''}</div></div>
     <datalist id="dlPLO">${PLO_PILIHAN.slice(1).map(([v]) => `<option value="${v}">`).join('')}</datalist>
@@ -6462,6 +6505,90 @@ async function binaT4Xlsx(info, d){
   if(sp){ let u = anakNS(sp, 'pageSetUpPr')[0]; if(!u){ u = h.doc.createElementNS(NS_S, 'pageSetUpPr'); sp.appendChild(u); } u.setAttribute('fitToPage', '1'); }
   if(ps){ ps.setAttribute('fitToWidth', '1'); ps.setAttribute('fitToHeight', '0'); ps.setAttribute('orientation', 'portrait'); ps.setAttribute('paperSize', '9'); }
   return varianXlsx(X, ['FORM'], ext, false);
+}
+/* ---- import Table 4 yang telah diisi dalam Excel (borang MQA, helaian FORM): kedudukan sel sama seperti binaT4Xlsx ---- */
+const T4_IMPORT_MAKS_MB = 10;
+async function bacaT4Xlsx(bait){
+  let X;
+  try { X = await bukaXlsx(bait); } catch(e){ throw new Error('Fail tidak dapat dibaca sebagai buku kerja Excel (.xlsx / .xlsm).'); }
+  let nama = X.helaian.FORM ? 'FORM' : '';
+  if(!nama) for(const nm of Object.keys(X.helaian)){ const hx = await helaianX(X, nm); if(/Table\s*4/i.test(bacaX(X, hx, 'B2'))){ nama = nm; break; } }
+  if(!nama) throw new Error('Helaian borang Table 4 ("FORM") tidak ditemui. Gunakan fail Excel borang MQA Table 4: Summary of Course Information.');
+  const h = await helaianX(X, nama);
+  [['C5', /Course Name/i], ['C8', /Synopsis/i], ['D56', /Course Content/i], ['D81', /Contin/i], ['D89', /Final/i], ['C114', /References/i]].forEach(([ref, re]) => {
+    if(!re.test(bacaX(X, h, ref))) throw new Error('Susun atur helaian "' + nama + '" berbeza daripada borang MQA Table 4 (v2.0) yang digunakan oleh portal (sel ' + ref + '). Gunakan templat Table 4 rasmi PPA.');
+  });
+  const v = ref => String(bacaX(X, h, ref) ?? '').replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').trim();
+  const n = ref => { const t = v(ref); if(t === '') return ''; const x = Number(t.replace(',', '.')); return isFinite(x) ? Math.round(x * 100) / 100 : ''; };
+  const sama = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+  const kolPLO = k => noKeKol(5 + k);
+  const d = { staf: [9, 10, 11].map(r => v('G' + r)), mqf:{}, kemahiran:['', '', ''] };
+  const klas = v('F7'); d.klasifikasi = klas ? ((T4_KLAS_MQA.find(([k, l]) => sama(k, klas) || sama(l, klas)) || [])[0] || klasMQA(klas)) : '';
+  d.sinopsis = v('F8');
+  d.tahun = (v('I12').match(/[1-8]/) || [''])[0]; d.semester = (v('L12').match(/[1-3]/) || [''])[0];
+  d.catatanSem = v('M12').replace(/^remarks?\s*:?\s*/i, '');
+  d.prasyarat = v('F14');
+  /* 7–8: CLO (H16–H23), matriks PLO (F–Q, baris 29–36), kaedah pengajaran (R) dan pentaksiran (W) */
+  const clo = Array.from({ length: T4_MAKS.clo }, (z, i) => ({ teks: v('H' + (16 + i)), plo: Array.from({ length:12 }, (y, k) => v(kolPLO(k + 1) + (29 + i)) ? 'PLO' + (k + 1) : '').filter(Boolean).join(', '),
+    pengajaran: v('R' + (29 + i)), pentaksiran: v('W' + (29 + i)) }));
+  while(clo.length && !Object.values(clo[clo.length - 1]).some(Boolean)) clo.pop();
+  d.clo = clo;
+  for(let k = 1; k <= 12; k++){ const m = [37, 38, 39].map(r => v(kolPLO(k) + r).toUpperCase()).filter(Boolean); if(m.length) d.mqf[k] = m.join(', '); }
+  /* 9: kemahiran boleh pindah (nilai senarai borang MQA, atau label Bahasa Melayu) */
+  const lain = [];
+  [46, 47, 48].forEach((r, i) => { const t = v('J' + r); if(!t) return;
+    const j = T4_KEMAHIRAN.findIndex((k, x) => sama(k, t) || sama(T4_KEMAHIRAN_BM[x], t));
+    if(j >= 0) d.kemahiran[i] = T4_KEMAHIRAN[j]; else lain.push(t); });
+  d.kemahiranLain = [v('J50')].concat(lain).filter(Boolean).join('\n');
+  /* 10: SLT kandungan (baris 60–79) dan pentaksiran (83–87, 91–95) */
+  const KOL = { fL:'M', fT:'N', fP:'O', fO:'P', oL:'Q', oT:'R', oP:'S', oO:'T', nf2f:'U' };
+  d.topik = [];
+  for(let r = 60; r < 60 + T4_MAKS.topik; r++){
+    const t = Object.assign(topikT4Kosong(), { topik: v('E' + r), clo: v('K' + r) });
+    T4_JAM.forEach(k => { t[k] = n(KOL[k] + r); });
+    if(t.topik || T4_JAM.some(k => t[k] !== '')) d.topik.push(t);
+  }
+  const nilai = r0 => { const L = []; for(let r = r0; r < r0 + T4_MAKS.nilai; r++){
+    const x = Object.assign(nilaiT4Kosong(v('E' + r)), { peratus: n('K' + r), fizikal: n('M' + r), talian: n('Q' + r), nf2f: n('U' + r) });
+    if(x.komponen || [x.peratus, x.fizikal, x.talian, x.nf2f].some(y => y !== '')) L.push(x); } return L; };
+  d.berterusan = nilai(83); d.akhir = nilai(91);
+  d.latihanIndustri = !!v('X107');
+  d.keperluan = v('K112'); d.rujukan = v('K114'); d.lain = v('K116');
+  const bil = { clo: d.clo.filter(c => c.teks).length, topik: d.topik.length, nilai: d.berterusan.length + d.akhir.length };
+  const ada = bil.clo || bil.topik || bil.nilai || d.sinopsis || d.staf.some(Boolean) || d.rujukan;
+  if(!ada) throw new Error('Tiada maklumat Table 4 ditemui dalam fail ini. Pastikan borang telah diisi dalam helaian FORM.');
+  return { data: d, kod: v('F6'), nama: v('F5'), bil };
+}
+/** Gabung data daripada Excel ke dalam borang: medan yang diisi dalam fail menggantikan isi semasa; medan kosong tidak diubah. */
+function gabungT4(d, x){
+  ['klasifikasi', 'sinopsis', 'tahun', 'semester', 'catatanSem', 'prasyarat', 'kemahiranLain', 'keperluan', 'rujukan', 'lain'].forEach(k => { if(String(x[k] ?? '').trim()) d[k] = x[k]; });
+  if(x.staf.some(Boolean)) d.staf = [0, 1, 2].map(i => x.staf[i] || '');
+  if(x.kemahiran.some(Boolean)) d.kemahiran = x.kemahiran.slice(0, 3);
+  ['clo', 'topik', 'berterusan', 'akhir'].forEach(k => { if(x[k].length) d[k] = x[k]; });
+  if(Object.keys(x.mqf).length) d.mqf = Object.assign({}, d.mqf || {}, x.mqf);
+  if(x.latihanIndustri) d.latihanIndustri = true;
+  return d;
+}
+function borangT4Berisi(d){
+  return !!(String(d.sinopsis || '').trim() || d.clo.some(c => String(c.teks || '').trim()) || d.topik.some(t => String(t.topik || '').trim()) || String(d.rujukan || '').trim());
+}
+async function importT4Xlsx(input){
+  const f = input.files && input.files[0]; input.value = '';
+  const E = UI.t4 && UI.t4.edit; if(!f || !E || !E.boleh) return;
+  if(!/\.xls[xm]$/i.test(f.name)){ toast('Pilih fail Excel Table 4 (.xlsx atau .xlsm).', 'ralat'); return; }
+  if(f.size > T4_IMPORT_MAKS_MB * 1048576){ toast('Saiz fail melebihi ' + T4_IMPORT_MAKS_MB + ' MB.', 'ralat'); return; }
+  let r;
+  mulaMuat();
+  try { r = await bacaT4Xlsx(new Uint8Array(await f.arrayBuffer())); }
+  catch(e){ toast(e.message || String(e), 'ralat'); return; }
+  finally { tamatMuat(); }
+  const K = E.info.kursus, beza = r.kod && kodAsas(r.kod) !== kodAsas(K.kod);
+  const ringkas = [r.bil.clo + ' CLO', r.bil.topik + ' topik', r.bil.nilai + ' komponen pentaksiran'].join(', ');
+  if((beza || borangT4Berisi(E.data)) && !await sahkan({ tajuk:'Isi borang daripada fail Excel?',
+    mesej:(beza ? 'Kod kursus dalam fail ialah ' + r.kod + ', berbeza daripada ' + K.kod + '. ' : '') + 'Fail mengandungi ' + ringkas + '. Medan yang diisi dalam fail akan menggantikan isi borang semasa; medan yang kosong dalam fail tidak diubah. Perubahan hanya disimpan selepas anda menekan Simpan.',
+    butang:'Isi borang' })) return;
+  ubahT4(d => gabungT4(d, r.data));
+  toast('Borang diisi daripada ' + f.name + ': ' + ringkas + '. Semak, kemudian tekan Simpan.');
 }
 function namaPdfT4(info){ return 'Table4_' + namaFailSelamat(kodAsas(info.kursus.kod)) + '_' + namaFailSelamat(info.program.kod) + '.pdf'; }
 async function simpanT4(denganPdf){
