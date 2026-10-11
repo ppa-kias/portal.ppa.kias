@@ -502,6 +502,8 @@ tr.klik{cursor:pointer}
 .jadual-input input,.jadual-input select,.jadual-input textarea{padding:6px 8px;font-size:13px;border-radius:8px}
 .jadual-input input.jsu-cek{width:18px;height:18px;padding:0;margin-top:8px;accent-color:var(--amber);cursor:pointer;box-shadow:none}
 .jadual-input tr.jsu-pilihan td{background:var(--amber-soft)}
+.ig-gambar{width:42px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;background:var(--surface-2);color:var(--muted)}
+.btn-ikon.ig-ada{color:var(--brand);background:var(--brand-soft)}
 .jadual-input tr.jsu-pilihan td:nth-child(4) input{font-weight:700;color:var(--amber)}
 .jana-bar{position:sticky;bottom:0;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px;box-shadow:0 -6px 20px -12px rgba(19,48,42,.3);margin:8px 0 12px}
 .jana-pilih{padding:18px;display:flex;flex-direction:column;gap:14px}
@@ -908,7 +910,7 @@ const CONFIG = {
   LOGO: ['https:\/\/lh3.googleusercontent.com/d/1Z_Vcc2Ism_XGAC2dnUIL2AM6QI93zzC-',
          'https:\/\/drive.google.com/thumbnail?id=1Z_Vcc2Ism_XGAC2dnUIL2AM6QI93zzC-&sz=w400'],
   TERUS_MB: 5,
-  MAKS_MB: 100,
+  MAKS_MB: 10,      /* had saiz satu fail (mesti sama dengan APP.MAKS_MB dalam Code.gs) */
   EKIAS: 'https:\/\/ekias.my/ekias/',   /* pautan Sistem eKIAS di bahagian bawah menu */
   LINKTREE: 'https:\/\/linktr.ee/PPA_KIAS'   /* pautan Linktree PPA, di bawah Sistem eKIAS */
 };
@@ -2223,9 +2225,10 @@ async function muatNaikItem(kid, key, files, input){
   if(!senarai.length) return;
   const ditolak = [];
   for(const f of senarai){ const m = await semakPdf(f); if(m) ditolak.push(f.name + ' (' + m + ')'); }
-  const mesejTolak = ditolak.length ? 'Hanya fail PDF diterima untuk fail kursus. Ditolak: ' + ditolak.join(', ') + '. Simpan sebagai PDF dan muat naik semula.' : '';
-  if(ditolak.length){
-    senarai = senarai.filter(f => !ditolak.some(x => x.indexOf(f.name + ' (') === 0));
+  const H = tapisSaizFail(senarai.filter(f => !ditolak.some(x => x.indexOf(f.name + ' (') === 0)));
+  const mesejTolak = [ditolak.length ? 'Hanya fail PDF diterima untuk fail kursus. Ditolak: ' + ditolak.join(', ') + '. Simpan sebagai PDF dan muat naik semula.' : '', H.mesej].filter(Boolean).join(' ');
+  if(ditolak.length || H.besar.length){
+    senarai = H.ok;
     if(!senarai.length){ toast(mesejTolak, 'ralat'); return; }
   }
   let berjaya = 0;
@@ -2291,6 +2294,13 @@ async function muatTurunJadual(nama, rows, fmt, tambahan){
 }
 function bacaTeks(f){
   return new Promise((ok, gagal) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => gagal(new Error('Tidak dapat membaca fail.')); r.readAsText(f); });
+}
+/** Asingkan fail yang melebihi had saiz satu fail (CONFIG.MAKS_MB) supaya ditolak sebelum dimuat naik. */
+function tapisSaizFail(senarai, nama){
+  nama = nama || (x => x.name);
+  const had = CONFIG.MAKS_MB * 1048576, f = x => x.f || x;
+  const besar = senarai.filter(x => f(x).size > had);
+  return { ok: senarai.filter(x => f(x).size <= had), besar, mesej: besar.length ? 'Melebihi had ' + CONFIG.MAKS_MB + ' MB setiap fail (tidak dimuat naik): ' + besar.slice(0, 5).map(x => nama(x) + ' (' + fmtSaiz(f(x).size) + ')').join(', ') + (besar.length > 5 ? ' dan ' + (besar.length - 5) + ' lagi' : '') + '.' : '' };
 }
 /** Muat naik satu fail ke Google Drive melalui pelayan. Fail kecil dihantar sekali gus; fail besar dihantar secara bercebisan. */
 async function muatNaikFail(file, sasaran, kemajuanCb){
@@ -4251,12 +4261,16 @@ async function muatNaikFolderProg(pid, key, files, input){
 async function sahkanFolderProg(pid, key, senarai){
   if(!senarai.length){ toast('Folder ini tidak mengandungi fail untuk dimuat naik.', 'ralat'); return; }
   if(senarai.length > MAKS_FAIL_FOLDER){ toast('Folder mengandungi ' + senarai.length + ' fail. Had ' + MAKS_FAIL_FOLDER + ' fail bagi setiap muat naik; pecahkan kepada beberapa folder.', 'ralat'); return; }
-  const saiz = senarai.reduce((a, x) => a + x.f.size, 0), akar = [...new Set(senarai.map(x => x.laluan.split('/')[0]).filter(Boolean))];
-  if(!await sahkan({ tajuk:'Muat naik folder?', mesej: senarai.length + ' fail (' + fmtSaiz(saiz) + ')' + (akar.length ? ' daripada folder "' + akar.join('", "') + '"' : '') + ' akan dimuat naik. Struktur subfolder dikekalkan dalam Google Drive.', butang:'Muat naik' })) return;
+  const H = tapisSaizFail(senarai, x => (x.laluan ? x.laluan + '/' : '') + x.f.name);
+  if(!H.ok.length){ toast(H.mesej, 'ralat'); return; }
+  const saiz = H.ok.reduce((a, x) => a + x.f.size, 0), akar = [...new Set(senarai.map(x => x.laluan.split('/')[0]).filter(Boolean))];
+  if(!await sahkan({ tajuk:'Muat naik folder?', mesej: H.ok.length + ' fail (' + fmtSaiz(saiz) + ')' + (akar.length ? ' daripada folder "' + akar.join('", "') + '"' : '') + ' akan dimuat naik. Struktur subfolder dikekalkan dalam Google Drive.' + (H.besar.length ? ' ' + H.besar.length + ' fail melebihi had ' + CONFIG.MAKS_MB + ' MB akan dilangkau.' : ''), butang:'Muat naik' })) return;
   return muatNaikSenaraiProg(pid, key, senarai);
 }
 async function muatNaikSenaraiProg(pid, key, senarai){
-  if(!senarai.length) return;
+  const H = tapisSaizFail(senarai, x => (x.laluan ? x.laluan + '/' : '') + x.f.name);
+  senarai = H.ok;
+  if(!senarai.length){ if(H.mesej) toast(H.mesej, 'ralat'); return; }
   let berjaya = 0;
   mulaMuat();
   for(let i = 0; i < senarai.length; i++){
@@ -4270,7 +4284,8 @@ async function muatNaikSenaraiProg(pid, key, senarai){
     } catch(e){ toast(nama + ': ' + e.message, 'ralat'); }
   }
   tamatMuat();
-  if(berjaya) toast(berjaya > 1 ? berjaya + ' dokumen dimuat naik' + (berjaya < senarai.length ? ' (' + (senarai.length - berjaya) + ' gagal).' : '.') : 'Dokumen dimuat naik ke Google Drive.');
+  if(berjaya) toast((berjaya > 1 ? berjaya + ' dokumen dimuat naik' + (berjaya < senarai.length ? ' (' + (senarai.length - berjaya) + ' gagal).' : '.') : 'Dokumen dimuat naik ke Google Drive.') + (H.mesej ? ' ' + H.mesej : ''), H.mesej ? 'ralat' : undefined);
+  else if(H.mesej) toast(H.mesej, 'ralat');
   lukisSemula();
 }
 function jatuhFailProg(e, pid, key, n){
@@ -5925,8 +5940,9 @@ function tabPensyarah(){
       <div class="toolbar"><div class="cari">${ik('cari')}<input type="search" placeholder="Cari nama atau emel…" value="${esc(UI.admin.cari)}" oninput="UI.admin.cari=this.value;lukisJadualPensyarah()" aria-label="Cari pensyarah"></div>
         <select class="auto" onchange="UI.admin.fak=this.value;lukisJadualPensyarah()" aria-label="Tapis fakulti"><option value="semua">Semua fakulti</option>${S.fakulti.map(f => `<option value="${esc(f.id)}" ${UI.admin.fak === f.id ? 'selected' : ''}>${esc(f.id)}</option>`).join('')}</select>
         <button class="btn btn-ghost" onclick="modalEmelPukal()">${ik('naik')}Kemas kini emel (CSV)</button>
+        <button class="btn btn-ghost" id="btnImportGambar" onclick="modalImportGambar()">${ik('kamera')}Import gambar</button>
         <button class="btn btn-primary" onclick="modalPensyarahInduk(0)">${ik('tambah')}Tambah pensyarah</button></div>
-      <div class="jadual-skrol"><table class="grid"><thead><tr><th>Nama</th><th>Emel</th><th>Fakulti</th><th class="sm-sembunyi">Jawatan</th><th class="sm-sembunyi">Status</th><th>Akaun</th><th></th></tr></thead><tbody id="jadualPensyarah"></tbody></table></div>
+      <div class="jadual-skrol"><table class="grid"><thead><tr><th>Nama</th><th>Emel</th><th>Fakulti</th><th class="sm-sembunyi">Jawatan</th><th class="sm-sembunyi">Status</th><th>Akaun</th><th>Gambar</th><th></th></tr></thead><tbody id="jadualPensyarah"></tbody></table></div>
     </div><p class="mini" style="margin-top:10px" id="bilPensyarah"></p>`;
   lukisJadualPensyarah();
 }
@@ -5939,9 +5955,10 @@ function lukisJadualPensyarah(){
       <td class="mini">${p.emel ? esc(p.emel) : '<span style="color:var(--clay)">Tiada emel</span>'}</td>
       <td><span class="badge b-neutral">${esc(p.fakulti || '-')}</span></td><td class="sm-sembunyi mini">${esc(p.jawatan || '')}</td><td class="sm-sembunyi mini">${esc(p.status || '')}</td>
       <td>${akaun ? '<span class="badge b-ya">Ada</span>' : '<span class="mini">-</span>'}</td>
+      <td><button class="btn-ikon ${p.adaGambar ? 'ig-ada' : ''}" onclick="modalGambarPensyarah(${p.id})" title="${p.adaGambar ? 'Lihat atau tukar gambar' : 'Tiada gambar; tambah gambar'}" aria-label="Gambar ${esc(p.nama)}">${ik('kamera', 15)}</button></td>
       <td><div class="aksi-baris"><button class="btn-ikon" onclick="modalPensyarahInduk(${p.id})" title="Sunting" aria-label="Sunting pensyarah">${ik('sunting', 15)}</button></div></td></tr>`; }).join('')
-    : `<tr><td colspan="7"><div class="kosong">Tiada pensyarah ditemui.</div></td></tr>`;
-  el('bilPensyarah').textContent = `${v.length} daripada ${S.pensyarah.length} pensyarah · ${S.pensyarah.filter(p => p.emel).length} mempunyai emel`;
+    : `<tr><td colspan="8"><div class="kosong">Tiada pensyarah ditemui.</div></td></tr>`;
+  el('bilPensyarah').textContent = `${v.length} daripada ${S.pensyarah.length} pensyarah · ${S.pensyarah.filter(p => p.emel).length} mempunyai emel · ${S.pensyarah.filter(p => p.adaGambar).length} mempunyai gambar`;
 }
 function modalPensyarahInduk(id){
   const p = id ? petaP()[id] : null;
@@ -6798,8 +6815,8 @@ function nisbahLatarPutih(ctx, W, H){
   }
   return n ? putih / n : 0;
 }
-async function prosesGambarPasport(f){
-  const G = GAMBAR_PASPORT;
+async function prosesGambarPasport(f, o){
+  const G = Object.assign({}, GAMBAR_PASPORT, o || {});
   if(!/^image\/(jpeg|png|webp)$/.test(f.type) && !/\.(jpe?g|png|webp)$/i.test(f.name)) throw new Error('Sila pilih imej JPEG atau PNG.');
   if(f.size > 15 * 1024 * 1024) throw new Error('Saiz imej melebihi 15 MB.');
   const img = await bacaImej(f), w = img.naturalWidth, h = img.naturalHeight, r = w / h, sasaran = G.lebar / G.tinggi;
@@ -6817,16 +6834,182 @@ async function prosesGambarPasport(f){
   while(url.length > 380000 && q > .5){ q -= .1; url = c.toDataURL('image/jpeg', q); }
   return url;
 }
+
+/* ---------- Gambar rasmi pensyarah (pentadbir PPA): import pukal daripada folder, padanan mengikut nama fail ---------- */
+const GELARAN_NAMA = new Set('dr prof profesor professor madya assoc associate ts ir dato datuk datin tan sri hj hjh haji hajah ustaz ustazah en encik pn puan cik sr'.split(' '));
+const SAMBUNG_NAMA = new Set('bin binti bt bte binte b ibni ibnu'.split(' '));
+const VARIAN_NAMA = { abd:'abdul', noor:'nor', nordin:'noordin' };
+'mohd mohamad mohammad muhamad muhammad mohamed muhammed muhd md mohammed mohamaad'.split(' ').forEach(k => { VARIAN_NAMA[k] = 'muhammad'; });
+function jarakEdit(a, b){
+  let p = Array.from({ length: b.length + 1 }, (z, j) => j);
+  for(let i = 1; i <= a.length; i++){ const c = [i]; for(let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; }
+  return p[b.length];
+}
+/** Pecah nama kepada [nama diri, nama bapa]: gelaran dibuang, ejaan lazim diseragamkan (Mohd/Muhammad, Abd/Abdul). */
+function bahagiNama(n){
+  const t = String(n || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[.](jpe?g|png|webp|heic)$/, '')
+    .replace(/[(][^)]*[)]/g, ' ').replace(/['’`]/g, '').replace(/\ba[/][lp]\b/g, ' bin ').replace(/[^a-z]+/g, ' ');
+  const w = t.split(' ').filter(x => x && !GELARAN_NAMA.has(x)), i = w.findIndex(x => SAMBUNG_NAMA.has(x)), k = i < 0 ? w.length : i;
+  const v = x => VARIAN_NAMA[x] || x;
+  return [w.slice(0, k).map(v), w.slice(k + 1).filter(x => !SAMBUNG_NAMA.has(x)).map(v)];
+}
+function skorBahagianNama(A, B){
+  if(!A.length && !B.length) return null;
+  if(!A.length || !B.length) return 0;
+  if(A.join('') === B.join('')) return 1;
+  const guna = new Set(); let m = 0;
+  A.forEach(a => { const j = B.findIndex((b, x) => !guna.has(x) && (a === b || (Math.min(a.length, b.length) >= 5 && jarakEdit(a, b) <= 1))); if(j >= 0){ guna.add(j); m++; } });
+  return m / Math.max(A.length, B.length);
+}
+/** Skor padanan nama (0–1). Nama diri mesti sepadan; nama bapa menentukan baki skor. */
+function skorNama(a, b){
+  const [d1, b1] = bahagiNama(a), [d2, b2] = bahagiNama(b), sd = skorBahagianNama(d1, d2);
+  if(!sd) return 0;
+  const sb = skorBahagianNama(b1, b2);
+  return sb === null ? sd : (!b1.length || !b2.length ? sd * .9 : (sd + sb) / 2);
+}
+/** Padankan setiap fail gambar dengan seorang pensyarah (satu lawan satu, skor tertinggi dahulu). Fakulti folder memberi keutamaan kecil. */
+function padanGambarPensyarah(fail, senarai){
+  const calon = [];
+  fail.forEach((f, i) => senarai.forEach(p => { const s = skorNama(f.nama, p.nama); if(s > 0) calon.push({ i, p, s: s + (f.fakulti && f.fakulti === p.fakulti ? .02 : 0) }); }));
+  calon.sort((a, b) => b.s - a.s);
+  const hasil = fail.map(() => null), guna = new Set();
+  calon.forEach(c => { if(hasil[c.i] || guna.has(c.p.id)) return; hasil[c.i] = { pid: c.p.id, skor: Math.min(1, c.s) }; guna.add(c.p.id); });
+  return hasil.map(h => h ? Object.assign(h, { status: h.skor >= .95 ? 'padan' : h.skor >= .7 ? 'hampir' : 'semak' }) : { pid: 0, skor: 0, status: 'tiada' });
+}
+const STATUS_GAMBAR = { padan:['Padan', 'b-ya'], hampir:['Padanan hampir', 'b-hampir'], semak:['Perlu semakan', 'b-tidak'], tiada:['Tiada padanan', 'b-neutral'], ralat:['Ralat imej', 'b-tidak'], siap:['Dimuat naik', 'b-ya'], gagal:['Gagal', 'b-tidak'] };
+const MAKS_GAMBAR_PUKAL = 300;
+function modalImportGambar(){
+  UI.importGambar = { baris:[], sibuk:false, siap:false };
+  bukaModal({ tajuk:'Import gambar pensyarah', desk:'Gambar rasmi berlatar putih dipadankan dengan nama pensyarah berdasarkan nama fail.', penuh:true, isi:`
+    <div class="notis info" style="margin:0 0 12px">Pilih folder gambar (contohnya <b>Gambar Pensyarah - Latar Putih</b>; subfolder fakulti dibaca sekali) atau beberapa fail gambar. Nama fail mestilah nama pensyarah, contohnya <b>AHMAD BIN ALI.jpg</b>; gelaran (Dr., Profesor Madya) dan ejaan lazim (Mohd/Muhammad, bt/binti) diambil kira. Setiap gambar dipangkas kepada saiz pasport (350 x 450 piksel) dan dipaparkan pada profil pensyarah, termasuk akaun yang didaftarkan kemudian. Gambar yang dimuat naik sendiri oleh pensyarah tidak terjejas.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn btn-primary">${ik('folder')}Pilih folder<input type="file" id="igFolder" webkitdirectory directory multiple hidden onchange="pilihFailGambar(this.files, this)"></label>
+      <label class="btn btn-ghost">${ik('kamera')}Pilih fail gambar<input type="file" id="igFail" multiple accept="image/jpeg,image/png,image/webp" hidden onchange="pilihFailGambar(this.files, this)"></label></div>
+    <div id="igHasil" style="margin-top:14px"></div>`,
+    kaki:`<span class="mini" id="igStatus" style="margin-right:auto"></span><button class="btn btn-ghost" onclick="tutupModal()">Tutup</button><button class="btn btn-primary" id="igBtn" disabled onclick="muatNaikGambarPukal()">${ik('naik')}Muat naik gambar</button>` });
+}
+async function pilihFailGambar(files, input){
+  const G = UI.importGambar; if(!G || G.sibuk) return;
+  const fak = new Set(S.fakulti.map(f => String(f.id).toUpperCase()));
+  let L = [...(files || [])].filter(f => /[.](jpe?g|png|webp)$/i.test(f.name) && !failSistem(f.name)).map(f => {
+    const r = String(f.webkitRelativePath || f.name).split('/'), laluan = r.slice(0, -1).join('/');
+    return { f, nama: f.name.replace(/^[^A-Za-z]+/, ''), laluan, fakulti: r.slice(0, -1).map(x => x.toUpperCase()).reverse().find(x => fak.has(x)) || '' };
+  });
+  if(input) input.value = '';
+  if(!L.length){ toast('Tiada fail gambar (JPEG atau PNG) ditemui.', 'ralat'); return; }
+  if(L.length > MAKS_GAMBAR_PUKAL){ toast(L.length + ' gambar dipilih. Had ' + MAKS_GAMBAR_PUKAL + ' gambar bagi setiap import.', 'ralat'); return; }
+  G.sibuk = true; G.siap = false; el('igBtn').disabled = true;
+  for(let i = 0; i < L.length; i++){
+    el('igStatus').textContent = 'Memproses gambar ' + (i + 1) + ' daripada ' + L.length + '…';
+    try { L[i].url = await prosesGambarPasport(L[i].f, { minLebar:200 }); } catch(e){ L[i].ralat = e.message; }
+  }
+  const P = padanGambarPensyarah(L, S.pensyarah);
+  L.forEach((x, i) => { Object.assign(x, P[i]); if(x.ralat) x.status = 'ralat'; x.pilih = !x.ralat && (x.status === 'padan' || x.status === 'hampir'); });
+  G.baris = L.sort((a, b) => ['ralat', 'tiada', 'semak', 'hampir', 'padan'].indexOf(a.status) - ['ralat', 'tiada', 'semak', 'hampir', 'padan'].indexOf(b.status) || a.nama.localeCompare(b.nama));
+  G.sibuk = false;
+  lukisImportGambar();
+}
+function lukisImportGambar(){
+  const G = UI.importGambar, box = el('igHasil'); if(!G || !box) return;
+  const ps = S.pensyarah.slice().sort((a, b) => a.nama.localeCompare(b.nama)), pm = petaP();
+  const pilihan = ps.map(p => `<option value="${p.id}">${esc(p.nama)}${p.fakulti ? ' · ' + esc(p.fakulti) : ''}</option>`).join('');
+  const kira = k => G.baris.filter(x => x.status === k).length;
+  box.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${['padan', 'hampir', 'semak', 'tiada', 'ralat', 'siap', 'gagal'].filter(k => kira(k)).map(k => `<span class="badge ${STATUS_GAMBAR[k][1]}">${STATUS_GAMBAR[k][0]}: ${kira(k)}</span>`).join('')}</div>
+    <div class="jadual-skrol" style="max-height:56vh;overflow:auto"><table class="grid padat" id="igJadual" style="min-width:760px"><thead><tr><th style="width:36px"><input type="checkbox" aria-label="Pilih semua gambar yang dipadankan" onchange="pilihSemuaGambar(this.checked)" ${G.siap ? 'disabled' : ''}></th><th style="width:56px">Gambar</th><th>Fail</th><th style="width:300px">Pensyarah</th><th style="width:150px">Status</th></tr></thead><tbody>
+    ${G.baris.map((x, i) => { const p = pm[x.pid], st = STATUS_GAMBAR[x.status] || STATUS_GAMBAR.tiada;
+      return `<tr class="baris"><td><input type="checkbox" data-ig="${i}" ${x.pilih ? 'checked' : ''} ${x.ralat || !x.pid || G.siap ? 'disabled' : ''} onchange="UI.importGambar.baris[${i}].pilih=this.checked;kemasStatusImportGambar()" aria-label="Pilih ${esc(x.nama)}"></td>
+        <td>${x.url ? `<img class="ig-gambar" src="${x.url}" alt="">` : `<span class="ig-gambar kosong">${ik('kamera', 16)}</span>`}</td>
+        <td><b style="font-size:13px">${esc(x.nama)}</b>${x.laluan ? `<div class="mini">${esc(x.laluan)}</div>` : ''}${x.ralat ? `<div class="mini" style="color:var(--clay)">${esc(x.ralat)}</div>` : ''}${x.mesej ? `<div class="mini" style="color:${x.status === 'gagal' ? 'var(--clay)' : 'var(--brand)'}">${esc(x.mesej)}</div>` : ''}</td>
+        <td>${x.ralat || G.siap ? esc(p ? p.nama : '-') : `<select data-igp="${i}" onchange="ubahPadanGambar(${i}, Number(this.value))" aria-label="Pensyarah bagi ${esc(x.nama)}"><option value="0">Tiada padanan (langkau)</option>${pilihan.replace('value="' + x.pid + '"', 'value="' + x.pid + '" selected')}</select>`}
+          ${p && p.adaGambar && !G.siap ? '<div class="mini">Gambar sedia ada akan diganti</div>' : ''}</td>
+        <td><span class="badge ${st[1]}">${st[0]}</span>${x.skor && x.skor < .95 && !G.siap ? `<div class="mini">Skor ${Math.round(x.skor * 100)}%</div>` : ''}</td></tr>`; }).join('')}
+    </tbody></table></div>
+    <p class="mini" style="margin-top:8px">${G.siap ? '' : '<b>Padanan hampir</b> dipilih secara lalai; semak namanya. <b>Perlu semakan</b> tidak dipilih kerana nama bapa dalam nama fail berbeza daripada senarai pensyarah. Tukar pensyarah melalui senarai jika padanan salah.'}
+      ${(() => { const ada = new Set(G.baris.filter(x => x.pilih || x.status === 'siap').map(x => x.pid)), tanpa = S.pensyarah.filter(p => p.aktif !== false && !p.adaGambar && !ada.has(p.id)); return tanpa.length ? tanpa.length + ' pensyarah aktif masih tiada gambar' + (G.siap ? '' : ' selepas import ini') + '.' : 'Semua pensyarah aktif mempunyai gambar.'; })()}</p>`;
+  kemasStatusImportGambar();
+}
+function kemasStatusImportGambar(){
+  const G = UI.importGambar; if(!G) return;
+  const n = G.baris.filter(x => x.pilih && x.pid && x.url).length, b = el('igBtn'), s = el('igStatus');
+  if(b){ b.disabled = G.sibuk || G.siap || !n; b.innerHTML = ik('naik') + 'Muat naik ' + n + ' gambar'; }
+  if(s && !G.sibuk) s.textContent = G.siap ? '' : (G.baris.length ? n + ' daripada ' + G.baris.length + ' gambar dipilih' : '');
+}
+function pilihSemuaGambar(ya){
+  const G = UI.importGambar; if(!G || G.siap) return;
+  G.baris.forEach(x => { if(x.pid && x.url) x.pilih = ya; });
+  lukisImportGambar();
+}
+function ubahPadanGambar(i, pid){
+  const G = UI.importGambar, x = G.baris[i];
+  const lain = pid ? G.baris.find((y, j) => j !== i && y.pid === pid) : null;
+  if(lain){ lain.pid = 0; lain.pilih = false; lain.status = 'tiada'; toast('Padanan ' + lain.nama + ' dikosongkan kerana pensyarah yang sama dipilih.'); }
+  x.pid = pid; x.pilih = !!pid && !!x.url; x.status = pid ? 'padan' : 'tiada'; x.skor = pid ? 1 : 0;
+  lukisImportGambar();
+}
+async function muatNaikGambarPukal(){
+  const G = UI.importGambar; if(!G || G.sibuk) return;
+  const L = G.baris.filter(x => x.pilih && x.pid && x.url); if(!L.length) return;
+  G.sibuk = true; kemasStatusImportGambar();
+  let ok = 0;
+  for(let i = 0; i < L.length; i++){
+    const x = L[i]; el('igStatus').textContent = 'Memuat naik ' + (i + 1) + ' daripada ' + L.length + '…';
+    const hantar = () => api('gambarPensyarahSimpan', { pid: x.pid, data: x.url, sumber: (x.laluan ? x.laluan + '/' : '') + x.nama }, { senyap:true, tanpaMesej:true });
+    try {
+      try { await hantar(); } catch(e){ if(/menghubungi|sibuk|fetch/i.test(e.message)) await hantar(); else throw e; }
+      const p = petaP()[x.pid]; if(p) p.adaGambar = true;
+      x.status = 'siap'; x.mesej = ''; ok++;
+    } catch(e){ x.status = 'gagal'; x.mesej = e.message; }
+  }
+  G.sibuk = false; G.siap = true;
+  lukisImportGambar();
+  el('igStatus').textContent = ok + ' daripada ' + L.length + ' gambar dimuat naik.';
+  toast(ok + ' gambar pensyarah dimuat naik' + (ok < L.length ? '; ' + (L.length - ok) + ' gagal.' : '.'), ok < L.length ? 'ralat' : undefined);
+  if(el('jadualPensyarah')) lukisJadualPensyarah();
+}
+async function modalGambarPensyarah(pid){
+  const p = petaP()[pid]; if(!p) return;
+  UI.gambarPensyarah = { pid, url:'' };
+  bukaModal({ tajuk:'Gambar pensyarah', desk: p.nama + (p.fakulti ? ' · ' + p.fakulti : ''), isi:`
+    <div class="gambar-susun"><div id="gpsPratonton"><span class="pasport besar kosong">${p.adaGambar ? '<span class="mini">Memuatkan…</span>' : ik('kamera', 34)}</span></div>
+      <div style="flex:1;min-width:220px"><p class="mini" style="margin:0 0 10px;line-height:1.6">Gambar rasmi ini dipaparkan pada profil pensyarah. Jika pensyarah memuat naik gambar sendiri, gambarnya sendiri dipaparkan.</p>
+        <label class="fld" for="gpsFail">Pilih gambar baharu</label><input type="file" id="gpsFail" accept="image/jpeg,image/png,image/webp" onchange="pilihGambarPensyarah(this.files[0])">
+        <p class="ralat" id="gpsErr" hidden></p></div></div>`,
+    kaki:`${p.adaGambar ? `<button class="btn btn-ghost bahaya" style="margin-right:auto" onclick="padamGambarPensyarah(${pid})">${ik('padam', 14)}Padam gambar</button>` : ''}<button class="btn btn-ghost" onclick="tutupModal()">Tutup</button><button class="btn btn-primary" id="gpsSimpan" disabled onclick="simpanGambarPensyarah(${pid})">Simpan gambar</button>` });
+  if(p.adaGambar){
+    try { const r = await api('gambarPensyarah', { pid }, { senyap:true, tanpaMesej:true }); const b = el('gpsPratonton');
+      if(b && !UI.gambarPensyarah.url) b.innerHTML = r.gambar ? `<span class="pasport besar"><img src="${r.gambar}" alt="Gambar ${esc(p.nama)}"></span>` : `<span class="pasport besar kosong">${ik('kamera', 34)}</span>`; }
+    catch(e){ const b = el('gpsPratonton'); if(b) b.innerHTML = `<span class="pasport besar kosong">${ik('kamera', 34)}</span>`; }
+  }
+}
+async function pilihGambarPensyarah(f){
+  const err = el('gpsErr'); err.hidden = true; el('gpsSimpan').disabled = true; if(!f) return;
+  try {
+    UI.gambarPensyarah.url = await prosesGambarPasport(f, { minLebar:200 });
+    el('gpsPratonton').innerHTML = `<span class="pasport besar"><img src="${UI.gambarPensyarah.url}" alt="Pratonton gambar"></span>`;
+    el('gpsSimpan').disabled = false;
+  } catch(e){ err.textContent = e.message; err.hidden = false; el('gpsFail').value = ''; }
+}
+async function simpanGambarPensyarah(pid){
+  const err = el('gpsErr'), btn = el('gpsSimpan'); btn.disabled = true;
+  try { await api('gambarPensyarahSimpan', { pid, data: UI.gambarPensyarah.url }); const p = petaP()[pid]; if(p) p.adaGambar = true; tutupModal(); if(el('jadualPensyarah')) lukisJadualPensyarah(); }
+  catch(e){ err.textContent = e.message; err.hidden = false; btn.disabled = false; }
+}
+async function padamGambarPensyarah(pid){
+  const p = petaP()[pid]; if(!p) return;
+  if(!await sahkan({ tajuk:'Padam gambar ' + p.nama + '?', mesej:'Gambar rasmi pensyarah ini akan dibuang daripada profil. Gambar yang dimuat naik sendiri oleh pensyarah tidak terjejas.', butang:'Padam gambar', bahaya:true })) return;
+  await cuba(async () => { await api('gambarPensyarahPadam', { pid }); p.adaGambar = false; tutupSemuaModal(); if(el('jadualPensyarah')) lukisJadualPensyarah(); });
+}
 function modalGambarProfil(){
   const u = S.pengguna; UI.gambarBaru = '';
   bukaModal({ tajuk:'Gambar profil', desk:'Gambar ini dipaparkan pada profil dan menu anda.', isi:`
     <div class="gambar-susun"><div id="gpPratonton">${u.gambar ? pasportPengguna(u, true) : `<span class="pasport besar kosong">${ik('kamera', 34)}</span>`}</div>
       <div style="flex:1;min-width:220px"><b style="font-size:14px">Ciri gambar yang diterima</b>
+        ${u.gambarPPA ? '<p class="mini" id="gpNotaPPA" style="margin:4px 0 8px;line-height:1.55">Gambar rasmi ini dimasukkan oleh PPA. Muat naik gambar baharu jika anda mahu menggantikannya.</p>' : ''}
         <ul class="syarat-gambar"><li>Gambar <b>rasmi</b>: wajah jelas menghadap ke hadapan, berpakaian kemas dan formal.</li><li>Berukuran <b>pasport</b> (35 x 45 mm, potret). Imej dipangkas secara automatik kepada nisbah pasport.</li><li>Berlatar <b>putih</b> sepenuhnya.</li><li>Format JPEG atau PNG.</li></ul></div></div>
     <div class="borang" style="margin-top:16px"><div><label class="fld" for="gpFail">Pilih gambar</label><input type="file" id="gpFail" accept="image/jpeg,image/png,image/webp" onchange="pilihGambarProfil(this.files[0])"></div>
       <label class="semak" style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><input type="checkbox" id="gpSah"> <span>Saya mengesahkan gambar ini ialah gambar rasmi saya, berukuran pasport dan berlatar putih.</span></label>
       <p class="ralat" id="gpErr" hidden></p></div>`,
-    kaki:`${u.gambar ? `<button class="btn btn-ghost bahaya" style="margin-right:auto" onclick="padamGambarProfil()">${ik('padam', 14)}Padam gambar</button>` : ''}<button class="btn btn-ghost" onclick="tutupModal();modalProfil(false)">Batal</button><button class="btn btn-primary" id="gpSimpan" onclick="simpanGambarProfil()" disabled>Simpan gambar</button>` });
+    kaki:`${u.gambar && !u.gambarPPA ? `<button class="btn btn-ghost bahaya" style="margin-right:auto" onclick="padamGambarProfil()">${ik('padam', 14)}Padam gambar</button>` : ''}<button class="btn btn-ghost" onclick="tutupModal();modalProfil(false)">Batal</button><button class="btn btn-primary" id="gpSimpan" onclick="simpanGambarProfil()" disabled>Simpan gambar</button>` });
 }
 async function pilihGambarProfil(f){
   const err = el('gpErr'); err.hidden = true; UI.gambarBaru = ''; el('gpSimpan').disabled = true;
