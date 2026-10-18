@@ -3250,7 +3250,7 @@ function lukisProgramKP(){
     ${statKad('Ditawarkan sesi ini', f.ditawar + '/' + f.n, `${f.fk} pendaftaran fail kursus`)}
     ${statKad('Fail kursus lengkap', f.fk ? f.kadar + '%' : '-', f.fk ? `${f.lengkap} lengkap · ${f.proses} proses · ${f.belum} belum` : (sesi ? 'tiada pendaftaran sepadan' : 'belum ada sesi'), f.fk ? warnaPct(f.kadar) : '')}
   </div></section>`;
-  h += bahagianPelajarProgram(p, boleh) + bahagianP2loProgram(p, boleh) + bahagianDokProgram(p, boleh) + bahagianFKProgram(p, sesi) + bahagianStrukturProgram(p, boleh) + bahagianLantikanProgram(p);
+  h += bahagianPelajarProgram(p, boleh) + bahagianP2loProgram(p, boleh) + bahagianDokProgram(p, boleh) + bahagianFKProgram(p, sesi) + bahagianStrukturProgram(p, boleh) + bahagianLantikanProgram(p) + bahagianPLAProgram(p);
   el('halaman').innerHTML = h;
   lukisSenaraiKPFK(); cartaPelajarProgram(p); cartaP2lo(p); lukisSenaraiPelajar(p.id);
 }
@@ -3359,7 +3359,7 @@ function bahagianStrukturProgram(p, boleh){
       ${boleh && pilih.size ? `<div class="pl-pukal" id="pkPukal"><span class="mini">${pilih.size} kursus dipilih</span><button class="btn btn-ghost btn-sm bahaya" onclick="buangKursusDipilih()">${ik('padam', 14)}Buang daripada struktur</button><button class="btn btn-ghost btn-sm" onclick="UI.kp.pkPilih = new Set(); lukisSemula()">Batal pilihan</button></div>` : ''}
       <div class="jadual-skrol"><table class="grid"><thead><tr>${boleh ? `<th style="width:34px"><input type="checkbox" ${semua ? 'checked' : ''} onchange="pilihSemuaPK(${p.id},this.checked)" aria-label="Pilih semua kursus dalam struktur"></th>` : ''}<th>Semester</th><th>Kod kursus</th><th>Nama kursus</th><th class="sm-sembunyi">Kod terdahulu</th><th class="sm-sembunyi">Kredit</th><th class="sm-sembunyi">Klasifikasi</th><th class="sm-sembunyi">CLO → PLO</th><th class="kanan" title="Bilangan pendaftaran fail kursus yang sepadan (semua sesi)">FK</th>${boleh ? '<th></th>' : ''}</tr></thead><tbody>
       ${pk.length ? pk.map(c => `<tr class="baris">${boleh ? `<td><input type="checkbox" ${pilih.has(c.id) ? 'checked' : ''} onchange="pilihPK(${c.id},this.checked)" aria-label="Pilih ${esc(c.kod)}"></td>` : ''}<td class="mini">${esc(c.semester || '-')}</td><td><b>${esc(c.kod)}</b></td><td>${esc(c.nama || '-')}</td><td class="sm-sembunyi mini">${esc(c.kodLama || '-')}</td><td class="sm-sembunyi mini">${esc(c.kredit || '-')}</td><td class="sm-sembunyi mini">${esc(c.klasifikasi || '-')}</td>
-        <td class="sm-sembunyi mini">${(Array.isArray(c.plo) ? c.plo : []).map((x, i) => x ? 'CLO' + (i + 1) + '→' + x : '').filter(Boolean).join(', ') || '-'}</td><td class="kanan tnum">${fkBagiKursusProgram(c, null, true).length}</td>
+        <td class="sm-sembunyi mini">${esc(teksPemetaan(c.plo)) || '-'}</td><td class="kanan tnum">${fkBagiKursusProgram(c, null, true).length}</td>
         ${boleh ? `<td><div class="aksi-baris"><button class="btn-ikon" onclick="modalKursusProg(${p.id},${c.id})" title="Sunting atau tukar kod" aria-label="Sunting kursus ${esc(c.kod)}">${ik('sunting', 15)}</button><button class="btn-ikon bahaya" onclick="padamKursusProg(${c.id})" title="Buang daripada struktur" aria-label="Buang kursus ${esc(c.kod)}">${ik('padam', 15)}</button></div></td>` : ''}</tr>`).join('')
         : `<tr><td colspan="${boleh ? 10 : 8}"><div class="kosong">${L.length ? 'Belum ada kursus dalam struktur ini.' + (boleh ? ' Tekan <b>Tambah kursus</b>, atau <b>Tampal / import</b> untuk menampal senarai kursus daripada Excel.' : '') : 'Belum ada struktur program.' + (boleh ? ' Tekan <b>Struktur baharu</b> untuk bermula.' : '')}</div></td></tr>`}
       </tbody></table></div>
@@ -3418,6 +3418,49 @@ function bahagianLantikanProgram(p){
     isi:`<div style="padding:4px 18px 12px">${l.length ? senaraiLantikan(l, false, aksi) : '<p class="mini" style="margin:12px 0">Belum ada rekod lantikan.</p>'}</div>
     ${boleh ? `<div class="lipat-nota" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="ltTambah" onclick="modalLantikan(${p.id},0)">${ik('tambah', 14)}Tambah lantikan terdahulu</button>
       <span class="mini" style="flex:1;min-width:220px">Tekan ${ik('sunting', 12)} untuk mengemas kini nama dan tempoh lantikan. ${isAdmin() ? 'Untuk melantik Ketua Program baharu, gunakan Tetapan program.' : 'Penukaran Ketua Program semasa dibuat oleh pentadbir PPA.'}</span></div>` : ''}` });
+}
+/* ---------- Sejarah lantikan Penasihat Luar Akademik (PLA) ---------- */
+function plaProgram(pid){ return S.program.lantikan.filter(x => x.jenis === 'pla' && Number(x.sasaran) === pid).sort((a, b) => String(b.mula).localeCompare(String(a.mula)) || b.id - a.id); }
+function bahagianPLAProgram(p){
+  const l = plaProgram(p.id), boleh = !!p.bolehUrus; if(!l.length && !boleh) return '';
+  const kini = l.filter(lantikanAktif);
+  const senarai = l.map(x => { const on = lantikanAktif(x);
+    return `<li><span class="ikon-bulat" style="background:${on ? 'var(--sky-soft)' : 'var(--surface-2)'};color:${on ? 'var(--sky)' : 'var(--muted)'}">${ik('pengguna', 16)}</span>
+      <div class="isi"><b>${esc(x.nama)}</b><span class="mini" style="white-space:normal">${esc(x.institusi || '-')} · ${fmtTarikh(x.mula)} hingga ${x.tamat ? fmtTarikh(x.tamat) + (on ? ' (tamat tempoh)' : '') : 'kini'}${x.catatan ? ' · ' + esc(x.catatan) : ''}</span></div>
+      ${on ? '<span class="badge b-ya">Semasa</span>' : ''}${boleh ? `<div class="aksi-baris"><button class="btn-ikon" onclick="modalPLA(${p.id},${x.id})" title="Sunting lantikan" aria-label="Sunting lantikan ${esc(x.nama)}">${ik('sunting', 15)}</button><button class="btn-ikon bahaya" onclick="padamPLA(${x.id})" title="Padam rekod" aria-label="Padam rekod ${esc(x.nama)}">${ik('padam', 15)}</button></div>` : ''}</li>`; }).join('');
+  return lipat({ kunci:'kpPLA', id:'secPLA', ikon:'kumpulan', tajuk:'Sejarah lantikan Penasihat Luar Akademik',
+    ringkas: l.length + ' rekod lantikan' + (kini.length ? ' · Semasa: ' + kini.map(x => esc(x.nama)).join(', ') : ''),
+    isi:`<div style="padding:4px 18px 12px">${l.length ? `<ul class="senarai-ringkas">${senarai}</ul>` : '<p class="mini" style="margin:12px 0">Belum ada rekod lantikan Penasihat Luar Akademik.</p>'}</div>
+    ${boleh ? `<div class="lipat-nota" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="plaTambah" onclick="modalPLA(${p.id},0)">${ik('tambah', 14)}Tambah lantikan</button>
+      <span class="mini" style="flex:1;min-width:220px">Pakar luar yang dilantik untuk menasihati program. Beberapa penasihat boleh dilantik serentak. Surat lantikan boleh dimuat naik di Dokumentasi program.</span></div>` : ''}` });
+}
+function modalPLA(progId, id){
+  const p = S.program.senarai.find(x => x.id === progId), x = id ? S.program.lantikan.find(l => l.id === id && l.jenis === 'pla') : null; if(!p || (id && !x)) return;
+  bukaModal({ tajuk: x ? 'Kemas kini Penasihat Luar Akademik' : 'Tambah Penasihat Luar Akademik', desk: p.kod + ' · ' + p.nama, isi:`<div class="borang">
+    <div><label class="fld" for="plaNama">Nama penuh (dengan gelaran)</label><input id="plaNama" type="text" value="${esc(x ? x.nama : '')}" placeholder="cth. Prof. Dr. Ahmad bin Ali" autocomplete="off"></div>
+    <div><label class="fld" for="plaInst">Jawatan dan institusi / organisasi</label><input id="plaInst" type="text" value="${esc(x ? x.institusi || '' : '')}" placeholder="cth. Profesor, Akademi Pengajian Islam, Universiti Malaya" autocomplete="off"></div>
+    <div class="dua"><div><label class="fld" for="plaMula">Tarikh mula</label><input id="plaMula" type="date" value="${esc(x ? x.mula : '')}"></div>
+      <div><label class="fld" for="plaTamat">Tarikh tamat (pilihan)</label><input id="plaTamat" type="date" value="${esc(x ? x.tamat || '' : '')}"></div></div>
+    <div><label class="fld" for="plaCat">Catatan (pilihan)</label><input id="plaCat" type="text" value="${esc(x ? x.catatan || '' : '')}" placeholder="cth. No. surat lantikan, bidang kepakaran"></div>
+    <p class="ralat" id="plaErr" hidden></p></div>`,
+    kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" id="plaBtn" onclick="simpanPLA(${progId},${id || 0})">${ik('semak')}Simpan</button>` });
+  fokus('plaNama');
+}
+async function simpanPLA(progId, id){
+  const err = el('plaErr'), salah = m => { err.textContent = m; err.hidden = false; };
+  const d = { programId: progId, id, nama: el('plaNama').value.replace(/\s+/g, ' ').trim(), institusi: el('plaInst').value.replace(/\s+/g, ' ').trim(), mula: el('plaMula').value, tamat: el('plaTamat').value, catatan: el('plaCat').value.trim() };
+  if(!d.nama) return salah('Sila isi nama Penasihat Luar Akademik.');
+  if(!d.institusi) return salah('Sila isi jawatan dan institusi / organisasi.');
+  if(!d.mula) return salah('Sila isi tarikh mula lantikan.');
+  if(d.tamat && d.tamat < d.mula) return salah('Tarikh tamat mesti selepas tarikh mula.');
+  err.hidden = true; el('plaBtn').disabled = true;
+  try { await api('progPLASimpan', d); UI.lipat.kpPLA = true; tutupModal(); lukisSemula(); }
+  catch(e){ salah(e.message); el('plaBtn').disabled = false; }
+}
+async function padamPLA(id){
+  const x = S.program.lantikan.find(l => l.id === id && l.jenis === 'pla'); if(!x) return;
+  if(!await sahkan({ tajuk:'Padam rekod Penasihat Luar Akademik?', mesej: x.nama + ' (' + (x.institusi || '-') + ', ' + fmtTarikh(x.mula) + ' hingga ' + (x.tamat ? fmtTarikh(x.tamat) : 'kini') + ') akan dibuang daripada sejarah lantikan.', butang:'Padam rekod', bahaya:true })) return;
+  await cuba(async () => { await api('progPLAPadam', { id }); lukisSemula(); });
 }
 function modalLantikan(progId, id){
   const p = S.program.senarai.find(x => x.id === progId), x = id ? S.program.lantikan.find(l => l.id === id) : null; if(!p || (id && !x)) return;
@@ -3500,8 +3543,9 @@ function modalKursusProg(pid, id){
     <div><label class="fld" for="pkNama">Nama kursus</label><input id="pkNama" type="text" value="${c ? esc(c.nama || '') : ''}" placeholder="cth. Akidah Islamiah"></div>
     <div class="dua"><div><label class="fld" for="pkKredit">Nilai kredit</label><input id="pkKredit" type="text" value="${c ? esc(c.kredit || '') : ''}" placeholder="cth. 3"></div>
       <div><label class="fld" for="pkKlas">Klasifikasi</label><input id="pkKlas" type="text" list="pkKlasSenarai" value="${c ? esc(c.klasifikasi || '') : ''}" placeholder="cth. Teras Program"><datalist id="pkKlasSenarai">${['Wajib Universiti', 'Wajib Institusi', 'Teras Program', 'Teras Bidang', 'Elektif', 'Minor'].map(x => `<option value="${x}">`).join('')}</datalist></div></div>
-    <div><label class="fld">Pemetaan CLO kepada PLO</label><div class="grid-komponen">${[0, 1, 2, 3, 4].map(i => `<div><div class="mini" style="margin-bottom:3px">CLO${i + 1}</div><select id="pkPlo${i}">${PLO_PILIHAN.map(([v, l]) => `<option value="${v}" ${c && Array.isArray(c.plo) && c.plo[i] === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`).join('')}</div>
-      <div class="mini" style="margin-top:5px">Digunakan untuk mengisi RP, S3P dan analisis P2LO secara automatik.</div></div>
+    <div><label class="fld">Pemetaan CLO kepada PLO</label><div class="grid-komponen" id="pkPemetaan">${Array.from({ length: MAKS_CLO_PEMETAAN }, (z, i) => { const v = c && Array.isArray(c.plo) ? c.plo : []; return `<div><div class="mini" style="margin-bottom:3px">CLO${i + 1}</div><input id="pkPlo${i}" type="text" list="dlPLOpk" value="${esc(v[i] || '')}" placeholder="${i < 3 ? 'cth. PLO' + (i + 1) : ''}" autocomplete="off" aria-label="PLO bagi CLO${i + 1}"></div>`; }).join('')}</div>
+      <datalist id="dlPLOpk">${PLO_PILIHAN.slice(1).map(([v]) => `<option value="${v}">`).join('')}</datalist>
+      <div class="mini" style="margin-top:5px">Satu CLO boleh dipetakan kepada beberapa PLO (cth. <b>PLO1, PLO3</b>). Pemetaan ini <b>dikongsi</b> dengan Table 4, Table 3, S3P, RP dan P2LO, dan dengan struktur lain program ini yang mengandungi kod kursus yang sama. Ia juga dikemas kini apabila Table 4 kursus ini disimpan.</div></div>
     <div><label class="fld" for="pkLama">Kod terdahulu (pilihan)</label><input id="pkLama" type="text" value="${c ? esc(c.kodLama || '') : ''}" placeholder="Pisahkan dengan koma, cth. USL1013, USU1013" autocomplete="off">
       <div class="mini" style="margin-top:5px">${c ? `Jika kod kursus ditukar, kod <b>${esc(c.kod)}</b> ditambah ke kod terdahulu secara automatik. ` : 'Isi jika kursus ini pernah menggunakan kod lain. '}Fail kursus yang menggunakan kod semasa atau kod terdahulu dipadankan kepada kursus ini.</div></div>
     <p class="ralat" id="pkErr" hidden></p></div>`,
@@ -3510,7 +3554,9 @@ function modalKursusProg(pid, id){
 }
 async function simpanKursusProg(pid, id){
   const err = el('pkErr'), d = { programId: pid, id, strukturId: strukturPilihan(S.program.senarai.find(x => x.id === pid)).id || '', kod: normKod(el('pkKod').value), nama: el('pkNama').value.trim(), semester: el('pkSem').value.trim(), kodLama: el('pkLama').value.trim(),
-    kredit: el('pkKredit').value.trim(), klasifikasi: el('pkKlas').value.trim(), plo: [0, 1, 2, 3, 4].map(i => el('pkPlo' + i).value) };
+    kredit: el('pkKredit').value.trim(), klasifikasi: el('pkKlas').value.trim(), plo: Array.from({ length: MAKS_CLO_PEMETAAN }, (z, i) => ploTeks(el('pkPlo' + i).value)) };
+  const salah = Array.from({ length: MAKS_CLO_PEMETAAN }, (z, i) => [i, el('pkPlo' + i).value.trim()]).find(([i, v]) => v && !ploTeks(v));
+  if(salah){ err.textContent = 'Pemetaan CLO' + (salah[0] + 1) + ' tidak sah: "' + salah[1] + '". Gunakan PLO1 hingga PLO12, contohnya PLO1, PLO3.'; err.hidden = false; return; }
   if(!/^[A-Z0-9-]{2,15}$/.test(d.kod)){ err.textContent = 'Kod kursus tidak sah. Gunakan huruf dan nombor sahaja, contohnya USL1013.'; err.hidden = false; return; }
   try { await api('progKursusSimpan', d); tutupModal(); lukisSemula(); }
   catch(e){ err.textContent = e.message; err.hidden = false; }
@@ -3563,7 +3609,7 @@ async function importStruktur(pid){
 function templatStruktur(pid){
   const p = S.program.senarai.find(x => x.id === pid), pk = kursusProgram(pid, strukturPilihan(p).id);
   muatTurunCSV('Struktur_' + namaFailSelamat(p ? p.kod : 'Program') + '.csv', [['Kod','Nama','Semester','KodTerdahulu','Kredit','Klasifikasi','PLO'],
-    ...(pk.length ? pk.map(c => [c.kod, c.nama, c.semester, c.kodLama, c.kredit || '', c.klasifikasi || '', (Array.isArray(c.plo) ? c.plo : []).join(', ')])
+    ...(pk.length ? pk.map(c => [c.kod, c.nama, c.semester, c.kodLama, c.kredit || '', c.klasifikasi || '', (Array.isArray(c.plo) ? c.plo : []).map(x => String(x || '').replace(/,\s*/g, '+')).join(', ')])
       : [['USL1013','Akidah Islamiah','Tahun 1 Semester 1','','3','Teras Program','PLO1, PLO2, PLO5'], ['USL1023','Ulum al-Quran','Tahun 1 Semester 1','USU1023','3','Teras Program','PLO1, PLO4']])]);
   toast('Templat dimuat turun.');
 }
@@ -4002,8 +4048,7 @@ function adaNilai(v){ return v !== null && v !== undefined && v !== '' && isFini
 function nilaiPLO(kursus){
   const t = Array.from({ length:12 }, () => []);
   (kursus || []).forEach(k => (k.clo || []).forEach((v, j) => {
-    const i = Number(String((k.plo || [])[j] || '').replace(/\D/g, '')) - 1;
-    if(adaNilai(v) && i >= 0 && i < 12) t[i].push(Number(v));
+    if(adaNilai(v)) ploDariTeks((k.plo || [])[j]).forEach(n => t[n - 1].push(Number(v)));
   }));
   return t;
 }
@@ -4119,11 +4164,13 @@ function lukisModalP2lo(){
       <div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:${b ? 1000 : 760}px"><thead><tr><th style="width:110px">Kod</th><th style="min-width:200px">Nama kursus</th><th style="width:80px">Bil. pelajar</th>${[1, 2, 3, 4].map(i => `<th style="width:104px">CLO${i} (%) / PLO</th>`).join('')}<th style="width:96px">Status</th>${b ? '<th style="width:40px"></th>' : ''}</tr></thead><tbody>
       ${(d.kursus || []).length ? d.kursus.map((k, i) => { const p = 'kursus.' + i + '.';
         return `<tr><td>${b ? mdn(null, p + 'kod', k.kod) : '<b>' + esc(k.kod) + '</b>'}</td><td>${b ? mdn(null, p + 'nama', k.nama, { textarea:true, rows:1 }) : esc(k.nama)}</td><td>${b ? mdn(null, p + 'bil', k.bil, { jenis:'number' }) : esc(k.bil)}</td>
-          ${[0, 1, 2, 3].map(j => `<td>${b ? mdn(null, p + 'clo.' + j, k.clo[j], { jenis:'number' }) + '<div style="height:4px"></div>' + mdn(null, p + 'plo.' + j, k.plo[j], { pilihan: PLO_PILIHAN }) : (adaNilai(k.clo[j]) ? fmt(k.clo[j]) + '%' + (k.plo[j] ? '<div class="mini">' + esc(k.plo[j]) + '</div>' : '') : '-')}</td>`).join('')}
+          ${[0, 1, 2, 3].map(j => `<td>${b ? mdn(null, p + 'clo.' + j, k.clo[j], { jenis:'number' }) + '<div style="height:4px"></div>' + mdn(null, p + 'plo.' + j, k.plo[j], { list:'dlPLOp2', ph:'PLO' }) : (adaNilai(k.clo[j]) ? fmt(k.clo[j]) + '%' + (k.plo[j] ? '<div class="mini">' + esc(k.plo[j]) + '</div>' : '') : '-')}</td>`).join('')}
           <td id="p2loSt${i}">${chipStatusP2lo(statusKursusP2lo(k))}</td>${b ? `<td><button class="btn-ikon bahaya" onclick="ubahP2lo(d => d.kursus.splice(${i},1))" aria-label="Buang kursus">${ik('x', 14)}</button></td>` : ''}</tr>`; }).join('')
         : `<tr><td colspan="${b ? 9 : 8}"><div class="kosong" style="padding:18px">Belum ada kursus. ${b ? 'Tekan Isi daripada struktur untuk menyenaraikan kursus semester ini.' : ''}</div></td></tr>`}
       </tbody></table></div>
-      <p class="mini" style="margin-top:6px">Pencapaian CLO kohort = purata peratus pelajar yang mencapai CLO (daripada Laporan Pencapaian CLO dalam S3P). Status Penuh jika semua CLO ≥ ${P2LO_SASARAN}%.</p></div>
+      <datalist id="dlPLOp2">${PLO_PILIHAN.slice(1).map(([v]) => `<option value="${v}">`).join('')}</datalist>
+      ${(() => { const n = bezaPemetaanP2lo().length; return n ? `<div class="notis" id="p2loBeza" style="margin:8px 0 0">Pemetaan PLO bagi ${n} kursus berbeza daripada pemetaan CLO–PLO program (struktur program / Table 4).${b ? ` <button class="btn-teks" onclick="selarasP2loPemetaan()">Selaraskan dengan pemetaan program</button>` : ''}</div>` : ''; })()}
+      <p class="mini" style="margin-top:6px">Pencapaian CLO kohort = purata peratus pelajar yang mencapai CLO (daripada Laporan Pencapaian CLO dalam S3P). Status Penuh jika semua CLO ≥ ${P2LO_SASARAN}%. PLO bagi setiap CLO diambil daripada pemetaan CLO–PLO program; satu CLO boleh menyumbang kepada beberapa PLO.</p></div>
     <div><b>3. Pencapaian PLO semester semasa berbanding kumulatif</b>
       <div class="jadual-skrol" style="margin-top:8px"><table class="grid padat"><thead><tr><th>PLO</th><th>Domain (MQF 2.0)</th><th class="kanan">Sasaran</th><th class="kanan">Semester semasa</th><th class="kanan">Kumulatif kohort</th></tr></thead><tbody id="p2loPLO"></tbody></table></div></div>
     <div class="dua">${f('Kekuatan', 'kekuatan', d.kekuatan, { textarea:true, rows:3 })}${f('Kelemahan', 'kelemahan', d.kelemahan, { textarea:true, rows:3 })}</div>
@@ -4174,6 +4221,17 @@ function pensyarahKursusProgram(c){
   fkBagiKursusProgram(c).sort((a, b) => b.sesi - a.sesi).forEach(k => { const p = pm[k.pid]; if(p && !nama.includes(p.nama)) nama.push(p.nama); });
   return nama.slice(0, 3).join(', ');
 }
+/** Kursus P2LO yang PLO-nya berbeza daripada pemetaan CLO–PLO program. */
+function bezaPemetaanP2lo(){
+  const E = UI.p2loEdit; if(!E) return [];
+  return (E.data.kursus || []).filter(k => { const m = pemetaanProgram(E.pid, k.kod); return m.length && !samaPemetaan(m, k.plo, 5); });
+}
+function selarasP2loPemetaan(){
+  const E = UI.p2loEdit, L = bezaPemetaanP2lo();
+  L.forEach(k => { const m = pemetaanProgram(E.pid, k.kod); k.plo = [0, 1, 2, 3, 4].map(j => m[j] || ''); });
+  lukisModalP2lo();
+  toast('Pemetaan PLO ' + L.length + ' kursus diselaraskan dengan pemetaan program. Tekan Simpan untuk menyimpan semester ini.');
+}
 function isiP2loStruktur(){
   const E = UI.p2loEdit, ks = kursusSemesterStruktur(E.pid, E.n);
   if(!ks.length){ toast('Tiada kursus bagi semester ' + E.n + ' dalam struktur program. Pastikan medan semester diisi dalam Struktur program.', 'ralat'); return; }
@@ -4184,7 +4242,7 @@ function isiP2loStruktur(){
     k.nama = k.nama || c.nama; k.klasifikasi = k.klasifikasi || c.klasifikasi || ''; k.kredit = k.kredit || c.kredit || '';
     k.pensyarah = k.pensyarah || pensyarahKursusProgram(c);
     if(k.bil === '' && E.data.pelajarSemasa !== '') k.bil = E.data.pelajarSemasa;
-    (Array.isArray(c.plo) ? c.plo : []).forEach((pl, j) => { if(pl && !k.plo[j]) k.plo[j] = pl; });
+    (Array.isArray(c.plo) ? c.plo : []).slice(0, 5).forEach((pl, j) => { if(pl) k.plo[j] = pl; });
   });
   lukisModalP2lo();
   const st = strukturPilihan(S.program.senarai.find(x => x.id === E.pid));
@@ -4210,8 +4268,8 @@ function modalImportP2lo(){
         [1, 2, 3, 4, 5].forEach(i => {
           const v = b['clo' + i];
           if(v !== undefined && v !== ''){ const n = Number(String(v).replace('%', '').replace(',', '.')); if(!isFinite(n) || n < 0 || n > 100) ralat.push('Baris ' + b.no + ': CLO' + i + ' "' + v + '" bukan peratus 0 hingga 100.'); else k.clo[i - 1] = n; }
-          const pl = String(b['plo' + i] || '').replace(/\s+/g, '').toUpperCase();
-          if(/^PLO(1[0-2]|[1-9])$/.test(pl)) k.plo[i - 1] = pl;
+          const pl = ploTeks(b['plo' + i]);
+          if(pl) k.plo[i - 1] = pl;
           else if(!k.plo[i - 1] && st && Array.isArray(st.plo) && st.plo[i - 1]) k.plo[i - 1] = st.plo[i - 1];
         });
       });
@@ -5007,7 +5065,7 @@ async function janaP2LO(p, kohort, rekod, info, ttd){
       if(!k){ ['B', 'C', 'D', 'E'].forEach(c => tulisX(h, c + r, c === 'D' ? 'CLO1:\nCLO2:\nCLO3:' : '')); continue; }
       tulisX(h, 'B' + r, (k.kod ? k.kod + ' ' : '') + (k.nama || ''));
       tulisX(h, 'C' + r, k.bil === '' || k.bil == null ? '' : Number(k.bil));
-      tulisX(h, 'D' + r, (k.clo || []).map((v, j) => v == null ? null : 'CLO' + (j + 1) + ': ' + fmt(v) + '%' + (k.plo && k.plo[j] ? ' (' + k.plo[j].replace('PLO', 'PLO ') + ')' : '')).filter(Boolean).join('\n'));
+      tulisX(h, 'D' + r, (k.clo || []).map((v, j) => v == null ? null : 'CLO' + (j + 1) + ': ' + fmt(v) + '%' + (k.plo && k.plo[j] ? ' (' + String(k.plo[j]).replace(/PLO/g, 'PLO ') + ')' : '')).filter(Boolean).join('\n'));
       tulisX(h, 'E' + r, statusKursusP2lo(k));
     }
     /* Jadual PLO: semasa & kumulatif */
@@ -5044,7 +5102,7 @@ async function janaP2LO(p, kohort, rekod, info, ttd){
     if(!x) continue;
     tulisX(h3, 'B' + r, x.tahunSem || ('Semester ' + x.n)); tulisX(h3, 'C' + r, (x.k.kod ? x.k.kod + ' ' : '') + (x.k.nama || ''));
     tulisX(h3, 'D' + r, x.k.klasifikasi || ''); tulisX(h3, 'E' + r, x.k.kredit || ''); tulisX(h3, 'S' + r, x.k.pensyarah || '');
-    [...new Set((x.k.plo || []).filter(Boolean))].forEach(pl => { const j = Number(pl.replace('PLO', '')) - 1; if(j >= 0 && j < 12) tulisX(h3, PLO_KOL3[j] + r, '✓'); });
+    [...new Set((x.k.plo || []).flatMap(ploDariTeks))].forEach(n => tulisX(h3, PLO_KOL3[n - 1] + r, '✓'));
   }
   /* Sheet4: pencapaian PLO setiap kursus (32 baris templat; ditambah jika perlu) */
   const h4 = await helaianX(X, 'Sheet4');
@@ -5069,7 +5127,7 @@ async function janaP2LO(p, kohort, rekod, info, ttd){
     if(akhir && r > kumpMula) tambahMergeX(h4, 'B' + kumpMula + ':B' + r);
     tulisX(h4, 'C' + r, (x.k.kod ? x.k.kod + ' ' : '') + (x.k.nama || '')); tulisX(h4, 'D' + r, x.k.klasifikasi || ''); tulisX(h4, 'Q' + r, x.k.pensyarah || '');
     const ploNilai = {};
-    (x.k.clo || []).forEach((v, j) => { const pl = (x.k.plo || [])[j]; if(v != null && pl) (ploNilai[pl] = ploNilai[pl] || []).push(v); });
+    (x.k.clo || []).forEach((v, j) => { if(v != null) ploDariTeks((x.k.plo || [])[j]).forEach(n => { (ploNilai['PLO' + n] = ploNilai['PLO' + n] || []).push(v); }); });
     Object.keys(ploNilai).forEach(pl => { const j = Number(pl.replace('PLO', '')) - 1; if(j >= 0 && j < 12) tulisX(h4, PLO_KOL4[j] + r, Math.round(ploNilai[pl].reduce((a, b) => a + b, 0) / ploNilai[pl].length * 100) / 100); });
   }
   if(semuaK.length < 80) sembunyiBarisX(h3, 7 + semuaK.length, 86);
@@ -5186,7 +5244,7 @@ function lukisJana(){
     <div class="jana-bar"><span class="mini" id="janaStatus">${J.ubah ? 'Perubahan belum disimpan' : (J.id ? 'Draf disimpan' : 'Draf baharu')}</span>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="simpanDrafJana()">${ik('semak')}Simpan draf</button>
       <button class="btn btn-primary" id="janaBtn" onclick="hantarJana()">${ik('semak')}Jana PDF bertandatangan</button></div></div>`;
-  kemasRingkasanJana();
+  kemasRingkasanJana(); muatPemetaanJana();
 }
 function lukisSemulaJana(){ const y = window.scrollY; lukisJana(); window.scrollTo(0, y); }
 function sumberIsiJana(){
@@ -5201,11 +5259,49 @@ function sumberIsiJana(){
 function janaUbah(e){
   const t = e.target; if(!t.dataset || !t.dataset.p) return;
   setLaluan(UI.jana.data, t.dataset.p, t.type === 'checkbox' ? t.checked : t.value);
+  if(/^clo[.][0-9]+[.]plo$|^program$/.test(t.dataset.p)) lukisPemetaanJana();
+  if(t.dataset.p === 'kod'){ clearTimeout(_pemetaanT); _pemetaanT = setTimeout(() => muatPemetaanJana(true), 600); }
   if(t.type === 'checkbox' && t.closest('tr')) t.closest('tr').classList.toggle('jsu-pilihan', t.checked);
   if(!UI.jana.ubah){ UI.jana.ubah = true; const s = el('janaStatus'); if(s) s.textContent = 'Perubahan belum disimpan'; }
   if(t.dataset.p === 'tahap' && UI.jana.jenis === 'jsu') lukisSemulaJana(); else kemasRingkasanJana();
 }
 function ubahStrukturJana(fn){ fn(UI.jana.data); UI.jana.ubah = true; lukisSemulaJana(); }
+/* Pemetaan CLO–PLO program dalam borang RP dan S3P: dipaparkan di atas jadual CLO dan boleh digunakan terus. */
+let _pemetaanT;
+async function muatPemetaanJana(paksa){
+  const J = UI.jana; if(!J || !['rp', 's3p'].includes(J.jenis)) return;
+  const kod = normKod(J.data.kod);
+  if(!kod){ J.rujuk = null; lukisPemetaanJana(); return; }
+  if(!paksa && J.rujuk && J.rujuk.kod === kod){ lukisPemetaanJana(); return; }
+  try { const r = await api('rujukKursus', { kod }, { senyap:true, tanpaMesej:true }); if(UI.jana === J && normKod(J.data.kod) === kod){ J.rujuk = { kod, kursus: r.kursus || [] }; lukisPemetaanJana(); } }
+  catch(e){ /* paparan pemetaan hanya bantuan */ }
+}
+function pilihRujukJana(){
+  const J = UI.jana, L = (J && J.rujuk && J.rujuk.kursus) || [], nm = String((J && J.data.program) || '').trim().toLowerCase();
+  return L.find(k => k.programId === J.rujukPilih) || L.find(k => nm && String(k.program || '').trim().toLowerCase() === nm) || L[0] || null;
+}
+/** Nilai PLO bagi setiap CLO borang: RP menerima beberapa PLO; templat S3P menerima satu PLO (PLO pertama). */
+function pemetaanUntukBorang(k){
+  const s3p = UI.jana.jenis === 's3p';
+  return (k.plo || []).map(pl => { const n = ploDariTeks(pl); return s3p ? (n.length ? 'PLO' + n[0] : '') : ploTeks(pl); });
+}
+function lukisPemetaanJana(){
+  const box = el('janaPemetaan'), J = UI.jana; if(!box || !J) return;
+  const L = (J.rujuk && J.rujuk.kursus) || [], k = pilihRujukJana();
+  if(!J.rujuk || !normKod(J.data.kod)){ box.innerHTML = ''; return; }
+  if(!k || !(k.plo || []).length){ box.innerHTML = `<div class="notis info" style="margin:0 0 12px">Tiada pemetaan CLO–PLO program bagi ${esc(normKod(J.data.kod))}. Pemetaan ditetapkan dalam Struktur program (tab Ketua Program) atau Table 4 kursus.</div>`; return; }
+  const m = pemetaanUntukBorang(k), clo = J.data.clo || [], sama = clo.every((c, i) => ploTeks(c.plo) === ploTeks(m[i] || '')), lebih = m.slice(clo.length).some(Boolean);
+  box.innerHTML = `<div class="notis ${sama ? 'info' : ''}" id="janaPemetaanNotis" style="margin:0 0 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <span style="flex:1;min-width:240px">Pemetaan CLO–PLO program ${L.length > 1 ? `<select class="auto" aria-label="Program" style="padding:2px 8px;font-size:12.5px" onchange="UI.jana.rujukPilih=Number(this.value);lukisPemetaanJana()">${L.map(x => `<option value="${x.programId}" ${x === k ? 'selected' : ''}>${esc(x.programKod)}</option>`).join('')}</select>` : `<b>${esc(k.programKod)}</b>`}: ${esc(teksPemetaan(k.plo))}.
+      ${sama ? 'Borang ini selaras dengan pemetaan program.' : '<b>PLO dalam borang ini berbeza daripada pemetaan program.</b>'}${lebih ? ' Pemetaan program mempunyai lebih banyak CLO daripada borang ini.' : ''}${J.jenis === 's3p' && k.plo.some(x => ploDariTeks(x).length > 1) ? ' Templat S3P menerima satu PLO bagi setiap CLO; PLO pertama digunakan.' : ''}</span>
+    ${sama ? '' : `<button class="btn btn-ghost btn-sm" id="janaGunaPemetaan" onclick="gunaPemetaanJana()">${ik('salin', 14)}Guna pemetaan program</button>`}</div>`;
+}
+function gunaPemetaanJana(){
+  const k = pilihRujukJana(); if(!k) return;
+  const m = pemetaanUntukBorang(k), d = UI.jana.data;
+  (d.clo || []).forEach((c, i) => { c.plo = m[i] || ''; if(!String(c.teks || '').trim() && (k.cloTeks || [])[i]) c.teks = k.cloTeks[i]; });
+  UI.jana.ubah = true; lukisSemulaJana(); toast('Pemetaan CLO–PLO program ' + k.programKod + ' digunakan dalam borang ini.');
+}
 function kodDaripadaFK(k){ const b = String(k.kod || '').split(/\s*[:\-–]\s*/); return { kod: normKod(b[0]), nama: b.slice(1).join(' ').trim() }; }
 function isiDaripadaKursusFK(kid){
   const k = S.fk.kursus.find(x => x.id === kid); if(!k) return;
@@ -5225,7 +5321,10 @@ async function isiDaripadaStruktur(senyap){
   if(UI.jana.jenis === 'rp' && !d.kredit) d.kredit = k.kredit || '';
   if(UI.jana.jenis !== 'rp'){ d.program = d.program || k.program; if(/diploma/i.test(k.tahap || '')) d.tahap = 'diploma'; else if(/asasi/i.test(k.tahap || '')) d.tahap = 'asasi'; else if(k.tahap) d.tahap = 'ijazah'; }
   if(UI.jana.jenis === 'jsu' && d.tahap === 'asasi') d.tahap = 'ijazah';
-  (k.plo || []).forEach((pl, i) => { if(d.clo && d.clo[i] && pl && !d.clo[i].plo && UI.jana.jenis !== 'jsu') d.clo[i].plo = pl; });
+  UI.jana.rujuk = { kod: normKod(d.kod), kursus: r.kursus };
+  const kp = UI.jana.jenis === 'jsu' ? k : (pilihRujukJana() || k);
+  if(UI.jana.jenis !== 'jsu' && (kp.plo || []).length){ const m = pemetaanUntukBorang(kp); (d.clo || []).forEach((c, i) => { c.plo = m[i] || ''; }); }
+  (d.clo || []).forEach((c, i) => { if(!String(c.teks || '').trim() && (kp.cloTeks || [])[i]) c.teks = kp.cloTeks[i]; });
   UI.jana.ubah = true; lukisSemulaJana();
   toast('Diisi daripada struktur program ' + k.programKod + (r.kursus.length > 1 ? ' (' + r.kursus.length + ' program menggunakan kod ini)' : '') + '.');
 }
@@ -5259,7 +5358,7 @@ function borangRP(d){
       ${mdn('Nama pensyarah (satu nama setiap baris)', 'pensyarah', d.pensyarah, { textarea:true, rows:2 })}
       <div class="dua">${mdn('Disediakan oleh (nama)', 'disediakan', d.disediakan)}${mdn('No. telefon', 'tel', d.tel)}</div></div>`);
   h += kadJana('1. Sinopsis kursus', mdn(null, 'sinopsis', d.sinopsis, { textarea:true, rows:5, ph:'Sinopsis sebagaimana dalam maklumat kursus (Table 4)' }));
-  h += kadJana('2 & 3. Hasil pembelajaran kursus (CLO) dan penjajaran konstruktif', `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:860px"><thead><tr><th style="width:52px">CLO</th><th>Pernyataan CLO</th><th style="width:110px">PLO</th><th style="width:190px">Kaedah pengajaran</th><th style="width:190px">Kaedah penilaian</th></tr></thead><tbody>
+  h += kadJana('2 & 3. Hasil pembelajaran kursus (CLO) dan penjajaran konstruktif', `<div id="janaPemetaan"></div><div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:860px"><thead><tr><th style="width:52px">CLO</th><th>Pernyataan CLO</th><th style="width:110px">PLO</th><th style="width:190px">Kaedah pengajaran</th><th style="width:190px">Kaedah penilaian</th></tr></thead><tbody>
     ${(d.clo || []).map((c, i) => `<tr><td><b>CLO${i + 1}</b>${i === 3 ? '<div class="mini">pilihan</div>' : ''}</td><td>${mdn(null, 'clo.' + i + '.teks', c.teks, { textarea:true, rows:2 })}</td><td>${mdn(null, 'clo.' + i + '.plo', c.plo, { list:'dlPLO', ph:'PLO1' })}</td>
       <td>${mdn(null, 'clo.' + i + '.pengajaran', c.pengajaran, { textarea:true, rows:2, ph:'Kuliah, tutorial' })}</td><td>${mdn(null, 'clo.' + i + '.penilaian', c.penilaian, { textarea:true, rows:2, ph:'Kuiz, peperiksaan akhir' })}</td></tr>`).join('')}
     </tbody></table></div>`, { nota:'CLO4 hanya dimasukkan dalam RP jika diisi. PLO: PLO1/C1 Pengetahuan & Kefahaman, PLO2/C2 Kognitif, PLO3/C3A Praktikal, PLO4/C3B Interpersonal, PLO5/C3C Komunikasi dan seterusnya.' });
@@ -5379,7 +5478,7 @@ function borangS3P(d){
     ${mdn('Nama program', 'program', d.program, { list:'dlProgram' })}<datalist id="dlProgram">${S.program.senarai.map(p => `<option value="${esc(p.nama.toUpperCase())}">`).join('')}</datalist>
     ${mdn('Nama kursus', 'nama', d.nama)}
     <div class="tiga">${mdn('Pensyarah', 'pensyarah', d.pensyarah)}${mdn('Pemeriksa luar', 'pemeriksa', d.pemeriksa)}${mdn('Tahun kemasukan', 'tahunKemasukan', d.tahunKemasukan, { ph:'2025' })}</div></div>`);
-  h += kadJana('CLO dan kaedah penilaian', `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:980px"><thead><tr><th style="width:56px">CLO</th><th>Pernyataan CLO</th><th style="width:170px">Item penilaian (satu setiap baris)</th><th>Deskripsi</th><th style="width:100px">PLO</th><th style="width:96px">Pemberat (%)</th></tr></thead><tbody>
+  h += kadJana('CLO dan kaedah penilaian', `<div id="janaPemetaan"></div><div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:980px"><thead><tr><th style="width:56px">CLO</th><th>Pernyataan CLO</th><th style="width:170px">Item penilaian (satu setiap baris)</th><th>Deskripsi</th><th style="width:100px">PLO</th><th style="width:96px">Pemberat (%)</th></tr></thead><tbody>
     ${[0, 1, 2].map(i => { const c = d.clo[i] || {}, p = 'clo.' + i + '.';
       return `<tr><td><b>CLO${i + 1}</b></td><td>${mdn(null, p + 'teks', c.teks, { textarea:true, rows:3 })}</td><td>${mdn(null, p + 'item', c.item, { textarea:true, rows:3, ph:'Kuiz\nPeperiksaan Akhir' })}</td>
         <td>${mdn(null, p + 'deskripsi', c.deskripsi, { textarea:true, rows:3, ph:'Kuiz = 20 markah / menilai kemahiran kognitif' })}</td><td>${mdn(null, p + 'plo', c.plo, { pilihan: PLO_PILIHAN })}</td><td>${mdn(null, p + 'pemberat', c.pemberat, { jenis:'number' })}</td></tr>`; }).join('')}
@@ -6202,7 +6301,7 @@ function t4Kosong(info){
   const nama = (petaP()[saya()] || {}).nama || (S.pengguna || {}).nama || '', c = info.cadangan || {}, K = info.kursus, ts = tahunSemDariTeks(K.semester);
   const staf = (c.pensyarah || []).length ? c.pensyarah.slice(0, 3) : [nama];
   return { versi:2, klasifikasi: klasMQA(K.klasifikasi), sinopsis:'', staf:[0, 1, 2].map(i => staf[i] || ''), tahun: ts.tahun, semester: ts.semester, catatanSem:'',
-    prasyarat:'Tiada', clo:[0, 1, 2].map(i => ({ teks:'', plo: (K.plo || [])[i] || '', pengajaran:'', pentaksiran:'' })), mqf:{},
+    prasyarat:'Tiada', clo: Array.from({ length: Math.min(T4_MAKS.clo, Math.max(3, (K.plo || []).length)) }, (z, i) => ({ teks:'', plo: (K.plo || [])[i] || '', pengajaran:'', pentaksiran:'' })), mqf:{},
     kemahiran:['', '', ''], kemahiranLain:'', topik:[topikT4Kosong()], berterusan:[nilaiT4Kosong()], akhir:[nilaiT4Kosong('Peperiksaan Akhir')],
     latihanIndustri:false, keperluan:'', rujukan:'', lain:'' };
 }
@@ -6272,7 +6371,8 @@ function lukisBankT4(){
   h += `<div class="card" style="overflow:hidden;margin-bottom:16px"><div class="toolbar" style="flex-wrap:wrap;gap:8px">
       <select class="auto" id="t4Prog" style="font-weight:700;max-width:100%" onchange="UI.t4.prog=Number(this.value);lukisBankT4()" aria-label="Program">${D.program.map(x => `<option value="${x.id}" ${x.id === p.id ? 'selected' : ''}>${esc(x.kod)} · ${esc(x.nama)}</option>`).join('')}</select>
       <div class="cari" style="min-width:200px;flex:1">${ik('cari')}<input type="search" placeholder="Cari kod atau nama kursus" value="${esc(T.cari)}" oninput="UI.t4.cari=this.value;lukisSenaraiT4()" aria-label="Cari kursus"></div>
-      <select class="auto" onchange="UI.t4.tapis=this.value;lukisSenaraiT4()" aria-label="Tapis status">${[['semua', 'Semua kursus'], ['diisi', 'Telah diisi'], ['belum', 'Belum diisi'], ['saya', 'Boleh saya isi']].map(([v, l]) => `<option value="${v}" ${T.tapis === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+      <select class="auto" onchange="UI.t4.tapis=this.value;lukisSenaraiT4()" aria-label="Tapis status">${[['semua', 'Semua kursus'], ['diisi', 'Telah diisi'], ['belum', 'Belum diisi'], ['saya', 'Boleh saya isi']].map(([v, l]) => `<option value="${v}" ${T.tapis === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <button class="btn btn-ghost btn-sm" id="btnT3" onclick="modalT3(${p.id})" title="Table 3: senarai kursus program dan pemetaan PLO (borang MQA)">${ik('jadual', 14)}Table 3 program</button></div></div>
     <div class="grid-3" style="margin-bottom:16px">${statKad('Kursus dalam struktur', fmtNombor(ks.length), esc(p.kod))}${statKad('Table 4 diisi', fmtNombor(diisi), ks.length ? pct(diisi, ks.length) + '% daripada kursus' : '-', 'var(--brand)')}
       ${statKad('Belum diisi', fmtNombor(ks.length - diisi), 'kursus', ks.length - diisi ? 'var(--clay)' : '')}</div>
     <div id="t4Senarai"></div>`;
@@ -6314,6 +6414,21 @@ async function tutupT4(){
   UI.t4.edit = null; lukisDok(); window.scrollTo(0, 0);
 }
 function ploDariTeks(s){ return [...String(s || '').matchAll(/PLO\s*([0-9]+)/gi)].map(m => Number(m[1])).filter((v, i, a) => v >= 1 && v <= 12 && a.indexOf(v) === i); }
+/* ---- Pemetaan CLO–PLO tunggal bagi setiap kursus program (ProgramKursus.plo; sama dengan normPLOSenarai_ di pelayan).
+   Dikemas kini melalui Struktur program atau Table 4, dan digunakan oleh Table 3, S3P, RP dan P2LO. ---- */
+const MAKS_CLO_PEMETAAN = 8;
+function ploTeks(v){ return ploDariTeks(v).sort((a, b) => a - b).map(n => 'PLO' + n).join(', '); }
+function teksPemetaan(plo){ return (plo || []).map((x, i) => x ? 'CLO' + (i + 1) + '→' + x : '').filter(Boolean).join('; '); }
+function pemetaanProgram(pid, kod){
+  const a = kodAsas(kod), L = ((S.program || {}).kursus || []).filter(c => c.programId === pid && (kodAsas(c.kod) === a || pecahKod(c.kodLama).some(x => kodAsas(x) === a)));
+  const k = L.find(c => Array.isArray(c.plo) && c.plo.length) || L[0];
+  return k && Array.isArray(k.plo) ? k.plo : [];
+}
+function samaPemetaan(a, b, n){ for(let i = 0; i < (n || MAKS_CLO_PEMETAAN); i++) if(ploTeks((a || [])[i]) !== ploTeks((b || [])[i])) return false; return true; }
+/** Kemas kini salinan pemetaan dalam pelayar selepas Table 4 disimpan (pelayan telah menyelaraskan struktur program). */
+function kemasPemetaanTempatan(pid, kod, plo){
+  const a = kodAsas(kod); ((S.program || {}).kursus || []).forEach(c => { if(c.programId === pid && kodAsas(c.kod) === a) c.plo = plo.slice(); });
+}
 /** Pengiraan SLT mengikut formula borang MQA (helaian FORM, sel X80–X105 dan F13). */
 function ringkasT4(d){
   const n = v => Number(v) || 0, jumBaris = (x, k) => k.reduce((a, c) => a + n(x[c]), 0);
@@ -6371,8 +6486,9 @@ function lukisT4Edit(){
         ${d.clo.map((c, i) => `<tr><td><b>CLO${i + 1}</b></td><td>${b ? mdn(null, 'clo.' + i + '.teks', c.teks, { textarea:true, rows:1 }) : esc(c.teks)}</td><td>${sel('clo.' + i + '.plo', c.plo, { list:'dlPLO', ph:'PLO1, PLO3' })}</td>
           <td>${b ? mdn(null, 'clo.' + i + '.pengajaran', c.pengajaran, { textarea:true, rows:1, ph:'Kuliah, tutorial' }) : esc(c.pengajaran)}</td><td>${b ? mdn(null, 'clo.' + i + '.pentaksiran', c.pentaksiran, { textarea:true, rows:1, ph:'Kuiz, peperiksaan' }) : esc(c.pentaksiran)}</td>${buang('clo', i)}</tr>`).join('')}
         </tbody></table></div>${tambah('clo', 'CLO', "{ teks:'', plo:'', pengajaran:'', pentaksiran:'' }", T4_MAKS.clo)}
+        ${(() => { const m = K.plo || [], t = d.clo.map(c => c.plo); return R && m.length && !samaPemetaan(m, t) ? `<div class="notis" id="t4Beza" style="margin:12px 0 0">Pemetaan CLO–PLO dalam struktur program (${esc(teksPemetaan(m))}) berbeza daripada Table 4 ini. ${b ? 'Apabila disimpan, pemetaan Table 4 digunakan sebagai pemetaan program.' : ''}${b ? ` <button class="btn-teks" onclick="isiT4Struktur()">Guna pemetaan struktur</button>` : ''}</div>` : ''; })()}
         <div style="margin-top:14px"><div class="fld">8. Matriks CLO–PLO dan kluster MQF</div><div id="t4Peta" class="jadual-skrol"></div></div>`,
-        { nota:'Gunakan kata kerja Taksonomi Bloom yang boleh diukur (maksimum 8 CLO). Satu CLO boleh dipetakan kepada lebih daripada satu PLO; asingkan dengan koma.' })}
+        { nota:'Gunakan kata kerja Taksonomi Bloom yang boleh diukur (maksimum 8 CLO). Satu CLO boleh dipetakan kepada lebih daripada satu PLO; asingkan dengan koma. <b>Pemetaan CLO–PLO ini dikongsi</b> dengan struktur program, Table 3, S3P, RP dan P2LO: apabila Table 4 disimpan, pemetaan program dikemas kini.' })}
       ${kadJana('9. Kemahiran boleh pindah (jika berkaitan)', `<div class="borang"><div class="tiga">${[0, 1, 2].map(i => f('Kemahiran ' + (i + 1), 'kemahiran.' + i, d.kemahiran[i], { pilihan:[['', '-']].concat(T4_KEMAHIRAN.map((k, j) => [k, T4_KEMAHIRAN_BM[j]])) })).join('')}</div>
         ${ta('Respons terbuka (jika ada)', 'kemahiranLain')}</div>`)}
       ${kadJana('10. Agihan Masa Pembelajaran Pelajar (SLT)', `<div class="jadual-skrol"><table class="grid padat jadual-input" style="min-width:${b ? 1180 : 1040}px"><thead>
@@ -6607,6 +6723,85 @@ async function importT4Xlsx(input){
   ubahT4(d => gabungT4(d, r.data));
   toast('Borang diisi daripada ' + f.name + ': ' + ringkas + '. Semak, kemudian tekan Simpan.');
 }
+/* ---- Table 3: senarai kursus program dan pemetaan PLO (borang MQA, templat Excel PPA) ---- */
+function klasT3(b){
+  const m = T4_KLAS_MQA.find(([v]) => v.trim() === String(b.klasifikasiMQA || '').trim());
+  return m ? m[0].trim() : (klasMQA(b.klasifikasi).trim() || b.klasifikasi || '');
+}
+async function modalT3(pid){
+  UI.t3 = { pid, stId:0, D:null, sibuk:false };
+  bukaModal({ tajuk:'Table 3 · Senarai kursus program', desk:'Borang MQA Table 3: kursus, klasifikasi, kredit, pemetaan PLO dan staf akademik bagi setiap kursus.', penuh:true,
+    isi:'<div id="t3Isi"><div class="mini">Memuatkan…</div></div>',
+    kaki:`<span class="mini" id="t3Status" style="margin-right:auto"></span><button class="btn btn-ghost" onclick="tutupModal()">Tutup</button><button class="btn btn-primary" id="t3Btn" disabled onclick="pdfT3()">${ik('turun')}Muat turun PDF</button>` });
+  await muatT3();
+}
+async function muatT3(){
+  const T = UI.t3; if(!T) return;
+  try { T.D = await api('t3Data', { programId: T.pid, strukturId: T.stId }, { senyap:true, tanpaMesej:true }); }
+  catch(e){ const b = el('t3Isi'); if(b) b.innerHTML = `<p class="ralat">${esc(e.message)}</p>`; return; }
+  lukisT3();
+}
+function lukisT3(){
+  const T = UI.t3, D = T && T.D, box = el('t3Isi'); if(!box || !D) return;
+  const tanpa = D.baris.filter(b => !b.plo.length).length, t = UI.templat ? UI.templat.find(x => x.key === 'table3') : null;
+  box.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <b>${esc(D.program.kod)} · ${esc(D.program.nama)}</b>
+      ${D.strukturSemua.length > 1 ? `<select class="auto" id="t3Struktur" aria-label="Struktur" onchange="UI.t3.stId=Number(this.value);muatT3()"><option value="0">Semua struktur (gabungan)</option>${D.strukturSemua.map(x => `<option value="${x.id}" ${x.id === T.stId ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}</select>` : ''}
+      <span class="badge b-neutral">${D.baris.length} kursus</span>${D.baris.length ? (tanpa ? `<span class="badge b-hampir">${tanpa} kursus tanpa pemetaan PLO</span>` : '<span class="badge b-ya">Semua kursus dipetakan kepada PLO</span>') : ''}
+      ${t && !t.ada ? '<span class="badge b-tidak">Templat Table 3 belum dimuat naik</span>' : ''}</div>
+    <div class="jadual-skrol" style="max-height:58vh;overflow:auto"><table class="grid padat" id="t3Jadual" style="min-width:1060px"><thead><tr><th>No</th><th>Semester</th><th>Kod</th><th>Nama kursus</th><th>Klasifikasi</th><th class="kanan">Kredit</th>${Array.from({ length:12 }, (z, i) => `<th class="tengah" style="padding:6px 2px">PLO${i + 1}</th>`).join('')}<th>Staf akademik</th></tr></thead><tbody>
+    ${D.baris.length ? D.baris.map((b, i) => `<tr class="baris"><td>${i + 1}</td><td class="mini">${esc(b.semester || '-')}</td><td><b>${esc(b.kod)}</b></td><td>${esc(b.nama || '-')}</td><td class="mini">${esc(klasT3(b) || '-')}</td><td class="kanan">${esc(b.kredit || '-')}</td>
+      ${Array.from({ length:12 }, (z, k) => `<td class="tengah" style="color:var(--brand);font-weight:800;padding:6px 2px">${b.plo.includes(k + 1) ? '√' : ''}</td>`).join('')}<td class="mini">${esc(b.staf.join(', ') || '-')}</td></tr>`).join('')
+      : '<tr><td colspan="19"><div class="kosong">Struktur program belum mempunyai kursus.</div></td></tr>'}
+    </tbody></table></div>
+    <p class="mini" style="margin-top:8px;line-height:1.6">PLO diambil daripada pemetaan CLO–PLO program (Struktur program dan Table 4 berkongsi pemetaan yang sama). Klasifikasi diambil daripada Table 4 jika ada, atau daripada struktur program. Staf akademik diambil daripada Table 4, atau pensyarah yang mendaftarkan kursus dalam Fail Kursus pada sesi terkini. PDF yang dijana oleh Ketua Program atau pentadbir PPA disimpan dalam Bank Maklumat Kursus.</p>`;
+  el('t3Btn').disabled = !D.baris.length;
+}
+async function binaT3Xlsx(D){
+  const T = await ambilTemplat('table3'), X = await bukaXlsx(T.bait);
+  const nama = X.helaian['Senarai Kursus'] ? 'Senarai Kursus' : Object.keys(X.helaian)[0], h = await helaianX(X, nama);
+  semakTemplatX(X, h, [['A1', /Table\s*3/i], ['C3', /Code of Course/i], ['G4', /^PLO\s*1$/i], ['R4', /^PLO\s*12$/i], ['S3', /Academic Staff/i]]);
+  let rJum = 0; for(let r = 6; r <= 400 && !rJum; r++) if(/JUMLAH|TOTAL/i.test(bacaX(X, h, 'A' + r))) rJum = r;
+  if(!rJum) throw new Error('Baris JUMLAH KESELURUHAN tidak ditemui dalam templat Table 3.');
+  const n = D.baris.length, kap = rJum - 5;
+  if(n > kap){ sisipBarisX(h, rJum - 2, n - kap); rJum += n - kap; }
+  tulisX(h, 'A2', 'Programme: ' + D.program.kod + ' - ' + D.program.nama + (D.struktur ? ' (' + D.struktur.nama + ')' : ''));
+  const KOL = 'GHIJKLMNOPQR', lebar = { B:lebarLajurX(h, 'B', 'B'), D:lebarLajurX(h, 'D', 'D'), E:lebarLajurX(h, 'E', 'E'), S:lebarLajurX(h, 'S', 'S') };
+  for(let i = 0; i < rJum - 5; i++){
+    const r = 5 + i, b = D.baris[i];
+    tulisX(h, 'A' + r, i + 1);
+    ['B', 'C', 'D', 'E', 'F', 'S'].concat(KOL.split('')).forEach(c => tulisX(h, c + r, ''));
+    if(!b) continue;
+    const klas = klasT3(b), staf = b.staf.join(', ');
+    tulisX(h, 'B' + r, b.semester || ''); tulisX(h, 'C' + r, b.kod); tulisX(h, 'D' + r, b.nama || ''); tulisX(h, 'E' + r, klas);
+    tulisX(h, 'F' + r, /^[0-9]+([.][0-9]+)?$/.test(String(b.kredit).trim()) ? Number(b.kredit) : (b.kredit || ''));
+    b.plo.forEach(k => tulisX(h, KOL[k - 1] + r, '√'));
+    tulisX(h, 'S' + r, staf);
+    const baris = Math.max(1, ...[['B', b.semester], ['D', b.nama], ['E', klas], ['S', staf]].map(([c, v]) => Math.ceil(String(v || '').length / Math.max(6, lebar[c] * 1.35))));
+    tinggiBarisX(h, r, Math.max(15, baris * 11 + 5));
+  }
+  if(n < kap) sembunyiBarisX(h, 5 + n, rJum - 1);
+  /* PDF: sembunyikan lajur selepas S, landskap A4, muat lebar satu halaman */
+  const cols = h.doc.getElementsByTagNameNS(NS_S, 'cols')[0];
+  if(cols) [...cols.childNodes].filter(e => e.nodeType === 1 && Number(e.getAttribute('min')) >= 20).forEach(e => e.setAttribute('hidden', '1'));
+  let sp = h.doc.getElementsByTagNameNS(NS_S, 'sheetPr')[0];
+  if(!sp){ sp = h.doc.createElementNS(NS_S, 'sheetPr'); h.doc.documentElement.insertBefore(sp, h.doc.documentElement.firstChild); }
+  let u = anakNS(sp, 'pageSetUpPr')[0]; if(!u){ u = h.doc.createElementNS(NS_S, 'pageSetUpPr'); sp.appendChild(u); } u.setAttribute('fitToPage', '1');
+  let ps = h.doc.getElementsByTagNameNS(NS_S, 'pageSetup')[0];
+  if(ps){ ps.setAttribute('fitToWidth', '1'); ps.setAttribute('fitToHeight', '0'); ps.setAttribute('orientation', 'landscape'); ps.setAttribute('paperSize', '9'); }
+  return varianXlsx(X, [nama], 'xlsx', false);
+}
+function namaPdfT3(D){ return 'Table3_' + namaFailSelamat(D.program.kod) + (D.struktur ? '_' + namaFailSelamat(D.struktur.nama) : '') + '.pdf'; }
+async function pdfT3(){
+  const T = UI.t3; if(!T || !T.D || T.sibuk) return;
+  T.sibuk = true; el('t3Btn').disabled = true; el('t3Status').textContent = 'Menjana PDF…'; mulaMuat();
+  try {
+    const v = await binaT3Xlsx(T.D), r = await api('t3Pdf', { programId: T.pid, fail: v.data, struktur: T.D.struktur ? T.D.struktur.nama : '' }, { senyap:true, tanpaMesej:true });
+    muatTurunBlob(new Blob([b64KeBait(r.pdf)], { type:'application/pdf' }), namaPdfT3(T.D));
+    if(el('t3Status')) el('t3Status').textContent = r.disimpan ? 'PDF dimuat turun dan disimpan dalam Bank Maklumat Kursus.' : 'PDF dimuat turun.';
+  } catch(e){ toast(e.message || String(e), 'ralat'); if(el('t3Status')) el('t3Status').textContent = ''; }
+  finally { tamatMuat(); T.sibuk = false; if(el('t3Btn')) el('t3Btn').disabled = false; }
+}
 function namaPdfT4(info){ return 'Table4_' + namaFailSelamat(kodAsas(info.kursus.kod)) + '_' + namaFailSelamat(info.program.kod) + '.pdf'; }
 async function simpanT4(denganPdf){
   const E = UI.t4 && UI.t4.edit; if(!E || E.sibuk) return;
@@ -6614,6 +6809,7 @@ async function simpanT4(denganPdf){
   try {
     const r = await api('t4Simpan', { programId: E.pid, kod: E.kod, data: E.data }, { tanpaMesej: denganPdf });
     E.ubah = false; E.info.rekod = Object.assign({}, r.rekod, { data: E.data }); kemasRekodBankT4(r.rekod);
+    if(r.pemetaan){ E.info.kursus.plo = r.pemetaan.plo.slice(); kemasPemetaanTempatan(r.pemetaan.programId, r.pemetaan.kod, r.pemetaan.plo); const n = el('t4Beza'); if(n) n.remove(); }
     if(el('t4Status')) el('t4Status').textContent = 'Disimpan dalam Bank Maklumat Kursus';
     if(denganPdf){
       mulaMuat();
