@@ -3449,14 +3449,14 @@ function bahagianLantikanProgram(p){
     ${boleh ? `<div class="lipat-nota" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="ltTambah" onclick="modalLantikan(${p.id},0)">${ik('tambah', 14)}Tambah lantikan terdahulu</button>
       <span class="mini" style="flex:1;min-width:220px">Tekan ${ik('sunting', 12)} untuk mengemas kini nama dan tempoh lantikan. ${isAdmin() ? 'Untuk melantik Ketua Program baharu, gunakan Tetapan program.' : 'Penukaran Ketua Program semasa dibuat oleh pentadbir PPA.'}</span></div>` : ''}` });
 }
-/* ---------- Sejarah lantikan Penasihat Luar Akademik (PLA) ---------- */
-/* ---------- Notifikasi lantikan akan tamat (Ketua Program dan Penasihat Luar Akademik) ----------
+/* ---------- Sejarah lantikan Penilai Luar Akademik (PLA) ---------- */
+/* ---------- Notifikasi lantikan akan tamat (Ketua Program dan Penilai Luar Akademik) ----------
    Dipaparkan kepada pengguna yang menerima data program itu: Ketua Program (program seliaannya), Dekan / pentadbir fakulti
    (program fakultinya) dan pentadbir PPA (semua program). Tempoh notifikasi ditetapkan di Pentadbiran → Tetapan. */
-const LABEL_LANTIKAN = { kp:'Ketua Program', pla:'Penasihat Luar Akademik' };
+const LABEL_LANTIKAN = { kp:'Ketua Program', pla:'Penilai Luar Akademik' };
 function tambahBulanISO(iso, n){ const [y, m, d] = String(iso).split('-').map(Number), t = new Date(y, m - 1 + n, d); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); }
 function bezaHariISO(a, b){ return Math.round((Date.parse(a + 'T00:00:00') - Date.parse(b + 'T00:00:00')) / 86400000); }
-function bulanNotifLantikan(){ return Number((S.tetapan || {}).notifLantikanBulan) || 3; }
+function bulanNotifLantikan(){ return Number((S.tetapan || {}).notifLantikanBulan) || 2; }
 /** Lantikan yang akan tamat dalam tempoh notifikasi, atau telah tamat tetapi belum diganti. */
 function notifikasiLantikan(pid){
   const P = S.program || {}, hari = hariIniISO(), had = tambahBulanISO(hari, bulanNotifLantikan()), lepas = tambahBulanISO(hari, -bulanNotifLantikan()), out = [];
@@ -3464,7 +3464,7 @@ function notifikasiLantikan(pid){
     /* Ketua Program semasa: rekod terkini individu itu. Jika tempohnya telah tamat tetapi KP belum ditukar, notifikasi kekal. */
     const lk = p.kp ? lantikanKP(p.id).filter(l => Number(l.pid) === p.kp) : [], x = lk.find(lantikanAktif) || lk.slice().sort((a, b) => String(b.tamat).localeCompare(String(a.tamat)))[0] || null;
     if(x && x.tamat && x.tamat <= had) out.push({ p, x, jenis:'kp', tamat: x.tamat <= hari, hari: bezaHariISO(x.tamat, hari) });
-    /* Penasihat Luar Akademik: setiap lantikan aktif yang akan tamat; atau lantikan terakhir yang baru tamat jika tiada pengganti */
+    /* Penilai Luar Akademik: setiap lantikan aktif yang akan tamat; atau lantikan terakhir yang baru tamat jika tiada pengganti */
     const pl = plaProgram(p.id), aktif = pl.filter(lantikanAktif);
     aktif.forEach(y => { if(y.tamat && y.tamat <= had) out.push({ p, x: y, jenis:'pla', tamat:false, hari: bezaHariISO(y.tamat, hari) }); });
     if(!aktif.length){ const akhir = pl.filter(l => l.tamat).sort((a, b) => String(b.tamat).localeCompare(String(a.tamat)))[0];
@@ -3475,7 +3475,7 @@ function notifikasiLantikan(pid){
 function teksBakiLantikan(n){ return n.tamat ? (n.hari === 0 ? 'tamat hari ini' : 'telah tamat ' + (-n.hari) + ' hari lalu') : (n.hari === 1 ? 'tamat esok' : 'tamat dalam ' + n.hari + ' hari'); }
 function barisNotifLantikan(n){
   return `<li class="notif-lantikan"><span class="badge ${n.tamat ? 'b-tidak' : 'b-hampir'}">${n.tamat ? 'Telah tamat' : 'Akan tamat'}</span>
-    <div class="isi"><b style="white-space:normal">${esc(n.p.kod)} · ${LABEL_LANTIKAN[n.jenis]}: ${esc(n.x.nama || '-')}</b><span class="mini" style="white-space:normal">Tarikh tamat ${fmtTarikh(n.x.tamat)} (${teksBakiLantikan(n)}).${n.tamat ? (n.jenis === 'kp' ? ' Lanjutkan tempoh lantikan atau lantik Ketua Program baharu.' : ' Lantik Penasihat Luar Akademik baharu atau lanjutkan tempoh.') : ''}</span></div>
+    <div class="isi"><b style="white-space:normal">${esc(n.p.kod)} · ${LABEL_LANTIKAN[n.jenis]}: ${esc(n.x.nama || '-')}</b><span class="mini" style="white-space:normal">Tarikh tamat ${fmtTarikh(n.x.tamat)} (${teksBakiLantikan(n)}).${n.tamat ? (n.jenis === 'kp' ? ' Lanjutkan tempoh lantikan atau lantik Ketua Program baharu.' : ' Lantik Penilai Luar Akademik baharu atau lanjutkan tempoh.') : ''}</span></div>
     <button class="btn btn-ghost btn-sm" onclick="bukaNotifLantikan(${n.p.id},'${n.jenis}')">Buka</button></li>`;
 }
 function bukaNotifLantikan(pid, jenis){
@@ -3485,13 +3485,13 @@ function bukaNotifLantikan(pid, jenis){
 }
 function notisLantikanUtama(){
   const L = notifikasiLantikan(); if(!L.length) return '';
-  return `<div class="notis" id="notisLantikan"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${L.length} lantikan</b> ${L.some(n => n.tamat) ? 'telah tamat atau ' : ''}akan tamat dalam tempoh ${bulanNotifLantikan()} bulan (Ketua Program / Penasihat Luar Akademik).</span>
+  return `<div class="notis" id="notisLantikan"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${L.length} lantikan</b> ${L.some(n => n.tamat) ? 'telah tamat atau ' : ''}akan tamat dalam tempoh ${bulanNotifLantikan()} bulan (Ketua Program / Penilai Luar Akademik).</span>
     ${L.length > 3 ? `<button class="btn-teks" onclick="modalNotifLantikan()">Lihat semua (${L.length})</button>` : ''}</div>
     <ul class="senarai-ringkas" style="margin-top:4px">${L.slice(0, 3).map(barisNotifLantikan).join('')}</ul></div>`;
 }
 function modalNotifLantikan(){
   const L = notifikasiLantikan();
-  bukaModal({ tajuk:'Lantikan akan tamat', desk:'Lantikan Ketua Program dan Penasihat Luar Akademik yang akan tamat dalam tempoh ' + bulanNotifLantikan() + ' bulan, atau telah tamat tetapi belum diganti.', lebar:true,
+  bukaModal({ tajuk:'Lantikan akan tamat', desk:'Lantikan Ketua Program dan Penilai Luar Akademik yang akan tamat dalam tempoh ' + bulanNotifLantikan() + ' bulan, atau telah tamat tetapi belum diganti.', lebar:true,
     isi:`<ul class="senarai-ringkas">${L.map(barisNotifLantikan).join('')}</ul>`, kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Tutup</button>` });
 }
 function plaProgram(pid){ return S.program.lantikan.filter(x => x.jenis === 'pla' && Number(x.sasaran) === pid).sort((a, b) => String(b.mula).localeCompare(String(a.mula)) || b.id - a.id); }
@@ -3502,15 +3502,15 @@ function bahagianPLAProgram(p){
     return `<li><span class="ikon-bulat" style="background:${on ? 'var(--sky-soft)' : 'var(--surface-2)'};color:${on ? 'var(--sky)' : 'var(--muted)'}">${ik('pengguna', 16)}</span>
       <div class="isi"><b>${esc(x.nama)}</b><span class="mini" style="white-space:normal">${esc(x.institusi || '-')} · ${fmtTarikh(x.mula)} hingga ${x.tamat ? fmtTarikh(x.tamat) + (on ? ' (tamat tempoh)' : '') : 'kini'}${x.catatan ? ' · ' + esc(x.catatan) : ''}</span></div>
       ${on ? '<span class="badge b-ya">Semasa</span>' : ''}${boleh ? `<div class="aksi-baris"><button class="btn-ikon" onclick="modalPLA(${p.id},${x.id})" title="Sunting lantikan" aria-label="Sunting lantikan ${esc(x.nama)}">${ik('sunting', 15)}</button><button class="btn-ikon bahaya" onclick="padamPLA(${x.id})" title="Padam rekod" aria-label="Padam rekod ${esc(x.nama)}">${ik('padam', 15)}</button></div>` : ''}</li>`; }).join('');
-  return lipat({ kunci:'kpPLA', id:'secPLA', ikon:'kumpulan', tajuk:'Sejarah lantikan Penasihat Luar Akademik',
+  return lipat({ kunci:'kpPLA', id:'secPLA', ikon:'kumpulan', tajuk:'Sejarah lantikan Penilai Luar Akademik',
     ringkas: l.length + ' rekod lantikan' + (kini.length ? ' · Semasa: ' + kini.map(x => esc(x.nama)).join(', ') : ''),
-    isi:`<div style="padding:4px 18px 12px">${l.length ? `<ul class="senarai-ringkas">${senarai}</ul>` : '<p class="mini" style="margin:12px 0">Belum ada rekod lantikan Penasihat Luar Akademik.</p>'}</div>
+    isi:`<div style="padding:4px 18px 12px">${l.length ? `<ul class="senarai-ringkas">${senarai}</ul>` : '<p class="mini" style="margin:12px 0">Belum ada rekod lantikan Penilai Luar Akademik.</p>'}</div>
     ${boleh ? `<div class="lipat-nota" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="plaTambah" onclick="modalPLA(${p.id},0)">${ik('tambah', 14)}Tambah lantikan</button>
-      <span class="mini" style="flex:1;min-width:220px">Pakar luar yang dilantik untuk menasihati program. Beberapa penasihat boleh dilantik serentak. Surat lantikan boleh dimuat naik di Dokumentasi program.</span></div>` : ''}` });
+      <span class="mini" style="flex:1;min-width:220px">Pakar luar yang dilantik untuk menilai program. Beberapa penilai boleh dilantik serentak. Surat lantikan boleh dimuat naik di Dokumentasi program.</span></div>` : ''}` });
 }
 function modalPLA(progId, id){
   const p = S.program.senarai.find(x => x.id === progId), x = id ? S.program.lantikan.find(l => l.id === id && l.jenis === 'pla') : null; if(!p || (id && !x)) return;
-  bukaModal({ tajuk: x ? 'Kemas kini Penasihat Luar Akademik' : 'Tambah Penasihat Luar Akademik', desk: p.kod + ' · ' + p.nama, isi:`<div class="borang">
+  bukaModal({ tajuk: x ? 'Kemas kini Penilai Luar Akademik' : 'Tambah Penilai Luar Akademik', desk: p.kod + ' · ' + p.nama, isi:`<div class="borang">
     <div><label class="fld" for="plaNama">Nama penuh (dengan gelaran)</label><input id="plaNama" type="text" value="${esc(x ? x.nama : '')}" placeholder="cth. Prof. Dr. Ahmad bin Ali" autocomplete="off"></div>
     <div><label class="fld" for="plaInst">Jawatan dan institusi / organisasi</label><input id="plaInst" type="text" value="${esc(x ? x.institusi || '' : '')}" placeholder="cth. Profesor, Akademi Pengajian Islam, Universiti Malaya" autocomplete="off"></div>
     <div class="dua"><div><label class="fld" for="plaMula">Tarikh mula</label><input id="plaMula" type="date" value="${esc(x ? x.mula : '')}"></div>
@@ -3523,7 +3523,7 @@ function modalPLA(progId, id){
 async function simpanPLA(progId, id){
   const err = el('plaErr'), salah = m => { err.textContent = m; err.hidden = false; };
   const d = { programId: progId, id, nama: el('plaNama').value.replace(/\s+/g, ' ').trim(), institusi: el('plaInst').value.replace(/\s+/g, ' ').trim(), mula: el('plaMula').value, tamat: el('plaTamat').value, catatan: el('plaCat').value.trim() };
-  if(!d.nama) return salah('Sila isi nama Penasihat Luar Akademik.');
+  if(!d.nama) return salah('Sila isi nama Penilai Luar Akademik.');
   if(!d.institusi) return salah('Sila isi jawatan dan institusi / organisasi.');
   if(!d.mula) return salah('Sila isi tarikh mula lantikan.');
   if(d.tamat && d.tamat < d.mula) return salah('Tarikh tamat mesti selepas tarikh mula.');
@@ -3533,7 +3533,7 @@ async function simpanPLA(progId, id){
 }
 async function padamPLA(id){
   const x = S.program.lantikan.find(l => l.id === id && l.jenis === 'pla'); if(!x) return;
-  if(!await sahkan({ tajuk:'Padam rekod Penasihat Luar Akademik?', mesej: x.nama + ' (' + (x.institusi || '-') + ', ' + fmtTarikh(x.mula) + ' hingga ' + (x.tamat ? fmtTarikh(x.tamat) : 'kini') + ') akan dibuang daripada sejarah lantikan.', butang:'Padam rekod', bahaya:true })) return;
+  if(!await sahkan({ tajuk:'Padam rekod Penilai Luar Akademik?', mesej: x.nama + ' (' + (x.institusi || '-') + ', ' + fmtTarikh(x.mula) + ' hingga ' + (x.tamat ? fmtTarikh(x.tamat) : 'kini') + ') akan dibuang daripada sejarah lantikan.', butang:'Padam rekod', bahaya:true })) return;
   await cuba(async () => { await api('progPLAPadam', { id }); lukisSemula(); });
 }
 function modalLantikan(progId, id){
@@ -4449,7 +4449,7 @@ function kadProgram(p, sid){
   const d = ringkasDokProg(p), f = agregatProgFK(p, sid);
   return `<div class="card kad-btn prog-kad" ${klik(`bukaProgram(${p.id})`)}>
     <div class="prog-kad-atas"><div style="min-width:0"><span class="prog-kod">${esc(p.kod)}</span><div class="prog-nama" style="margin-top:6px">${esc(p.nama)}</div></div>${saya() && p.kp === saya() ? '<span class="badge b-kp">KP</span>' : ''}</div>
-    <div class="mini">${p.kpNama ? 'Ketua Program: ' + esc(p.kpNama) : 'Ketua Program belum dilantik'}${notifikasiLantikan(p.id).length ? ' <span class="badge b-hampir" title="Lantikan Ketua Program atau Penasihat Luar Akademik akan tamat">Lantikan akan tamat</span>' : ''}</div>
+    <div class="mini">${p.kpNama ? 'Ketua Program: ' + esc(p.kpNama) : 'Ketua Program belum dilantik'}${notifikasiLantikan(p.id).length ? ' <span class="badge b-hampir" title="Lantikan Ketua Program atau Penilai Luar Akademik akan tamat">Lantikan akan tamat</span>' : ''}</div>
     ${(r => r.kemasukan ? `<div style="font-size:13px"><b>${fmtNombor(r.aktif)}</b> pelajar aktif · <b>${fmtNombor(r.graduan)}</b> graduan</div>` : '<div class="mini">Data pelajar belum dikemas kini</div>')(ringkasPelajar(pelajarProgram(p.id)))}
     <div><div class="mini" style="margin-bottom:4px">Dokumentasi program</div>${meterLbl(d.pct, d.ya + '/' + d.perlu)}</div>
     <div><div class="mini" style="margin-bottom:4px">Fail kursus lengkap (sesi semasa)</div>${f.fk ? meterLbl(f.kadar, f.lengkap + '/' + f.fk) : `<span class="mini" style="color:var(--ink-2)">${f.n ? 'Tiada pendaftaran sepadan' : 'Struktur program belum ditetapkan'}</span>`}</div>
@@ -6195,8 +6195,8 @@ function tabTetapan(){
   el('adminIsi').innerHTML = `<div class="grid-2" style="align-items:start">
     <div class="card pad"><h3 class="serif h3" style="margin-bottom:14px">Tetapan portal</h3><div class="borang">
       <div><label class="fld" for="tSasaran">Sasaran jam CPD setahun</label><input id="tSasaran" type="number" min="1" step="1" value="${t.sasaranCPD}"></div>
-      <div><label class="fld" for="tNotifBulan">Notifikasi lantikan akan tamat (bulan sebelum tarikh tamat)</label><input id="tNotifBulan" type="number" min="1" max="24" step="1" value="${t.notifLantikanBulan || 3}">
-        <div class="mini" style="margin-top:5px">Ketua Program, Dekan (pentadbir fakulti) dan pentadbir PPA dimaklumkan di Utama dan pada menu Ketua Program apabila lantikan Ketua Program atau Penasihat Luar Akademik akan tamat dalam tempoh ini.</div></div>
+      <div><label class="fld" for="tNotifBulan">Notifikasi lantikan akan tamat (bulan sebelum tarikh tamat)</label><input id="tNotifBulan" type="number" min="1" max="24" step="1" value="${t.notifLantikanBulan || 2}">
+        <div class="mini" style="margin-top:5px">Ketua Program, Dekan (pentadbir fakulti) dan pentadbir PPA dimaklumkan di Utama dan pada menu Ketua Program apabila lantikan Ketua Program atau Penilai Luar Akademik akan tamat dalam tempoh ini.</div></div>
       <label class="semak"><input type="checkbox" id="tLihat" ${t.stafLihatSemua ? 'checked' : ''}><span><b>Staf boleh melihat senarai penuh</b><br><span class="mini">Jika ditandakan, staf boleh melihat jadual CPD dan status fail kursus semua pensyarah (paparan sahaja). Jika tidak, staf hanya melihat rekod sendiri serta rumusan agregat.</span></span></label>
       <label class="semak"><input type="checkbox" id="tStatAwam" ${t.statistikAwam !== false ? 'checked' : ''}><span><b>Papar statistik akademik di skrin log masuk</b><br><span class="mini">Pengunjung yang belum log masuk melihat statistik agregat: pelajar aktif dan graduan mengikut program, pelajar aktif mengikut jantina, ringkasan penghantaran fail kursus dan CPD pensyarah. Tiada nama atau maklumat individu dipaparkan, dan pecahan fakulti hanya dipaparkan bagi fakulti yang mempunyai sekurang-kurangnya 3 pensyarah. Angka dikemas kini setiap 10 minit.</span></span></label>
     <label class="semak"><input type="checkbox" id="tDaftar" ${t.daftarKendiri !== false ? 'checked' : ''}><span><b>Benarkan pendaftaran akaun kendiri</b><br><span class="mini">Staf yang mempunyai emel rasmi @kias.edu.my boleh mendaftar sendiri dengan log masuk kali pertama menggunakan kata laluan lalai portal (ditetapkan dalam Code.gs, <code>APP.KATA_LALAI_STAF</code>), kemudian wajib menukar kata laluan. Akaun baharu diberi peranan Staf dan dipautkan secara automatik kepada rekod pensyarah yang mempunyai emel yang sama. Tutup tetapan ini selepas semua staf mendaftar supaya kata laluan lalai tidak lagi boleh digunakan untuk mencipta akaun.</span></span></label>
