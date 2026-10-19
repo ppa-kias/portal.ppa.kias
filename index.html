@@ -434,9 +434,11 @@ details.lipat>summary .putar{color:var(--brand)}
 .pilih-baris:hover{background:var(--surface)}
 .pilih-baris input{width:auto;flex:none}
 .pilih-kump{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:9px 8px 4px}
-.folder-baris{display:grid;grid-template-columns:80px minmax(0,1fr) minmax(0,1.6fr) 96px 36px;gap:8px;align-items:center;margin-bottom:8px}
-.fb-kongsi{font-size:12.5px;align-items:center}
-@media(max-width:640px){.folder-baris{grid-template-columns:70px minmax(0,1fr) 36px}.folder-baris .fb-kump{grid-column:1/-1;order:5}.folder-baris .fb-kongsi{grid-column:1/-1;order:6}}
+.folder-baris{display:grid;grid-template-columns:70px minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr) 88px 84px 36px;gap:8px;align-items:center;margin-bottom:8px}
+.fb-kongsi,.fb-tb{font-size:12.5px;align-items:center}
+.fk-nota{font-style:italic;color:var(--ink-2);margin-top:1px}
+.tb-auto{margin-left:6px;color:var(--sky);font-weight:600}
+@media(max-width:860px){.folder-baris{grid-template-columns:70px minmax(0,1fr) 36px}.folder-baris .fb-kump,.folder-baris .fb-nota{grid-column:1/-1;order:5}.folder-baris .fb-kongsi{grid-column:1/3;order:6}.folder-baris .fb-tb{grid-column:1/3;order:7}}
 .cari-rujukan{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .rj-kad{padding:14px 16px;display:flex;flex-direction:column;gap:8px}
 .rj-item{display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap}
@@ -502,6 +504,7 @@ tr.klik{cursor:pointer}
 .jadual-input input,.jadual-input select,.jadual-input textarea{padding:6px 8px;font-size:13px;border-radius:8px}
 .jadual-input input.jsu-cek{width:18px;height:18px;padding:0;margin-top:8px;accent-color:var(--amber);cursor:pointer;box-shadow:none}
 .jadual-input tr.jsu-pilihan td{background:var(--amber-soft)}
+.notif-lantikan .badge{flex:none}
 .ig-gambar{width:42px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;background:var(--surface-2);color:var(--muted)}
 .btn-ikon.ig-ada{color:var(--brand);background:var(--brand-soft)}
 .jadual-input tr.jsu-pilihan td:nth-child(4) input{font-weight:700;color:var(--amber)}
@@ -1251,6 +1254,13 @@ function statusPensyarahFK(ks, fol){
 }
 function failKursus(kid, key){ return S.fk.fail.filter(f => f.kursusId === kid && (key == null || f.folderKey === key)); }
 function bolehUrus(k){ return isAdmin() || (saya() > 0 && k.pid === saya()); }
+/** Ketua Program bagi program yang struktur kursusnya sepadan dengan kursus fail kursus ini (boleh menanda TB untuk pemantauan). */
+function kpUntukFK(k){
+  if(isAdmin() || !saya()) return false;
+  return ((S.program || {}).senarai || []).some(p => p.kp === saya() && kursusProgram(p.id).some(c => [c.kod, ...pecahKod(c.kodLama)].some(x => kodSepadan(k.kod, x))));
+}
+/** Item JSU dalam struktur folder sesi (sama dengan itemJSU_ di pelayan). */
+function itemJSU(sid){ const fol = folderSesi(sid); return fol.find(f => f.key === 'f6') || fol.find(f => /\bJSU\b|Spesifikasi\s+Ujian/i.test(f.desc + ' ' + f.kumpulan)) || null; }
 function barisFK(sid){
   const fol = folderSesi(sid), pm = petaP(), g = {}, fak = skopFak();
   S.fk.kursus.filter(k => k.sesi === sid && pm[k.pid] && (S.paparPenuh || k.pid === saya()) && (!fak || pm[k.pid].fakulti === fak)).forEach(k => { (g[k.pid] = g[k.pid] || []).push(k); });
@@ -1534,7 +1544,7 @@ const NAV = [
 ];
 function binaNav(){
   el('nav').innerHTML = `<div class="nav-lbl">Menu</div>` + NAV.filter(n => (!n.admin || isAdmin()) && (!n.kp || lihatKP())).map(n =>
-    `<button class="nav-i ${UI.halaman === n.id ? 'aktif' : ''}" onclick="${n.kp ? 'UI.kp.prog=null;' : ''}pergi('${n.id}')" ${UI.halaman === n.id ? 'aria-current="page"' : ''}>${ik(n.ikon, 18)}<span>${n.label}</span>${n.id === 'dokumentasi' && bilTugasanSah() ? `<span class="nav-bil" title="Dokumen menunggu pengesahan anda">${bilTugasanSah()}</span>` : ''}${n.id === 'mesej' && bilMesej() ? `<span class="nav-bil merah" title="Mesej belum dibaca">${bilMesej()}</span>` : ''}${n.id === 'failkursus' && bilSijilMenunggu() ? `<span class="nav-bil" title="Permohonan sijil fail kursus menunggu pengesahan">${bilSijilMenunggu()}</span>` : ''}</button>`).join('');
+    `<button class="nav-i ${UI.halaman === n.id ? 'aktif' : ''}" onclick="${n.kp ? 'UI.kp.prog=null;' : ''}pergi('${n.id}')" ${UI.halaman === n.id ? 'aria-current="page"' : ''}>${ik(n.ikon, 18)}<span>${n.label}</span>${n.id === 'dokumentasi' && bilTugasanSah() ? `<span class="nav-bil" title="Dokumen menunggu pengesahan anda">${bilTugasanSah()}</span>` : ''}${n.id === 'mesej' && bilMesej() ? `<span class="nav-bil merah" title="Mesej belum dibaca">${bilMesej()}</span>` : ''}${n.id === 'failkursus' && bilSijilMenunggu() ? `<span class="nav-bil" title="Permohonan sijil fail kursus menunggu pengesahan">${bilSijilMenunggu()}</span>` : ''}${n.id === 'ketuaprogram' && notifikasiLantikan().length ? `<span class="nav-bil merah" id="navBilLantikan" title="Lantikan akan tamat atau telah tamat">${notifikasiLantikan().length}</span>` : ''}</button>`).join('');
   const u = S.pengguna;
   el('sisiKaki').innerHTML = `<button class="sisi-pengguna" onclick="modalProfil(false)" title="Profil dan kata laluan">${avatarPengguna(u)}<span class="sp-teks"><b>${esc(u.nama)}</b><small>${esc(labelPeranan(u))}</small></span></button>
     <button class="nav-i" onclick="logKeluar()">${ik('keluar', 18)}<span>Log keluar</span></button>
@@ -1711,6 +1721,7 @@ function lukisUtama(){
   if(bilTugasanSah()) h += `<div class="notis info" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${bilTugasanSah()} dokumen</b> menunggu pengesahan dan tandatangan anda.</span><button class="btn btn-primary btn-sm" onclick="UI.sahTab='tugasan';UI.lipat.dokSah=true;pergi('dokumentasi')">Semak dokumen</button></div>`;
   if(bilMesej()) h += `<div class="notis info" id="notisMesej" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Anda mempunyai <b>${bilMesej()} mesej</b> belum dibaca.</span><button class="btn btn-primary btn-sm" onclick="pergi('mesej')">Buka mesej</button></div>`;
   if(bilSijilMenunggu()) h += `<div class="notis info" id="notisSijil" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${bilSijilMenunggu()} permohonan sijil</b> penghantaran fail kursus menunggu pengesahan anda.</span><button class="btn btn-primary btn-sm" onclick="bukaSijilMenunggu()">Semak permohonan</button></div>`;
+  h += notisLantikanUtama();
   if(saya()) h += statusSaya(thn, sid);
   h += `<section class="blok"><div class="seclabel"><span class="eyebrow">${fakSaya ? 'Modul portal · ' + esc(fakSaya) : 'Modul portal'}</span></div><div class="${lihatKP() ? 'grid-modul4' : 'grid-3'}">
     ${kadModul({ ke:'failkursus', aksen:'var(--brand)', aksenSoft:'var(--brand-soft)', ikon:'folder', tajuk:'Laporan Penghantaran Fail Kursus',
@@ -2150,7 +2161,8 @@ function lukisModalKursus(kid){
   const k = S.fk.kursus.find(x => x.id === kid);
   if(!k){ tutupModal(); return; }
   const tajuk = box.closest('.modal').querySelector('.modal-h h2'); if(tajuk) tajuk.textContent = k.kod;
-  const fol = folderSesi(k.sesi), boleh = bolehUrus(k), A = isAdmin(), pct = kemajuan(k, fol), st = k.status || {};
+  const fol = folderSesi(k.sesi), boleh = bolehUrus(k), A = isAdmin(), kp = !A && kpUntukFK(k), pct = kemajuan(k, fol), st = k.status || {};
+  const jsu = itemJSU(k.sesi), itemPA = fol.find(f => f.key === 'f7_2'), tbStaf = fol.filter(f => f.tbStaf);
   const ya = fol.filter(f => st[f.key] === 'YA').length, tb = fol.filter(f => st[f.key] === 'TB').length, tidak = fol.length - ya - tb;
   const g = [];
   fol.forEach(f => { let x = g.find(y => y.n === f.kumpulan); if(!x){ x = { n:f.kumpulan, i:[] }; g.push(x); } x.i.push(f); });
@@ -2164,27 +2176,41 @@ function lukisModalKursus(kid){
         ${boleh ? `<button class="btn btn-ghost btn-sm" onclick="modalKursus(${k.id})">${ik('sunting', 14)}Sunting</button>` : ''}
       </div></div>
     ${k.catatan ? `<div class="notis"><b>Catatan:</b> ${esc(k.catatan)}</div>` : ''}
+    ${boleh || kp ? `<label class="semak" id="mkTanpaPAWrap" style="margin:0 0 10px;display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="mkTanpaPA" ${k.tanpaPA ? 'checked' : ''} onchange="setTanpaPA(${k.id}, this.checked)">
+      <span><b>Kursus ini tiada peperiksaan akhir</b><br><span class="mini">${jsu ? esc(jsu.label) + ' (JSU) ditanda tidak berkaitan (TB) secara automatik.' : 'Item JSU ditanda tidak berkaitan secara automatik.'}${itemPA ? ' Bukti penilaian sumatif dilampirkan di ' + esc(itemPA.label) + '.' : ''}</span></span></label>`
+      : (k.tanpaPA ? `<div class="notis info" style="margin:0 0 10px">Kursus ini tiada peperiksaan akhir. ${jsu ? esc(jsu.label) + ' (JSU) ditanda tidak berkaitan (TB) secara automatik.' : ''}</div>` : '')}
     ${boleh ? `<div class="notis info" style="margin:0 0 10px">Hanya fail <b>PDF</b> diterima (had ${CONFIG.MAKS_MB} MB setiap fail). Simpan dokumen Word, Excel atau PowerPoint sebagai PDF dahulu (<b>Fail &gt; Simpan sebagai &gt; PDF</b>).</div>
-      <p class="mini" style="margin:0 0 6px">Tekan <b>Muat naik PDF</b> atau seret fail PDF ke item berkenaan. Status item bertukar kepada <b>Lengkap</b> secara automatik selepas fail dimuat naik.</p>` : ''}`;
-  g.forEach(x => { h += `<div class="mk-kump">${esc(x.n)}</div>` + x.i.map(f => itemFolder(k, f, boleh, A)).join(''); });
+      <p class="mini" style="margin:0 0 6px">Tekan <b>Muat naik PDF</b> atau seret fail PDF ke item berkenaan. Status item bertukar kepada <b>Lengkap</b> secara automatik selepas fail dimuat naik.${A ? '' : (tbStaf.length ? ' Anda boleh menanda <b>tidak berkaitan (TB)</b> bagi ' + tbStaf.map(f => esc(f.label)).join(' dan ') + ' sahaja; TB bagi item lain ditetapkan oleh Ketua Program atau pentadbir PPA.' : ' TB ditetapkan oleh Ketua Program atau pentadbir PPA.')}</p>` : ''}
+    ${kp && !boleh ? `<div class="notis info" style="margin:0 0 10px">Pemantauan Ketua Program: anda boleh menanda atau membatalkan <b>tidak berkaitan (TB)</b> bagi item kursus ini. Fail dimuat naik oleh pensyarah kursus.</div>` : ''}`;
+  g.forEach(x => { h += `<div class="mk-kump">${esc(x.n)}</div>` + x.i.map(f => itemFolder(k, f, boleh, A, kp)).join(''); });
   if(!fol.length) h += `<div class="kosong">Struktur folder bagi sesi ini belum ditetapkan.</div>`;
   box.innerHTML = h;
 }
-function itemFolder(k, f, boleh, A){
+function itemFolder(k, f, boleh, A, kp){
   const v = (k.status || {})[f.key] || 'TIDAK', fail = failKursus(k.id, f.key);
+  const jsuAuto = !!k.tanpaPA && v === 'TB' && (itemJSU(k.sesi) || {}).key === f.key;
   let kawal;
   if(A) kawal = `<div class="seg seg-sm" role="group" aria-label="Status ${esc(f.label)}">${['YA','TIDAK','TB'].map(x => `<button class="${v === x ? 'aktif s-' + x.toLowerCase() : ''}" onclick="setStatus(${k.id},'${f.key}','${x}')" title="${x === 'YA' ? 'Lengkap' : x === 'TB' ? 'Tidak berkaitan' : 'Belum'}">${x}</button>`).join('')}</div>`;
-  else if(boleh) kawal = `${chipStatus(v)}<button class="btn-teks" onclick="setStatus(${k.id},'${f.key}','${v === 'TB' ? 'TIDAK' : 'TB'}')">${v === 'TB' ? 'Batal TB' : 'Tanda TB'}</button>`;
-  else kawal = chipStatus(v);
+  else {
+    /* Staf: TB bagi item yang dibenarkan sahaja (lalai F1, F10). Ketua Program: TB bagi semua item (pemantauan). JSU automatik bagi kursus tanpa PA. */
+    const bolehTB = !jsuAuto && (kp || (boleh && f.tbStaf));
+    kawal = chipStatus(v) + (jsuAuto ? '<span class="mini tb-auto" title="Kursus ini ditanda tiada peperiksaan akhir">Automatik: tiada peperiksaan akhir</span>' : '')
+      + (bolehTB ? `<button class="btn-teks btn-tb" onclick="setStatus(${k.id},'${f.key}','${v === 'TB' ? 'TIDAK' : 'TB'}')">${v === 'TB' ? 'Batal TB' : 'Tanda TB'}</button>` : '');
+  }
   return `<div class="fk-item st-${v.toLowerCase()}" ${boleh ? `ondragover="seretAtas(event,this)" ondragleave="this.classList.remove('seret')" ondrop="jatuhFail(event,${k.id},'${f.key}',this)"` : ''}>
     <div class="fk-item-baris">
       <span class="fk-lbl">${esc(f.label)}</span>
-      <div class="fk-item-teks"><b>${esc(f.desc)}</b><div class="mini">${fail.length ? fail.length + ' fail' : 'Tiada fail'}${f.kongsi ? ` · <span class="badge b-rujukan" title="Fail item ini boleh dilihat oleh staf lain sebagai rujukan PdP">Dikongsi sebagai rujukan</span>` : ''}</div></div>
+      <div class="fk-item-teks"><b>${esc(f.desc)}</b>${f.nota ? `<div class="mini fk-nota">(${esc(f.nota)})</div>` : ''}<div class="mini">${fail.length ? fail.length + ' fail' : 'Tiada fail'}${f.kongsi ? ` · <span class="badge b-rujukan" title="Fail item ini boleh dilihat oleh staf lain sebagai rujukan PdP">Dikongsi sebagai rujukan</span>` : ''}</div></div>
       <div class="fk-item-kawal">${kawal}${boleh ? `<label class="btn btn-ghost btn-sm">${ik('naik', 14)}Muat naik PDF<input type="file" multiple hidden accept=".pdf,application/pdf" onchange="muatNaikItem(${k.id},'${f.key}',this.files,this)"></label>` : ''}</div>
     </div>
     ${fail.length ? `<div class="fk-fail">${fail.map(x => `<span class="fail-cip">${ikonFail(x.mime, x.nama)}<button class="cip-nama" onclick="lihatFail('fk',${x.id})" title="Lihat ${esc(x.nama)}">${esc(x.nama)}</button><small>${fmtSaiz(x.saiz)}</small>${boleh ? `<button class="cip-x" onclick="padamFailFK(${x.id},${k.id})" aria-label="Padam ${esc(x.nama)}" title="Padam fail">${ik('x', 12)}</button>` : ''}</span>`).join('')}</div>` : ''}
     <div class="fk-prog" id="p-${k.id}-${f.key}" hidden></div>
   </div>`;
+}
+async function setTanpaPA(kid, ya){
+  const k = S.fk.kursus.find(x => x.id === kid); if(!k) return;
+  const r = await cuba(() => api('fkTanpaPA', { kursusId: kid, nilai: !!ya }));
+  lukisModalKursus(kid); if(r) lukisSemula();
 }
 async function setStatus(kid, key, v){
   const k = S.fk.kursus.find(x => x.id === kid); if(!k) return;
@@ -2435,10 +2461,11 @@ async function padamSesi(id){
 }
 function modalUrusFolder(){
   const sid = UI.fk.sesi, sesi = S.fk.sesi.find(s => s.id === sid); if(!sesi) return;
-  UI.folderDraf = folderSesi(sid).map(f => ({ key:f.key, label:f.label, kumpulan:f.kumpulan, desc:f.desc, kongsi:!!f.kongsi }));
+  UI.folderDraf = folderSesi(sid).map(f => ({ key:f.key, label:f.label, kumpulan:f.kumpulan, desc:f.desc, kongsi:!!f.kongsi, tbStaf:!!f.tbStaf, nota:f.nota || '' }));
   bukaModal({ tajuk:'Struktur senarai semak folder', desk:'Sesi ' + sesi.nama + '. Perubahan hanya terpakai pada sesi ini.', lebar:true,
     isi:`<div class="notis info">Setiap item mewakili satu folder dalam fail kursus. <b>Kod</b> dipaparkan pada petak status. <b>Kumpulan</b> menyusun item dalam paparan kursus. Tandakan <b>Rujukan</b> untuk membenarkan staf lain melihat fail item itu sebagai panduan PdP. Jangan tandakan item yang mengandungi maklumat pelajar, markah atau penilaian.</div>
-      <div class="folder-baris mini up" style="margin-bottom:4px"><span>Kod</span><span class="fb-kump">Kumpulan</span><span>Penerangan</span><span>Rujukan</span><span></span></div><div id="mfIsi"></div>`,
+      <div class="notis info" style="margin-top:-4px">Tandakan <b>TB staf</b> bagi item yang boleh ditanda <b>tidak berkaitan</b> sendiri oleh pensyarah (lalai F1 Labsheet Amali dan F10 Kuliah Online). TB bagi item lain ditetapkan oleh Ketua Program atau pentadbir PPA. <b>Nota</b> dipaparkan di bawah penerangan item.</div>
+      <div class="folder-baris mini up" style="margin-bottom:4px"><span>Kod</span><span class="fb-kump">Kumpulan</span><span>Penerangan</span><span class="fb-nota">Nota</span><span>Rujukan</span><span>TB staf</span><span></span></div><div id="mfIsi"></div>`,
     kaki:`<button class="btn btn-ghost" style="margin-right:auto" onclick="tambahItemFolder()">${ik('tambah')}Tambah item</button><button class="btn btn-ghost" onclick="lalaiFolder()">Set semula ke asal</button><button class="btn btn-primary" onclick="simpanFolder()">Simpan struktur</button>` });
   lukisDrafFolder();
 }
@@ -2447,10 +2474,12 @@ function lukisDrafFolder(){
     <input type="text" value="${esc(f.label)}" oninput="UI.folderDraf[${i}].label=this.value" aria-label="Kod">
     <input class="fb-kump" type="text" value="${esc(f.kumpulan)}" oninput="UI.folderDraf[${i}].kumpulan=this.value" aria-label="Kumpulan">
     <input type="text" value="${esc(f.desc)}" oninput="UI.folderDraf[${i}].desc=this.value" aria-label="Penerangan">
+    <input class="fb-nota" type="text" value="${esc(f.nota || '')}" oninput="UI.folderDraf[${i}].nota=this.value" placeholder="(tiada)" aria-label="Nota ${esc(f.label)}">
     <label class="semak fb-kongsi" title="Staf lain boleh melihat fail item ini sebagai rujukan PdP"><input type="checkbox" ${f.kongsi ? 'checked' : ''} onchange="UI.folderDraf[${i}].kongsi=this.checked" aria-label="Rujukan staf bagi ${esc(f.label)}"> Rujukan</label>
+    <label class="semak fb-tb" title="Pensyarah boleh menanda item ini tidak berkaitan (TB) sendiri"><input type="checkbox" ${f.tbStaf ? 'checked' : ''} onchange="UI.folderDraf[${i}].tbStaf=this.checked" aria-label="TB oleh staf bagi ${esc(f.label)}"> TB staf</label>
     <button class="btn-ikon bahaya" onclick="UI.folderDraf.splice(${i},1);lukisDrafFolder()" aria-label="Buang item">${ik('padam', 15)}</button></div>`).join('');
 }
-function tambahItemFolder(){ const n = UI.folderDraf.length + 1; UI.folderDraf.push({ key:'', label:'F' + n, kumpulan: n + '. Folder tambahan', desc:'Folder tambahan', kongsi:false }); lukisDrafFolder(); }
+function tambahItemFolder(){ const n = UI.folderDraf.length + 1; UI.folderDraf.push({ key:'', label:'F' + n, kumpulan: n + '. Folder tambahan', desc:'Folder tambahan', kongsi:false, tbStaf:false, nota:'' }); lukisDrafFolder(); }
 async function simpanFolder(){ await cuba(async () => { await api('fkFolderSimpan', { sesi: UI.fk.sesi, folder: UI.folderDraf }); tutupModal(); lukisSemula(); }); }
 async function lalaiFolder(){
   if(!await sahkan({ tajuk:'Set semula struktur folder?', mesej:'Struktur folder sesi ini akan dikembalikan kepada 16 item standard asal.', butang:'Set semula' })) return;
@@ -3217,7 +3246,7 @@ function lukisJadualProgram(){
   box.innerHTML = v.length ? v.map(p => { const d = ringkasDokProg(p), f = agregatProgFK(p, sid), rp = ringkasPelajar(pelajarProgram(p.id));
     return `<tr class="baris klik" ${klik(`bukaProgram(${p.id})`)}>
       <td><span class="prog-kod">${esc(p.kod)}</span><div class="prog-nama" style="margin-top:5px">${esc(p.nama)}</div><div class="mini">${esc([p.fakulti, p.tahap].filter(Boolean).join(' · ') || '-')}</div></td>
-      <td>${p.kpNama ? `<b style="font-weight:600">${esc(p.kpNama)}</b><div class="mini">sejak ${fmtTarikh(p.kpSejak) || '-'}</div>` : '<span class="badge b-tidak">Belum dilantik</span>'}</td>
+      <td>${p.kpNama ? `<b style="font-weight:600">${esc(p.kpNama)}</b><div class="mini">sejak ${fmtTarikh(p.kpSejak) || '-'}</div>` : '<span class="badge b-tidak">Belum dilantik</span>'}${notifikasiLantikan(p.id).length ? '<div><span class="badge b-hampir">Lantikan akan tamat</span></div>' : ''}</td>
       <td>${meterLbl(d.pct, d.ya + '/' + d.perlu)}</td>
       <td class="kanan" style="white-space:nowrap">${rp.kemasukan ? `<b class="tnum">${fmtNombor(rp.aktif)}</b> <span class="mini">aktif</span><div class="mini tnum">${fmtNombor(rp.graduan)} graduan</div>` : '<span class="mini">Tiada data</span>'}</td>
       <td class="kanan tnum">${f.n}</td>
@@ -3244,6 +3273,7 @@ function lukisProgramKP(){
       ${A ? `<button class="btn btn-primary" onclick="modalProgram(${p.id})">${ik('tetapan')}<span class="sm-sembunyi">Tetapan program</span></button>` : ''}</div></div>`;
   if(!boleh) h += `<div class="notis info">Paparan sahaja. Dokumentasi dan struktur program ini dikemas kini oleh Ketua Program atau pentadbir PPA.</div>`;
   if(p.catatan) h += `<div class="notis"><b>Catatan:</b> ${esc(p.catatan)}</div>`;
+  { const L = notifikasiLantikan(p.id); if(L.length) h += `<div class="notis" id="notisLantikanProg"><b>Lantikan ${L.some(n => n.tamat) ? 'telah tamat atau ' : ''}akan tamat</b><ul class="senarai-ringkas" style="margin-top:4px">${L.map(barisNotifLantikan).join('')}</ul></div>`; }
   h += `<section class="blok"><div class="grid-4">
     ${statKad('Dokumentasi program', d.ya + '/' + d.perlu, `${d.belum} belum dimuat naik${d.tb ? ' · ' + d.tb + ' tidak berkaitan' : ''}`, warnaPct(d.pct))}
     ${statKad('Kursus dalam struktur', f.n, bilSem ? bilSem + ' semester / tahun' : 'kod kursus program')}
@@ -3420,6 +3450,50 @@ function bahagianLantikanProgram(p){
       <span class="mini" style="flex:1;min-width:220px">Tekan ${ik('sunting', 12)} untuk mengemas kini nama dan tempoh lantikan. ${isAdmin() ? 'Untuk melantik Ketua Program baharu, gunakan Tetapan program.' : 'Penukaran Ketua Program semasa dibuat oleh pentadbir PPA.'}</span></div>` : ''}` });
 }
 /* ---------- Sejarah lantikan Penasihat Luar Akademik (PLA) ---------- */
+/* ---------- Notifikasi lantikan akan tamat (Ketua Program dan Penasihat Luar Akademik) ----------
+   Dipaparkan kepada pengguna yang menerima data program itu: Ketua Program (program seliaannya), Dekan / pentadbir fakulti
+   (program fakultinya) dan pentadbir PPA (semua program). Tempoh notifikasi ditetapkan di Pentadbiran → Tetapan. */
+const LABEL_LANTIKAN = { kp:'Ketua Program', pla:'Penasihat Luar Akademik' };
+function tambahBulanISO(iso, n){ const [y, m, d] = String(iso).split('-').map(Number), t = new Date(y, m - 1 + n, d); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); }
+function bezaHariISO(a, b){ return Math.round((Date.parse(a + 'T00:00:00') - Date.parse(b + 'T00:00:00')) / 86400000); }
+function bulanNotifLantikan(){ return Number((S.tetapan || {}).notifLantikanBulan) || 3; }
+/** Lantikan yang akan tamat dalam tempoh notifikasi, atau telah tamat tetapi belum diganti. */
+function notifikasiLantikan(pid){
+  const P = S.program || {}, hari = hariIniISO(), had = tambahBulanISO(hari, bulanNotifLantikan()), lepas = tambahBulanISO(hari, -bulanNotifLantikan()), out = [];
+  (P.senarai || []).filter(p => p.aktif !== false && (!pid || p.id === pid)).forEach(p => {
+    /* Ketua Program semasa: rekod terkini individu itu. Jika tempohnya telah tamat tetapi KP belum ditukar, notifikasi kekal. */
+    const lk = p.kp ? lantikanKP(p.id).filter(l => Number(l.pid) === p.kp) : [], x = lk.find(lantikanAktif) || lk.slice().sort((a, b) => String(b.tamat).localeCompare(String(a.tamat)))[0] || null;
+    if(x && x.tamat && x.tamat <= had) out.push({ p, x, jenis:'kp', tamat: x.tamat <= hari, hari: bezaHariISO(x.tamat, hari) });
+    /* Penasihat Luar Akademik: setiap lantikan aktif yang akan tamat; atau lantikan terakhir yang baru tamat jika tiada pengganti */
+    const pl = plaProgram(p.id), aktif = pl.filter(lantikanAktif);
+    aktif.forEach(y => { if(y.tamat && y.tamat <= had) out.push({ p, x: y, jenis:'pla', tamat:false, hari: bezaHariISO(y.tamat, hari) }); });
+    if(!aktif.length){ const akhir = pl.filter(l => l.tamat).sort((a, b) => String(b.tamat).localeCompare(String(a.tamat)))[0];
+      if(akhir && akhir.tamat > lepas) out.push({ p, x: akhir, jenis:'pla', tamat:true, hari: bezaHariISO(akhir.tamat, hari) }); }
+  });
+  return out.sort((a, b) => a.hari - b.hari);
+}
+function teksBakiLantikan(n){ return n.tamat ? (n.hari === 0 ? 'tamat hari ini' : 'telah tamat ' + (-n.hari) + ' hari lalu') : (n.hari === 1 ? 'tamat esok' : 'tamat dalam ' + n.hari + ' hari'); }
+function barisNotifLantikan(n){
+  return `<li class="notif-lantikan"><span class="badge ${n.tamat ? 'b-tidak' : 'b-hampir'}">${n.tamat ? 'Telah tamat' : 'Akan tamat'}</span>
+    <div class="isi"><b style="white-space:normal">${esc(n.p.kod)} · ${LABEL_LANTIKAN[n.jenis]}: ${esc(n.x.nama || '-')}</b><span class="mini" style="white-space:normal">Tarikh tamat ${fmtTarikh(n.x.tamat)} (${teksBakiLantikan(n)}).${n.tamat ? (n.jenis === 'kp' ? ' Lanjutkan tempoh lantikan atau lantik Ketua Program baharu.' : ' Lantik Penasihat Luar Akademik baharu atau lanjutkan tempoh.') : ''}</span></div>
+    <button class="btn btn-ghost btn-sm" onclick="bukaNotifLantikan(${n.p.id},'${n.jenis}')">Buka</button></li>`;
+}
+function bukaNotifLantikan(pid, jenis){
+  const k = jenis === 'kp' ? 'kpLantikan' : 'kpPLA';
+  UI.lipat[k] = true; tutupSemuaModal(); bukaProgram(pid);
+  setTimeout(() => { const e = el(jenis === 'kp' ? 'secLantikan' : 'secPLA'); if(e) e.scrollIntoView({ block:'start', behavior:'smooth' }); }, 150);
+}
+function notisLantikanUtama(){
+  const L = notifikasiLantikan(); if(!L.length) return '';
+  return `<div class="notis" id="notisLantikan"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b>${L.length} lantikan</b> ${L.some(n => n.tamat) ? 'telah tamat atau ' : ''}akan tamat dalam tempoh ${bulanNotifLantikan()} bulan (Ketua Program / Penasihat Luar Akademik).</span>
+    ${L.length > 3 ? `<button class="btn-teks" onclick="modalNotifLantikan()">Lihat semua (${L.length})</button>` : ''}</div>
+    <ul class="senarai-ringkas" style="margin-top:4px">${L.slice(0, 3).map(barisNotifLantikan).join('')}</ul></div>`;
+}
+function modalNotifLantikan(){
+  const L = notifikasiLantikan();
+  bukaModal({ tajuk:'Lantikan akan tamat', desk:'Lantikan Ketua Program dan Penasihat Luar Akademik yang akan tamat dalam tempoh ' + bulanNotifLantikan() + ' bulan, atau telah tamat tetapi belum diganti.', lebar:true,
+    isi:`<ul class="senarai-ringkas">${L.map(barisNotifLantikan).join('')}</ul>`, kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Tutup</button>` });
+}
 function plaProgram(pid){ return S.program.lantikan.filter(x => x.jenis === 'pla' && Number(x.sasaran) === pid).sort((a, b) => String(b.mula).localeCompare(String(a.mula)) || b.id - a.id); }
 function bahagianPLAProgram(p){
   const l = plaProgram(p.id), boleh = !!p.bolehUrus; if(!l.length && !boleh) return '';
@@ -4375,7 +4449,7 @@ function kadProgram(p, sid){
   const d = ringkasDokProg(p), f = agregatProgFK(p, sid);
   return `<div class="card kad-btn prog-kad" ${klik(`bukaProgram(${p.id})`)}>
     <div class="prog-kad-atas"><div style="min-width:0"><span class="prog-kod">${esc(p.kod)}</span><div class="prog-nama" style="margin-top:6px">${esc(p.nama)}</div></div>${saya() && p.kp === saya() ? '<span class="badge b-kp">KP</span>' : ''}</div>
-    <div class="mini">${p.kpNama ? 'Ketua Program: ' + esc(p.kpNama) : 'Ketua Program belum dilantik'}</div>
+    <div class="mini">${p.kpNama ? 'Ketua Program: ' + esc(p.kpNama) : 'Ketua Program belum dilantik'}${notifikasiLantikan(p.id).length ? ' <span class="badge b-hampir" title="Lantikan Ketua Program atau Penasihat Luar Akademik akan tamat">Lantikan akan tamat</span>' : ''}</div>
     ${(r => r.kemasukan ? `<div style="font-size:13px"><b>${fmtNombor(r.aktif)}</b> pelajar aktif · <b>${fmtNombor(r.graduan)}</b> graduan</div>` : '<div class="mini">Data pelajar belum dikemas kini</div>')(ringkasPelajar(pelajarProgram(p.id)))}
     <div><div class="mini" style="margin-bottom:4px">Dokumentasi program</div>${meterLbl(d.pct, d.ya + '/' + d.perlu)}</div>
     <div><div class="mini" style="margin-bottom:4px">Fail kursus lengkap (sesi semasa)</div>${f.fk ? meterLbl(f.kadar, f.lengkap + '/' + f.fk) : `<span class="mini" style="color:var(--ink-2)">${f.n ? 'Tiada pendaftaran sepadan' : 'Struktur program belum ditetapkan'}</span>`}</div>
@@ -6121,6 +6195,8 @@ function tabTetapan(){
   el('adminIsi').innerHTML = `<div class="grid-2" style="align-items:start">
     <div class="card pad"><h3 class="serif h3" style="margin-bottom:14px">Tetapan portal</h3><div class="borang">
       <div><label class="fld" for="tSasaran">Sasaran jam CPD setahun</label><input id="tSasaran" type="number" min="1" step="1" value="${t.sasaranCPD}"></div>
+      <div><label class="fld" for="tNotifBulan">Notifikasi lantikan akan tamat (bulan sebelum tarikh tamat)</label><input id="tNotifBulan" type="number" min="1" max="24" step="1" value="${t.notifLantikanBulan || 3}">
+        <div class="mini" style="margin-top:5px">Ketua Program, Dekan (pentadbir fakulti) dan pentadbir PPA dimaklumkan di Utama dan pada menu Ketua Program apabila lantikan Ketua Program atau Penasihat Luar Akademik akan tamat dalam tempoh ini.</div></div>
       <label class="semak"><input type="checkbox" id="tLihat" ${t.stafLihatSemua ? 'checked' : ''}><span><b>Staf boleh melihat senarai penuh</b><br><span class="mini">Jika ditandakan, staf boleh melihat jadual CPD dan status fail kursus semua pensyarah (paparan sahaja). Jika tidak, staf hanya melihat rekod sendiri serta rumusan agregat.</span></span></label>
       <label class="semak"><input type="checkbox" id="tStatAwam" ${t.statistikAwam !== false ? 'checked' : ''}><span><b>Papar statistik akademik di skrin log masuk</b><br><span class="mini">Pengunjung yang belum log masuk melihat statistik agregat: pelajar aktif dan graduan mengikut program, pelajar aktif mengikut jantina, ringkasan penghantaran fail kursus dan CPD pensyarah. Tiada nama atau maklumat individu dipaparkan, dan pecahan fakulti hanya dipaparkan bagi fakulti yang mempunyai sekurang-kurangnya 3 pensyarah. Angka dikemas kini setiap 10 minit.</span></span></label>
     <label class="semak"><input type="checkbox" id="tDaftar" ${t.daftarKendiri !== false ? 'checked' : ''}><span><b>Benarkan pendaftaran akaun kendiri</b><br><span class="mini">Staf yang mempunyai emel rasmi @kias.edu.my boleh mendaftar sendiri dengan log masuk kali pertama menggunakan kata laluan lalai portal (ditetapkan dalam Code.gs, <code>APP.KATA_LALAI_STAF</code>), kemudian wajib menukar kata laluan. Akaun baharu diberi peranan Staf dan dipautkan secara automatik kepada rekod pensyarah yang mempunyai emel yang sama. Tutup tetapan ini selepas semua staf mendaftar supaya kata laluan lalai tidak lagi boleh digunakan untuk mencipta akaun.</span></span></label>
@@ -6144,7 +6220,7 @@ function lukisFakDraf(){
   el('fakDraf').innerHTML = UI.fakDraf.map((f, i) => `<div class="fak-baris"><input type="text" value="${esc(f.id)}" oninput="UI.fakDraf[${i}].id=this.value.toUpperCase()" style="text-transform:uppercase" aria-label="Kod fakulti"><input type="text" value="${esc(f.nama)}" oninput="UI.fakDraf[${i}].nama=this.value" aria-label="Nama fakulti"><select class="fb-pt" onchange="UI.fakDraf[${i}].pentadbir=Number(this.value)||''" aria-label="Pentadbir fakulti ${esc(f.id)}"><option value="">Tiada pentadbir dilantik</option>${optionsPensyarah(f.pentadbir)}</select><button class="btn-ikon bahaya" onclick="UI.fakDraf.splice(${i},1);lukisFakDraf()" aria-label="Buang fakulti">${ik('padam', 15)}</button></div>`).join('');
 }
 async function simpanTetapanAdmin(){
-  await cuba(async () => { await api('tetapanSimpan', { sasaranCPD: Number(el('tSasaran').value), stafLihatSemua: el('tLihat').checked, daftarKendiri: el('tDaftar').checked, statistikAwam: el('tStatAwam').checked, sijilPengarah: el('tPengarah').value, sijilTtdUid: el('tTtdSijil').value, kategoriDokumen: el('tKat').value, namaInstitusi: el('tInst').value }); lukisAdmin(); });
+  await cuba(async () => { await api('tetapanSimpan', { sasaranCPD: Number(el('tSasaran').value), notifLantikanBulan: Number(el('tNotifBulan').value), stafLihatSemua: el('tLihat').checked, daftarKendiri: el('tDaftar').checked, statistikAwam: el('tStatAwam').checked, sijilPengarah: el('tPengarah').value, sijilTtdUid: el('tTtdSijil').value, kategoriDokumen: el('tKat').value, namaInstitusi: el('tInst').value }); lukisAdmin(); });
 }
 async function simpanFakulti(){ await cuba(async () => { await api('fakultiSimpan', { senarai: UI.fakDraf }); lukisAdmin(); }); }
 
