@@ -444,6 +444,9 @@ details.lipat>summary .putar{color:var(--brand)}
 .rj-item{display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap}
 .rj-item .fk-lbl{min-width:40px;padding:2px 6px;font-size:11px}
 .b-rujukan{background:var(--sky-soft);color:var(--sky)}
+.pilih-p-senarai{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:4px 10px;background:var(--surface)}
+.pp-baris{display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line-2);font-size:13px}
+.pp-baris:last-child{border-bottom:none}
 .b-pemeriksa{background:#ECE5F6;color:#5E3F94}
 .b-penasihat{background:#F7EDD2;color:#86640E}
 
@@ -2038,11 +2041,41 @@ function lukisRujukan(){
           : '<p class="mini">Belum ada fail rujukan dimuat naik bagi kursus ini.</p>'}
       </div>`; }).join('')}</div>`;
 }
+/* ---------- Pemilih pensyarah untuk laporan pensyarah terpilih (CPD dan Fail Kursus) ---------- */
+function pemilihPensyarah(senarai){
+  return `<div class="pilih-p"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+      <div class="cari" style="flex:1;min-width:180px">${ik('cari')}<input type="search" id="ppCari" placeholder="Cari nama atau fakulti" oninput="tapisPilihP(this.value)" aria-label="Cari pensyarah"></div>
+      <button type="button" class="btn btn-ghost btn-sm" id="ppSemua" onclick="pilihSemuaP(true)">Pilih semua</button><button type="button" class="btn btn-ghost btn-sm" id="ppKosong" onclick="pilihSemuaP(false)">Kosongkan</button></div>
+    <div class="pilih-p-senarai" id="ppSenarai">${senarai.map(p => `<label class="semak pp-baris" data-cari="${esc((p.nama + ' ' + (p.fakulti || '')).toLowerCase())}"><input type="checkbox" value="${p.id}" onchange="kiraPilihP()"><span>${esc(p.nama)} <span class="mini">${esc(p.fakulti || '-')}</span></span></label>`).join('') || '<div class="mini" style="padding:8px">Tiada pensyarah.</div>'}</div>
+    <div class="mini" id="ppBil" style="margin-top:6px">0 daripada ${senarai.length} pensyarah dipilih</div></div>`;
+}
+function tapisPilihP(q){ q = String(q || '').toLowerCase().trim(); document.querySelectorAll('#ppSenarai .pp-baris').forEach(l => { l.hidden = !!q && !l.dataset.cari.includes(q); }); }
+/** Pilih semua / kosongkan: hanya pensyarah yang dipaparkan (ikut carian), supaya satu fakulti boleh dipilih sekali gus. */
+function pilihSemuaP(ya){ document.querySelectorAll('#ppSenarai .pp-baris').forEach(l => { if(!l.hidden) l.querySelector('input').checked = ya; }); kiraPilihP(); }
+function kiraPilihP(){ const c = [...document.querySelectorAll('#ppSenarai input')], b = el('ppBil'), n = c.filter(x => x.checked).length; if(b) b.textContent = n + ' daripada ' + c.length + ' pensyarah dipilih'; if(n && el('lapErr')) el('lapErr').hidden = true; }
+function pensyarahDipilih(){ return new Set([...document.querySelectorAll('#ppSenarai input:checked')].map(x => Number(x.value))); }
+function modalLaporanFKPilih(){
+  const sid = UI.fk.sesi, sesi = S.fk.sesi.find(s => s.id === sid); if(!sesi) return;
+  const L = barisFK(sid).sort((a, b) => fakIdx(a.p.fakulti) - fakIdx(b.p.fakulti) || a.p.nama.localeCompare(b.p.nama)).map(r => r.p);
+  LAP_FORMAT = 'pdf';
+  bukaModal({ tajuk:'Laporan fail kursus pensyarah terpilih', desk:'Sesi ' + sesi.nama + '. Pilih seorang atau beberapa pensyarah.', isi:`<div class="borang">
+    ${pemilihPensyarah(L)}
+    <div><span class="fld" style="display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:6px">Format fail</span><div class="seg" id="lapFormat"><button type="button" class="aktif" onclick="lapSetFormat('pdf',this)">PDF</button><button type="button" onclick="lapSetFormat('csv',this)">CSV</button></div></div>
+    <p class="ralat" id="lapErr" hidden></p></div>`,
+    kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" id="lapFKBtn" onclick="janaLaporanFKPilih()">Jana laporan</button>` });
+}
+function janaLaporanFKPilih(){
+  const pids = pensyarahDipilih(), err = el('lapErr');
+  if(!pids.size){ err.textContent = 'Pilih sekurang-kurangnya seorang pensyarah.'; err.hidden = false; return; }
+  if(LAP_FORMAT === 'pdf') pdfFK(pids); else csvFK(pids);
+  tutupModal();
+}
 function menuFK(){
   const A = isAdmin();
   return `<div class="dd"><button class="btn btn-ghost" onclick="togolDD(event,this)">${ik('turun')}<span class="sm-sembunyi">${A ? 'Lagi' : 'Laporan'}</span></button><div class="dd-menu">
     <button onclick="pdfFK()">${ik('fail')}${skopFak() ? 'Laporan PDF fakulti ' + esc(skopFak()) : (S.paparPenuh ? 'Laporan PDF sesi ini' : 'Laporan PDF kursus saya')}</button>
     <button onclick="csvFK()">${ik('jadual')}Muat turun CSV</button>
+    ${S.paparPenuh ? `<button onclick="modalLaporanFKPilih()">${ik('pengguna')}Laporan pensyarah terpilih (PDF / CSV)</button>` : ''}
     ${A ? `<div class="dd-sep"></div><button onclick="modalUrusFolder()">${ik('tetapan')}Struktur senarai semak folder</button><button onclick="modalKursusPukal()">${ik('jadual')}Tambah kursus pukal (Excel)</button><button onclick="modalImportFK()">${ik('naik')}Import status sistem lama (CSV)</button>` : ''}
   </div></div>`;
 }
@@ -2589,14 +2622,14 @@ function templatFK(){
     ['','','','PIA0254 : BAHASA ARAB','', ...fol.map((f, i) => i === 0 ? 'TB' : 'TIDAK'), 'Kursus kedua pensyarah yang sama']]);
   toast('Templat dimuat turun.');
 }
-function csvFK(){
-  const sid = UI.fk.sesi, sesi = S.fk.sesi.find(s => s.id === sid), fol = folderSesi(sid);
+function csvFK(pids){
+  const sid = UI.fk.sesi, sesi = S.fk.sesi.find(s => s.id === sid), fol = folderSesi(sid), pilih = pids instanceof Set ? pids : null;
   const rows = [['Bil','Nama','Fakulti','Jawatan','Kod Kursus','Kemajuan Kursus (%)','Status Pensyarah','Kumulatif (%)','KPI', ...fol.map(f => f.label), 'Bil. Fail','Catatan']];
-  barisFK(sid).sort((a, b) => fakIdx(a.p.fakulti) - fakIdx(b.p.fakulti) || a.p.nama.localeCompare(b.p.nama)).forEach((r, n) => {
+  barisFK(sid).filter(r => !pilih || pilih.has(r.p.id)).sort((a, b) => fakIdx(a.p.fakulti) - fakIdx(b.p.fakulti) || a.p.nama.localeCompare(b.p.nama)).forEach((r, n) => {
     r.kursus.forEach((k, i) => rows.push([i ? '' : n + 1, r.p.nama, r.p.fakulti, r.p.jawatan, k.kod, kemajuan(k, fol), FK_LBL[r.status], r.kumulatif, (r.kumulatif / 10).toFixed(1),
       ...fol.map(f => (k.status || {})[f.key] || 'TIDAK'), failKursus(k.id).length, k.catatan || '']));
   });
-  muatTurunCSV('Fail_Kursus_' + (skopFak() ? skopFak() + '_' : '') + namaFailSelamat(sesi.nama) + '.csv', rows);
+  muatTurunCSV('Fail_Kursus_' + (pilih ? 'Terpilih_' : '') + (skopFak() ? skopFak() + '_' : '') + namaFailSelamat(sesi.nama) + '.csv', rows);
   toast('CSV dimuat turun.');
 }
 
@@ -2968,9 +3001,10 @@ let LAP_FORMAT = 'pdf';
 function modalLaporanCPD(){
   LAP_FORMAT = 'pdf';
   bukaModal({ tajuk:'Laporan fakulti / individu / program', desk:'Muat turun laporan CPD bagi tahun ' + UI.cpd.tahun + '.', isi:`<div class="borang">
-    <div><label class="fld" for="lapJenis">Jenis laporan</label><select id="lapJenis" onchange="lapKemas()"><option value="fakulti">Mengikut fakulti</option><option value="individu">Mengikut individu</option><option value="program">Mengikut program / kursus CPD</option>${S.program.senarai.length ? '<option value="progak">Staf pengajar program akademik</option>' : ''}</select></div>
+    <div><label class="fld" for="lapJenis">Jenis laporan</label><select id="lapJenis" onchange="lapKemas()"><option value="fakulti">Mengikut fakulti</option><option value="individu">Mengikut individu</option><option value="pilihan">Pensyarah terpilih (pilih beberapa / semua)</option><option value="program">Mengikut program / kursus CPD</option>${S.program.senarai.length ? '<option value="progak">Staf pengajar program akademik</option>' : ''}</select></div>
     <div id="lapSesiWrap" hidden><label class="fld" for="lapSesi">Sesi pengajian</label><select id="lapSesi"><option value="0">Semua sesi</option>${sesiTersusun().map(x => `<option value="${x.id}">${esc(x.nama)}</option>`).join('')}</select></div>
-    <div><label class="fld" for="lapSasaran" id="lapSasaranLbl">Pilih fakulti</label><select id="lapSasaran" onchange="lapProgram()"></select></div>
+    <div id="lapSasaranWrap"><label class="fld" for="lapSasaran" id="lapSasaranLbl">Pilih fakulti</label><select id="lapSasaran" onchange="lapProgram()"></select></div>
+    <div id="lapPilihWrap" hidden><div id="lapPilihIsi"></div><label class="semak" style="margin-top:8px"><input type="checkbox" id="lapButiran" checked> Sertakan butiran latihan setiap pensyarah</label></div>
     <div id="lapProgWrap" hidden><label class="fld" for="lapProg">Program / kursus</label><select id="lapProg"></select></div>
     <div><span class="fld" style="display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:6px">Format fail</span><div class="seg" id="lapFormat"><button type="button" class="aktif" onclick="lapSetFormat('pdf',this)">PDF</button><button type="button" onclick="lapSetFormat('csv',this)">CSV</button></div></div>
     <p class="ralat" id="lapErr" hidden></p></div>`,
@@ -2981,6 +3015,11 @@ function lapSetFormat(f, b){ LAP_FORMAT = f; document.querySelectorAll('#lapForm
 function lapKemas(){
   const j = el('lapJenis').value, sel = el('lapSasaran'), thn = UI.cpd.tahun, rows = barisCPD(thn);
   el('lapProgWrap').hidden = j !== 'program'; el('lapSesiWrap').hidden = j !== 'progak';
+  el('lapPilihWrap').hidden = j !== 'pilihan'; el('lapSasaranWrap').hidden = j === 'pilihan';
+  if(j === 'pilihan'){
+    if(!el('ppSenarai')) el('lapPilihIsi').innerHTML = pemilihPensyarah(rows.sort((a, b) => fakIdx(a.p.fakulti) - fakIdx(b.p.fakulti) || a.p.nama.localeCompare(b.p.nama)).map(r => r.p));
+    return;
+  }
   if(j === 'progak'){
     el('lapSasaranLbl').textContent = 'Pilih program akademik';
     sel.innerHTML = S.program.senarai.map(p => `<option value="${p.id}">${esc(p.kod)} · ${esc(p.nama)}</option>`).join('') || '<option value="">Tiada program</option>';
@@ -3010,6 +3049,12 @@ function rekodProgram(kat, kursus, thn){
 }
 function janaLaporan(){
   const j = el('lapJenis').value, v = el('lapSasaran').value, thn = UI.cpd.tahun, err = el('lapErr'), pdf = LAP_FORMAT === 'pdf';
+  if(j === 'pilihan'){
+    const pids = pensyarahDipilih();
+    if(!pids.size){ err.textContent = 'Pilih sekurang-kurangnya seorang pensyarah.'; err.hidden = false; return; }
+    if(pdf) pdfCPDPilihan(pids, thn, el('lapButiran').checked); else csvCPDPilihan(pids, thn, el('lapButiran').checked);
+    tutupModal(); return;
+  }
   if(!v){ err.textContent = 'Tiada data bagi pilihan ini.'; err.hidden = false; return; }
   if(j === 'fakulti'){ if(pdf) pdfCPDFakulti(v, thn); else csvCPDFakulti(v, thn); }
   else if(j === 'individu'){ if(pdf) pdfCPDIndividu(Number(v), thn); else csvCPDIndividu(Number(v), thn); }
@@ -3042,6 +3087,18 @@ function csvCPDFakulti(fak, thn){
   const rows = [['Bil','Nama','Fakulti','Jawatan','Status Jawatan','Tahun','Jumlah Jam CPD','Sasaran','Jurang','Status']];
   barisCPD(thn).filter(r => r.p.fakulti === fak).sort((a, b) => b.jam - a.jam).forEach((r, i) => rows.push([i + 1, r.p.nama, r.p.fakulti, r.p.jawatan, r.p.status, thn, fmt(r.jam), S.tetapan.sasaranCPD, fmt(r.jurang), statusLbl(r)]));
   muatTurunCSV(`Laporan_CPD_${fak}_${thn}.csv`, rows); toast('Laporan fakulti (CSV) dimuat turun.');
+}
+function csvCPDPilihan(pids, thn, butiran){
+  const rows = [['Bil','Nama','Fakulti','Jawatan','Status Jawatan','Tahun','Jumlah Jam CPD','Sasaran','Jurang','Status']];
+  barisCPD(thn).filter(r => pids.has(r.p.id)).sort((a, b) => fakIdx(a.p.fakulti) - fakIdx(b.p.fakulti) || a.p.nama.localeCompare(b.p.nama))
+    .forEach((r, i) => rows.push([i + 1, r.p.nama, r.p.fakulti, r.p.jawatan, r.p.status, thn, fmt(r.jam), S.tetapan.sasaranCPD, fmt(r.jurang), statusLbl(r)]));
+  if(butiran){
+    rows.push([], ['Butiran latihan'], ['Nama','Fakulti','Kategori','Kursus / Bengkel','Hashtag','Catatan','Tarikh Mula','Tarikh Tamat','Jam CPD']);
+    S.cpd.rekod.filter(r => r.tahun === thn && pids.has(r.pid)).map(r => ({ r, p: pensyarahThn(r.pid, thn) }))
+      .sort((a, b) => fakIdx(a.p.fakulti) - fakIdx(b.p.fakulti) || a.p.nama.localeCompare(b.p.nama) || String(a.r.tarikh).localeCompare(String(b.r.tarikh)))
+      .forEach(({ r, p }) => rows.push([p.nama, p.fakulti, r.kategori, r.kursus, r.tag || '', r.catatan || '', r.tarikh || '', r.tarikhTamat || '', fmt(r.jam)]));
+  }
+  muatTurunCSV('Laporan_CPD_Terpilih_' + thn + '.csv', rows); toast('Laporan pensyarah terpilih (CSV) dimuat turun.');
 }
 function csvCPDIndividu(pid, thn){
   const p = pensyarahThn(pid, thn), recs = S.cpd.rekod.filter(r => r.pid === pid && r.tahun === thn).sort((a, b) => String(a.tarikh).localeCompare(String(b.tarikh)));
@@ -7418,8 +7475,14 @@ async function pdfCPDInstitusi(thn){
   doc.save('Laporan_CPD_' + thn + '.pdf'); toast('Laporan PDF dijana.');
 }
 async function pdfCPDFakulti(fak, thn){
+  return pdfCPDKumpulan(barisCPD(thn).filter(r => r.p.fakulti === fak), thn, 'Laporan CPD Mengikut Fakulti', namaFak(fak), 'Laporan_CPD_' + fak + '_' + thn + '.pdf', false, false);
+}
+async function pdfCPDPilihan(pids, thn, butiran){
+  return pdfCPDKumpulan(barisCPD(thn).filter(r => pids.has(r.p.id)), thn, 'Laporan CPD Pensyarah Terpilih', pids.size + ' pensyarah terpilih', 'Laporan_CPD_Terpilih_' + thn + '.pdf', true, butiran);
+}
+async function pdfCPDKumpulan(senarai, thn, tajuk, sub, namaFail, denganFak, butiran){
   const doc = pdfBaru(); if(!doc) return;
-  const rows = barisCPD(thn).filter(r => r.p.fakulti === fak).sort((a, b) => b.jam - a.jam), n = rows.length, c = { capai:0, hampir:0, rendah:0 };
+  const rows = senarai.sort((a, b) => b.jam - a.jam), n = rows.length, c = { capai:0, hampir:0, rendah:0 };
   rows.forEach(r => { c[r.tier]++; });
   const kadar = n ? Math.round(c.capai / n * 100) : 0, purata = n ? rows.reduce((a, r) => a + r.jam, 0) / n : 0;
   const pids = new Set(rows.map(r => r.p.id)), katJam = {};
@@ -7429,7 +7492,7 @@ async function pdfCPDFakulti(fak, thn){
     options:{ cutout:'58%', plugins:{ legend:{ position:'bottom', labels:{ font:{ size:16 }, boxWidth:14, padding:12 } } } } }, 460, 340);
   const img2 = katGuna.length ? await buatCartaImej({ type:'bar', data:{ labels: katGuna.map(k => KAT_PENDEK[k]), datasets:[{ data: katGuna.map(k => katJam[k]), backgroundColor: katGuna.map(k => KAT_WARNA[k]), borderRadius:6 }] },
     options:{ plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ font:{ size:13 } } }, y:{ beginAtZero:true, ticks:{ font:{ size:13 } } } } } }, 560, 340) : null;
-  pdfKepala(doc, 'Laporan CPD Mengikut Fakulti', namaFak(fak) + ' · Tahun ' + thn + ' · Sasaran ' + S.tetapan.sasaranCPD + ' jam');
+  pdfKepala(doc, tajuk, sub + ' · Tahun ' + thn + ' · Sasaran ' + S.tetapan.sasaranCPD + ' jam');
   pdfKad(doc, [['Pensyarah', n], ['Capai sasaran', c.capai + ' (' + kadar + '%)'], ['Belum capai', n - c.capai], ['Purata jam', fmt(purata)]], 36);
   let y = 58;
   if(img1 || img2){
@@ -7440,11 +7503,28 @@ async function pdfCPDFakulti(fak, thn){
     doc.text('Taburan pencapaian', 14, 117); if(img2) doc.text('Jam CPD mengikut kategori program', 94, 117);
     y = 124;
   }
-  doc.autoTable(Object.assign({}, PDF_JADUAL, { startY: y, head:[['Bil','Nama','Jawatan','Jam CPD','Jurang','Status']],
-    body: rows.map((r, i) => [i + 1, r.p.nama, r.p.jawatan || '', fmt(r.jam), r.jurang > 0 ? fmt(r.jurang) : '-', statusLbl(r)]),
-    columnStyles:{ 0:{ cellWidth:11, halign:'center' }, 3:{ halign:'right', cellWidth:17 }, 4:{ halign:'right', cellWidth:16 }, 5:{ cellWidth:22 } },
-    didParseCell: pdfWarnaStatus(5), didDrawPage: pdfKaki(doc) }));
-  doc.save('Laporan_CPD_' + fak + '_' + thn + '.pdf'); toast('Laporan fakulti (PDF) dijana.');
+  const kF = denganFak ? 1 : 0;
+  doc.autoTable(Object.assign({}, PDF_JADUAL, { startY: y, head:[['Bil','Nama'].concat(denganFak ? ['Fakulti'] : [], ['Jawatan','Jam CPD','Jurang','Status'])],
+    body: rows.map((r, i) => [i + 1, r.p.nama].concat(denganFak ? [r.p.fakulti || '-'] : [], [r.p.jawatan || '', fmt(r.jam), r.jurang > 0 ? fmt(r.jurang) : '-', statusLbl(r)])),
+    columnStyles:{ 0:{ cellWidth:11, halign:'center' }, [3 + kF]:{ halign:'right', cellWidth:17 }, [4 + kF]:{ halign:'right', cellWidth:16 }, [5 + kF]:{ cellWidth:22 } },
+    didParseCell: pdfWarnaStatus(5 + kF), didDrawPage: pdfKaki(doc) }));
+  if(butiran){
+    const pids = new Set(rows.map(r => r.p.id)), urut = rows.slice().sort((a, b) => fakIdx(a.p.fakulti) - fakIdx(b.p.fakulti) || a.p.nama.localeCompare(b.p.nama)), body = [];
+    urut.forEach(r => {
+      const recs = S.cpd.rekod.filter(x => x.tahun === thn && x.pid === r.p.id).sort((a, b) => String(a.tarikh).localeCompare(String(b.tarikh)));
+      body.push([{ content: r.p.nama + ' (' + (r.p.fakulti || '-') + ') · ' + fmt(r.jam) + ' jam', colSpan:4, styles:{ fontStyle:'bold', fillColor:[228, 239, 233], textColor:[19, 98, 84] } }]);
+      if(!recs.length) body.push([{ content:'Tiada rekod latihan bagi tahun ' + thn + '.', colSpan:4, styles:{ textColor:150 } }]);
+      recs.forEach(x => body.push([x.kategori, x.kursus + (x.tag ? '\n' + x.tag : ''), fmtJulat(x.tarikh, x.tarikhTamat) || '-', fmt(x.jam)]));
+    });
+    if(pids.size){
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(19, 98, 84);
+      let yB = doc.lastAutoTable.finalY + 10; if(yB > doc.internal.pageSize.getHeight() - 30){ doc.addPage(); yB = 20; }
+      doc.text('Butiran latihan setiap pensyarah', 14, yB); doc.setFont('helvetica', 'normal');
+      doc.autoTable(Object.assign({}, PDF_JADUAL, { startY: yB + 3, head:[['Kategori','Kursus / bengkel','Tarikh','Jam']], body,
+        columnStyles:{ 0:{ cellWidth:40 }, 2:{ cellWidth:34 }, 3:{ halign:'right', cellWidth:14 } }, didDrawPage: pdfKaki(doc) }));
+    }
+  }
+  doc.save(namaFail); toast((denganFak ? 'Laporan pensyarah terpilih' : 'Laporan fakulti') + ' (PDF) dijana.');
 }
 function pdfCPDIndividu(pid, thn){
   const doc = pdfBaru(); if(!doc) return;
@@ -7492,13 +7572,13 @@ function pdfCPDProgram(kat, kursus, thn){
     columnStyles:{ 0:{ cellWidth:11, halign:'center' }, 2:{ cellWidth:20 }, 3:{ cellWidth:42 }, 4:{ halign:'right', cellWidth:16 } }, didDrawPage: pdfKaki(doc) }));
   doc.save('Laporan_Program_CPD_' + thn + '.pdf'); toast('Laporan program (PDF) dijana.');
 }
-function pdfFK(){
+function pdfFK(pids){
   const doc = pdfBaru('l'); if(!doc) return;
-  const sid = UI.fk.sesi, sesi = S.fk.sesi.find(s => s.id === sid), fol = folderSesi(sid); if(!sesi) return;
-  const baris = barisFK(sid).sort((a, b) => fakIdx(a.p.fakulti) - fakIdx(b.p.fakulti) || a.p.nama.localeCompare(b.p.nama));
+  const sid = UI.fk.sesi, sesi = S.fk.sesi.find(s => s.id === sid), fol = folderSesi(sid), pilih = pids instanceof Set ? pids : null; if(!sesi) return;
+  const baris = barisFK(sid).filter(r => !pilih || pilih.has(r.p.id)).sort((a, b) => fakIdx(a.p.fakulti) - fakIdx(b.p.fakulti) || a.p.nama.localeCompare(b.p.nama));
   const n = baris.length, c = { lengkap:0, proses:0, belum:0 };
   baris.forEach(r => { c[r.status]++; });
-  pdfKepala(doc, 'Laporan Penghantaran Fail Kursus Pensyarah', 'Sesi akademik ' + sesi.nama + (skopFak() ? ' · ' + namaFak(skopFak()) : (S.paparPenuh ? '' : ' · ' + S.pengguna.nama)));
+  pdfKepala(doc, 'Laporan Penghantaran Fail Kursus Pensyarah' + (pilih ? ' (Pensyarah Terpilih)' : ''), 'Sesi akademik ' + sesi.nama + (pilih ? ' · ' + baris.length + ' pensyarah terpilih' : '') + (skopFak() ? ' · ' + namaFak(skopFak()) : (S.paparPenuh ? '' : ' · ' + S.pengguna.nama)));
   let y = 36;
   if(S.paparPenuh){
     pdfKad(doc, [['Pensyarah', n], ['Selesai semua', c.lengkap + ' (' + (n ? Math.round(c.lengkap / n * 100) : 0) + '%)'], ['Sedang proses', c.proses], ['Belum hantar', c.belum]], y);
@@ -7518,7 +7598,7 @@ function pdfFK(){
     styles:{ font:'helvetica', fontSize:7.8, cellPadding:2, textColor:40, valign:'top' }, alternateRowStyles:{},
     columnStyles:{ 0:{ cellWidth:10, halign:'center' }, 1:{ cellWidth:58 }, 2:{ cellWidth:16 }, 3:{ cellWidth:70 }, 4:{ cellWidth:18, halign:'right' }, 6:{ cellWidth:30 } },
     didDrawPage: pdfKaki(doc) }));
-  doc.save('Laporan_Fail_Kursus_' + (skopFak() ? skopFak() + '_' : '') + namaFailSelamat(sesi.nama) + '.pdf'); toast('Laporan PDF dijana.');
+  doc.save('Laporan_Fail_Kursus_' + (pilih ? 'Terpilih_' : '') + (skopFak() ? skopFak() + '_' : '') + namaFailSelamat(sesi.nama) + '.pdf'); toast('Laporan PDF dijana.');
 }
 
 /* ---------- laporan program ---------- */
