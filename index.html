@@ -5413,6 +5413,7 @@ function lukisJana(){
       <p class="mini">Isi borang, kemudian tekan <b>Jana PDF bertandatangan</b>. Dokumen dijana dalam format PDF berasaskan templat rasmi PPA dan ditandatangani secara digital oleh anda. Pengesahan pihak lain tidak diperlukan. Simpan draf untuk menyunting semula kemudian.</p></div>
     <div class="kepala-aksi">${sumberIsiJana()}</div></div>
     <datalist id="dlPLO">${PLO_PILIHAN.slice(1).map(([v]) => `<option value="${v}">`).join('')}</datalist>
+    <div id="janaT4"></div>
     <div id="janaBorang" class="jana-borang" oninput="janaUbah(event)" onchange="janaUbah(event)">${borang}</div>
     <div class="jana-bar"><span class="mini" id="janaStatus">${J.ubah ? 'Perubahan belum disimpan' : (J.id ? 'Draf disimpan' : 'Draf baharu')}</span>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="simpanDrafJana()">${ik('semak')}Simpan draf</button>
@@ -5424,6 +5425,7 @@ function sumberIsiJana(){
   const ks = S.fk.kursus.filter(k => k.pid === saya());
   const rp = (S.jana || []).filter(x => x.jenis === 'rp' && !(UI.jana.jenis === 'rp' && x.id === UI.jana.id));
   return `<div class="dd"><button class="btn btn-ghost" onclick="togolDD(event,this)">${ik('salin')}<span>Isi automatik</span></button><div class="dd-menu" style="max-height:60vh;overflow:auto">
+    <button onclick="isiDaripadaT4()">${ik('jadual')}Daripada Table 4 (Bank Maklumat Kursus)</button>
     <button onclick="isiDaripadaStruktur()">${ik('cari')}Daripada struktur program (ikut kod kursus)</button>
     ${ks.length ? '<div class="dd-sep"></div>' + ks.slice(0, 12).map(k => `<button onclick="isiDaripadaKursusFK(${k.id})">${ik('folder')}${esc(k.kod)} · ${esc(tajukSesi(k.sesi))}</button>`).join('') : ''}
     ${UI.jana.jenis !== 'rp' && rp.length ? '<div class="dd-sep"></div>' + rp.slice(0, 10).map(x => `<button onclick="salinDaripadaRP(${x.id})">${ik('buku')}Salin daripada RP ${esc(x.kod || '')} ${esc(x.sesi || '')}</button>`).join('') : ''}
@@ -5442,13 +5444,14 @@ function ubahStrukturJana(fn){ fn(UI.jana.data); UI.jana.ubah = true; lukisSemul
 /* Pemetaan CLO–PLO program dalam borang RP dan S3P: dipaparkan di atas jadual CLO dan boleh digunakan terus. */
 let _pemetaanT;
 async function muatPemetaanJana(paksa){
-  const J = UI.jana; if(!J || !['rp', 's3p'].includes(J.jenis)) return;
+  const J = UI.jana; if(!J) return;
   const kod = normKod(J.data.kod);
-  if(!kod){ J.rujuk = null; lukisPemetaanJana(); return; }
-  if(!paksa && J.rujuk && J.rujuk.kod === kod){ lukisPemetaanJana(); return; }
-  try { const r = await api('rujukKursus', { kod }, { senyap:true, tanpaMesej:true }); if(UI.jana === J && normKod(J.data.kod) === kod){ J.rujuk = { kod, kursus: r.kursus || [] }; lukisPemetaanJana(); } }
-  catch(e){ /* paparan pemetaan hanya bantuan */ }
+  if(!kod){ J.rujuk = null; lukisRujukJana(); return; }
+  if(!paksa && J.rujuk && J.rujuk.kod === kod){ lukisRujukJana(); return; }
+  try { const r = await api('rujukKursus', { kod }, { senyap:true, tanpaMesej:true }); if(UI.jana === J && normKod(J.data.kod) === kod){ J.rujuk = { kod, kursus: r.kursus || [] }; lukisRujukJana(); } }
+  catch(e){ /* paparan pemetaan dan Table 4 hanya bantuan */ }
 }
+function lukisRujukJana(){ lukisPemetaanJana(); lukisT4Jana(); }
 function pilihRujukJana(){
   const J = UI.jana, L = (J && J.rujuk && J.rujuk.kursus) || [], nm = String((J && J.data.program) || '').trim().toLowerCase();
   return L.find(k => k.programId === J.rujukPilih) || L.find(k => nm && String(k.program || '').trim().toLowerCase() === nm) || L[0] || null;
@@ -5520,6 +5523,176 @@ async function salinDaripadaRP(id){
     });
   }
   UI.jana.ubah = true; lukisSemulaJana(); toast('Maklumat disalin daripada draf RP.');
+}
+
+/* ---------- isi borang RP, JSU dan S3P daripada Table 4 ----------
+   Table 4 kursus (Bank Maklumat Kursus) ialah sumber maklumat yang sama bagi RP, JSU dan S3P. Pensyarah memilih bahagian
+   yang hendak diisi; bahagian yang sudah diisi tidak ditanda secara lalai supaya tidak tertimpa tanpa sengaja. */
+const JAM_F2F_T4 = ['fL', 'fT', 'fP', 'fO', 'oL', 'oT', 'oP', 'oO'];
+function jamT4(t){ const n = k => Number(t[k]) || 0; return { f2f: JAM_F2F_T4.reduce((a, k) => a + n(k), 0), nf2f: n('nf2f') }; }
+function adaTeks(v){ return String(v ?? '').trim() !== ''; }
+function barisPertama(s){ return String(s || '').split('\n').map(x => x.trim()).find(Boolean) || ''; }
+/** Bahagikan h jam kepada n bahagian (gandaan 0.5 jam) yang jumlahnya kekal h. */
+function bahagiJam(h, n){
+  if(!h) return Array(n).fill('');
+  const u = Math.round(h * 2), a = Math.floor(u / n), b = u - a * n;
+  return Array.from({ length:n }, (z, i) => (a + (i < b ? 1 : 0)) / 2 || '');
+}
+/** Agihan topik Table 4 kepada minggu RP mengikut jam bersemuka; setiap topik sekurang-kurangnya satu minggu.
+    Jika topik melebihi bilangan minggu, beberapa topik berkongsi minggu yang sama (baris berasingan). */
+function agihMingguT4(topik, nM){
+  const T = topik.map(t => Object.assign({ nama: String(t.topik || '').trim() }, jamT4(t))).filter(t => t.nama);
+  const minggu = Array.from({ length:nM }, () => []);
+  if(T.length >= nM){
+    T.forEach((t, i) => minggu[Math.floor(i * nM / T.length)].push({ topik: t.nama, f2f: t.f2f || '', nf2f: t.nf2f || '' }));
+    return minggu;
+  }
+  const jum = T.reduce((a, t) => a + t.f2f, 0), ideal = T.map(t => jum ? t.f2f / jum * nM : nM / T.length);
+  const w = ideal.map(x => Math.max(1, Math.floor(x)));
+  let beza = w.reduce((a, b) => a + b, 0) - nM;
+  while(beza > 0){ let j = -1; w.forEach((x, i) => { if(x > 1 && (j < 0 || x - ideal[i] > w[j] - ideal[j])) j = i; }); w[j]--; beza--; }
+  while(beza < 0){ let j = 0; w.forEach((x, i) => { if(ideal[i] - x > ideal[j] - w[j]) j = i; }); w[j]++; beza++; }
+  let m = 0;
+  T.forEach((t, i) => { const f = bahagiJam(t.f2f, w[i]), nf = bahagiJam(t.nf2f, w[i]); for(let k = 0; k < w[i]; k++) minggu[m++].push({ topik: t.nama, f2f: f[k], nf2f: nf[k] }); });
+  return minggu;
+}
+/** CLO yang dinilai oleh sesuatu komponen pentaksiran (berdasarkan ruangan pentaksiran setiap CLO dalam Table 4). */
+function cloKomponenT4(clo, komponen){
+  const n = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(), k = n(komponen);
+  if(!k) return '';
+  return clo.map((c, i) => String(c.pentaksiran || '').split(/[,;\n/]+/).map(n).filter(Boolean).some(x => x === k || k.startsWith(x) || x.startsWith(k)) ? 'CLO' + (i + 1) : '').filter(Boolean).join(', ');
+}
+function itemPentaksiran(s){ return String(s || '').split(/[,;\n/]+/).map(x => x.trim()).filter(Boolean); }
+function dataT4Rujuk(k){
+  const d = t4Normal(k.t4.data, { kursus:{ semester: k.semester, klasifikasi: k.klasifikasi, plo: k.plo || [] }, cadangan:{} });
+  return { d, R: ringkasT4(d) };
+}
+function tahapJana(k, jenis){ const t = String(k.tahap || ''); return /diploma/i.test(t) ? 'diploma' : (/asasi/i.test(t) && jenis === 's3p' ? 'asasi' : (t ? 'ijazah' : '')); }
+/** Bahagian borang yang boleh diisi daripada Table 4: kosong(d) menentukan tanda lalai; perlu(T) memerlukan data dalam Table 4. */
+function bahagianIsiT4(jenis){
+  const B = {
+    rp: [
+      { k:'maklumat', t:'Nama kursus dan nilai kredit', kosong: d => !adaTeks(d.nama) && !adaTeks(d.kredit) },
+      { k:'pensyarah', t:'Nama pensyarah (staf akademik dalam Table 4)', kosong: d => !adaTeks(d.pensyarah) || d.pensyarah === janaKosong('rp').pensyarah, perlu: T => T.d.staf.some(adaTeks) },
+      { k:'sinopsis', t:'Sinopsis kursus', kosong: d => !adaTeks(d.sinopsis), perlu: T => adaTeks(T.d.sinopsis) },
+      { k:'clo', t:'CLO, PLO, kaedah pengajaran dan kaedah penilaian', kosong: d => (d.clo || []).every(c => !adaTeks(c.teks) && !adaTeks(c.pengajaran) && !adaTeks(c.penilaian)), perlu: T => T.R.clo.length },
+      { k:'minggu', t:'Topik dan SLT rancangan 14 minggu (diagihkan mengikut jam bersemuka)', kosong: d => (d.minggu || []).every(m => (m.baris || []).every(b => !adaTeks(b.topik))), perlu: T => T.R.topik.some(t => adaTeks(t.topik)) },
+      { k:'penilaian', t:'Strategi penilaian: komponen, pemberat, CLO dan SLT', kosong: d => (d.berterusan || []).concat(d.akhir || []).every(x => !adaTeks(x.pemberat) && !adaTeks(x.clo)) && (d.berterusan || []).every(x => !adaTeks(x.nama)), perlu: T => T.R.ber.length + T.R.akh.length },
+      { k:'rujukan', t:'Rujukan utama', kosong: d => !adaTeks(d.rujukanUtama), perlu: T => adaTeks(T.d.rujukan) }
+    ],
+    jsu: [
+      { k:'maklumat', t:'Nama kursus, program, templat dan semester & tahun pelajar', kosong: d => !adaTeks(d.nama) && !adaTeks(d.program) && !adaTeks(d.semTahun) },
+      { k:'clo', t:'CLO1 hingga CLO3', kosong: d => (d.clo || []).every(c => !adaTeks(c.teks)), perlu: T => T.R.clo.length },
+      { k:'topik', t:'Topik / kandungan kursus dan SLT setiap topik', kosong: d => (d.topik || []).every(t => !adaTeks(t.nama)), perlu: T => T.R.topik.some(t => adaTeks(t.topik)) }
+    ],
+    s3p: [
+      { k:'maklumat', t:'Nama kursus, program dan templat S3P', kosong: d => !adaTeks(d.nama) && !adaTeks(d.program) },
+      { k:'clo', t:'Pernyataan CLO dan PLO', kosong: d => (d.clo || []).every(c => !adaTeks(c.teks)), perlu: T => T.R.clo.length },
+      { k:'item', t:'Item penilaian bagi setiap CLO (ruangan pentaksiran Table 4)', kosong: d => (d.clo || []).every(c => !adaTeks(c.item)), perlu: T => T.R.clo.some(c => adaTeks(c.pentaksiran)) },
+      { k:'komponen', t:'Label komponen markah M1–M4 dan PA', kosong: d => JSON.stringify(d.komponen) === JSON.stringify(janaKosong('s3p').komponen), perlu: T => T.R.ber.length + T.R.akh.length }
+    ]
+  };
+  return B[jenis] || [];
+}
+/** Isi bahagian yang dipilih ke dalam data borang d. Memulangkan nota yang perlu disemak oleh pensyarah. */
+function isiBahagianT4(jenis, d, k, T, pilih){
+  const { d: t4, R } = T, P = x => pilih.includes(x), nota = [];
+  if(P('maklumat')){
+    if(k.nama) d.nama = k.nama;
+    if(jenis === 'rp'){ if(k.kredit) d.kredit = String(k.kredit); }
+    else { if(k.program) d.program = k.program; const th = tahapJana(k, jenis); if(th) d.tahap = th; }
+    if(jenis === 'jsu' && (t4.tahun || t4.semester)) d.semTahun = [t4.tahun && 'Tahun ' + t4.tahun, t4.semester && 'Semester ' + t4.semester].filter(Boolean).join(' ');
+  }
+  if(jenis === 'rp'){
+    if(P('pensyarah')) d.pensyarah = t4.staf.filter(adaTeks).join('\n');
+    if(P('sinopsis')) d.sinopsis = t4.sinopsis;
+    if(P('clo')){
+      d.clo = [0, 1, 2, 3].map(i => { const c = R.clo[i] || {}; return { teks: c.teks || '', plo: ploTeks(c.plo), pengajaran: c.pengajaran || '', penilaian: c.pentaksiran || '' }; });
+      if(R.clo.length > 4) nota.push('RP menerima empat CLO; CLO5 dan seterusnya dalam Table 4 tidak dimasukkan.');
+    }
+    if(P('minggu')){
+      const M = agihMingguT4(R.topik, 14), lama = d.minggu || [];
+      d.minggu = M.map((L, w) => ({ baris: (L.length ? L : [{}]).slice(0, 3).map((b, j) => Object.assign(barisMingguKosong(), b, { tarikh: ((((lama[w] || {}).baris || [])[j]) || {}).tarikh || '' })) }));
+      nota.push('Topik diagihkan kepada 14 minggu mengikut jam bersemuka dalam Table 4. Semak agihan minggu, kemudian isi rancangan kuliah, tutorial dan aktiviti.');
+    }
+    if(P('penilaian')){
+      const ke = x => ({ nama: String(x.komponen || '').trim(), pemberat: adaTeks(x.peratus) ? Number(x.peratus) : '', clo: cloKomponenT4(R.clo, x.komponen),
+        f2f: (Number(x.fizikal) || 0) + (Number(x.talian) || 0) || '', nf2f: adaTeks(x.nf2f) ? Number(x.nf2f) : '' });
+      d.berterusan = R.ber.map(ke); d.akhir = R.akh.map(ke);
+      if(!d.berterusan.length) d.berterusan = [{ nama:'', pemberat:'', clo:'', f2f:'', nf2f:'' }];
+      if(d.berterusan.concat(d.akhir).some(x => x.nama && !x.clo)) nota.push('Sebahagian komponen penilaian tidak dinyatakan dalam ruangan pentaksiran CLO Table 4; isi CLO yang dinilai.');
+    }
+    if(P('rujukan')) d.rujukanUtama = t4.rujukan;
+  }
+  if(jenis === 'jsu'){
+    if(P('clo')){ d.clo = [0, 1, 2].map(i => ({ teks: (R.clo[i] || {}).teks || '' })); if(R.clo.length > 3) nota.push('Templat JSU menerima tiga CLO; CLO4 dan seterusnya tidak dimasukkan.'); }
+    if(P('topik')){
+      const tp = R.topik.filter(t => adaTeks(t.topik));
+      d.topik = tp.slice(0, JSU_TOPIK.maks).map(t => { const j = jamT4(t); return { nama: barisPertama(t.topik), slt: (j.f2f + j.nf2f) || '' }; });
+      normalJSU(d);
+      if(tp.length > JSU_TOPIK.maks) nota.push('Templat JSU menerima ' + JSU_TOPIK.maks + ' topik; topik selebihnya tidak dimasukkan.');
+      nota.push('SLT setiap topik ialah jumlah jam bersemuka dan tidak bersemuka dalam Table 4. Buang topik yang tidak dinilai dalam peperiksaan akhir' + (['A', 'B', 'C'].some(b => ((d.bahagian[b] || {}).soalan || []).length) ? ' dan semak nombor topik bagi soalan sedia ada.' : '.'));
+    }
+  }
+  if(jenis === 's3p'){
+    if(P('clo')){
+      [0, 1, 2].forEach(i => { const c = R.clo[i] || {}, n = ploDariTeks(c.plo); d.clo[i] = Object.assign(d.clo[i] || {}, { teks: c.teks || '', plo: n.length ? 'PLO' + n[0] : '' }); });
+      if(R.clo.length > 3) nota.push('Templat S3P menerima tiga CLO; CLO4 dan seterusnya tidak dimasukkan.');
+      if(R.clo.slice(0, 3).some(c => ploDariTeks(c.plo).length > 1)) nota.push('Templat S3P menerima satu PLO bagi setiap CLO; PLO pertama digunakan.');
+    }
+    if(P('item')) [0, 1, 2].forEach(i => { d.clo[i] = Object.assign(d.clo[i] || {}, { item: itemPentaksiran((R.clo[i] || {}).pentaksiran).join('\n') }); });
+    if(P('komponen')){
+      const b = R.ber.map(x => String(x.komponen || '').trim()).filter(Boolean), a = R.akh.map(x => String(x.komponen || '').trim()).filter(Boolean);
+      d.komponen = [0, 1, 2, 3].map(i => b[i] || '').concat([a[0] || '']);
+      if(b.length > 4) nota.push('S3P menerima empat komponen penilaian berterusan (M1–M4); komponen selebihnya tidak dimasukkan.');
+    }
+    if(P('clo') || P('item')) nota.push('Isi deskripsi dan pemberat (markah penuh) setiap CLO.');
+  }
+  return nota;
+}
+async function isiDaripadaT4(){
+  const J = UI.jana, kod = normKod(J.data.kod);
+  if(!kod){ toast('Isi kod kursus dahulu.', 'ralat'); return; }
+  if(!J.rujuk || J.rujuk.kod !== kod){
+    const r = await cuba(() => api('rujukKursus', { kod }, { tanpaMesej:true })); if(!r) return;
+    J.rujuk = { kod, kursus: r.kursus || [] };
+  }
+  const L = J.rujuk.kursus.filter(x => x.t4);
+  if(!L.length){ toast('Table 4 bagi ' + kod + ' belum diisi. Table 4 diisi di Dokumentasi → Table 4 · Maklumat Kursus.', 'ralat'); return; }
+  const p = pilihRujukJana();
+  modalIsiT4(p && p.t4 ? p.programId : L[0].programId);
+}
+function modalIsiT4(pid){
+  const J = UI.jana, L = J.rujuk.kursus.filter(x => x.t4), k = L.find(x => x.programId === pid) || L[0], T = dataT4Rujuk(k);
+  const B = bahagianIsiT4(J.jenis).filter(b => !b.perlu || b.perlu(T));
+  if(!B.length){ toast('Table 4 ' + k.kod + ' belum mempunyai maklumat yang boleh diisi ke dalam borang ini.', 'ralat'); return; }
+  const bg = bukaModal({ tajuk:'Isi daripada Table 4', desk:'Maklumat yang sama dengan Table 4 diisi terus ke dalam borang ini. Semak borang sebelum menjana PDF.',
+    isi:`<div class="notis info" style="margin:0 0 12px">Sumber: Table 4 <b>${esc(k.kod)} ${esc(k.nama || '')}</b>, ${esc(k.programKod)}${k.t4.dikemaskini ? ' · dikemas kini ' + esc(String(k.t4.dikemaskini).slice(0, 16)) : ''}${k.t4.oleh ? ' oleh ' + esc(k.t4.oleh) : ''}.</div>
+      ${L.length > 1 ? `<label class="fld" for="isiT4Prog">Program</label><select id="isiT4Prog" style="margin-bottom:12px" onchange="tutupModal();modalIsiT4(Number(this.value))">${L.map(x => `<option value="${x.programId}" ${x === k ? 'selected' : ''}>${esc(x.programKod)} · ${esc(x.program)}</option>`).join('')}</select>` : ''}
+      <p class="mini" style="margin:0 0 6px">Pilih bahagian yang hendak diisi. Bahagian yang telah anda isi tidak ditanda supaya tidak tertimpa.</p>
+      <div id="isiT4Bahagian">${B.map(b => { const kosong = b.kosong(J.data);
+        return `<label class="pilih-baris"><input type="checkbox" value="${b.k}" ${kosong ? 'checked' : ''}><span style="flex:1;min-width:0"><b style="font-weight:600">${esc(b.t)}</b>${kosong ? '' : ' <span class="mini" style="color:var(--amber)">· menggantikan isi semasa</span>'}</span></label>`; }).join('')}</div>`,
+    kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" data-j="1" id="isiT4Ok">${ik('salin', 14)}Isi borang</button>` });
+  bg.querySelector('#isiT4Ok').addEventListener('click', () => {
+    const pilih = [...bg.querySelectorAll('#isiT4Bahagian input:checked')].map(x => x.value);
+    if(!pilih.length){ toast('Pilih sekurang-kurangnya satu bahagian.', 'ralat'); return; }
+    const nota = isiBahagianT4(J.jenis, J.data, k, T, pilih);
+    J.rujukPilih = k.programId;
+    J.isiT4 = { kod: k.kod, program: k.programKod, bahagian: B.filter(b => pilih.includes(b.k)).map(b => b.t), nota };
+    J.ubah = true; tutupModal(); lukisSemulaJana();
+    toast('Borang diisi daripada Table 4 ' + k.kod + ' (' + k.programKod + ').');
+  });
+}
+/** Notis di atas borang: Table 4 tersedia bagi kod kursus ini, atau ringkasan bahagian yang telah diisi. */
+function lukisT4Jana(){
+  const box = el('janaT4'), J = UI.jana; if(!box || !J) return;
+  const kod = normKod(J.data.kod), L = J.rujuk && J.rujuk.kod === kod ? J.rujuk.kursus.filter(x => x.t4) : [];
+  if(!L.length){ box.innerHTML = ''; return; }
+  const I = J.isiT4 && normKod(J.isiT4.kod) === kod ? J.isiT4 : null;
+  box.innerHTML = `<div class="notis info" id="janaT4Notis" style="margin:0 0 14px;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:240px;line-height:1.55">
+      ${I ? `<b>Diisi daripada Table 4 ${esc(I.kod)} (${esc(I.program)}):</b> ${esc(I.bahagian.join('; '))}.${I.nota.length ? `<ul style="margin:6px 0 0 18px;padding:0">${I.nota.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}`
+        : `Table 4 bagi <b>${esc(kod)}</b> (${L.map(x => esc(x.programKod)).join(', ')}) tersedia dalam Bank Maklumat Kursus. Maklumat yang sama boleh diisi terus ke dalam borang ini tanpa menaip semula.`}</div>
+    <button class="btn ${I ? 'btn-ghost' : 'btn-primary'} btn-sm" id="janaIsiT4" onclick="isiDaripadaT4()">${ik('salin', 14)}${I ? 'Isi semula' : 'Isi daripada Table 4'}</button></div>`;
 }
 
 /* ---------- borang RP ---------- */
