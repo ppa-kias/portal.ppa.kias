@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal PPA KIAS</title>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<!-- Penjana PDF hanya diperlukan apabila laporan dijana: dimuat tanpa menghalang paparan halaman -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4685,11 +4687,38 @@ function sirikanXml(doc){
 function anakNS(el, nama){ return [...el.childNodes].filter(n => n.nodeType === 1 && n.localName === nama); }
 
 const _cacheTemplat = {};
+/* Templat disimpan dalam pelayar (IndexedDB) supaya tidak dimuat turun semula setiap kali portal dibuka. Pelayan
+   menyemak versi fail templat dan hanya menghantar kandungan apabila pentadbir menukar templat. */
+const storTemplat = {
+  _db: null,
+  buka(){
+    if(this._db) return this._db;
+    return (this._db = new Promise(ok => {
+      const tamat = setTimeout(() => ok(null), 2000);
+      try {
+        const q = indexedDB.open('portal-ppa-kias', 1);
+        q.onupgradeneeded = () => q.result.createObjectStore('templat');
+        q.onsuccess = () => { clearTimeout(tamat); ok(q.result); };
+        q.onerror = q.onblocked = () => { clearTimeout(tamat); ok(null); };
+      } catch(e){ clearTimeout(tamat); ok(null); }
+    }));
+  },
+  async ambil(key){
+    const db = await this.buka(); if(!db) return null;
+    return new Promise(ok => { try { const q = db.transaction('templat').objectStore('templat').get(key); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); } catch(e){ ok(null); } });
+  },
+  async simpan(key, nilai){
+    const db = await this.buka(); if(!db) return;
+    try { db.transaction('templat', 'readwrite').objectStore('templat').put(nilai, key); } catch(e){ /* storan penuh atau disekat */ }
+  }
+};
 async function ambilTemplat(key){
   if(_cacheTemplat[key]) return _cacheTemplat[key];
-  const r = await api('templatAmbil', { key }, { tanpaMesej:true });
-  const bin = atob(r.kandungan || ''), arr = new Uint8Array(bin.length);
-  for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  const ada = await storTemplat.ambil(key);
+  const r = await api('templatAmbil', { key, versi: ada && ada.bait ? ada.versi : '' }, { tanpaMesej:true });
+  if(r.sama && ada && ada.bait) return (_cacheTemplat[key] = { nama: r.nama, bait: ada.bait });
+  const arr = b64KeBait(r.kandungan);
+  if(r.versi) storTemplat.simpan(key, { versi: r.versi, nama: r.nama, bait: arr });
   return (_cacheTemplat[key] = { nama: r.nama, bait: arr });
 }
 async function bukaZip(bait){ const JSZip = await muatJSZip(); return JSZip.loadAsync(bait); }
@@ -5812,7 +5841,24 @@ async function gabungPdf(senarai){
   for(const b of senarai){ const d = await L.PDFDocument.load(b64KeBait(b)); (await out.copyPages(d, d.getPageIndices())).forEach(p => out.addPage(p)); }
   return out.saveAsBase64();
 }
-async function jadiPdf(bahagian){ const r = await api('pdfJana', { bahagian }, { senyap:true, tanpaMesej:true }); return gabungPdf(r.pdf); }
+async function jadiPdf(bahagian){
+  const kecil = await Promise.all(bahagian.map(async x => x.ext === 'docx' ? Object.assign({}, x, { data: await tanpaFonTerbenam(x.data) }) : x));
+  const r = await api('pdfJana', { bahagian: kecil }, { senyap:true, tanpaMesej:true }); return gabungPdf(r.pdf);
+}
+/** Salinan docx tanpa fon terbenam untuk penukaran PDF. Google Docs tidak menggunakan fon terbenam, jadi rupa PDF tidak
+    berubah tetapi fail yang dihantar jauh lebih kecil (templat RP: 3.6 MB kepada kira-kira 0.3 MB). Fail Word asal tidak diubah. */
+async function tanpaFonTerbenam(b64){
+  try {
+    const zip = await bukaZip(b64KeBait(b64)), fon = zip.file(/^word[/]fonts[/]/);
+    if(!fon.length) return b64;
+    fon.forEach(f => zip.remove(f.name));
+    zip.remove('word/_rels/fontTable.xml.rels');
+    const ft = zip.file('word/fontTable.xml'), st = zip.file('word/settings.xml');
+    if(ft) zip.file('word/fontTable.xml', (await ft.async('string')).replace(/<w:embed(Regular|Bold|Italic|BoldItalic)\b[^>]*[/]>/g, ''));
+    if(st) zip.file('word/settings.xml', (await st.async('string')).replace(/<w:(embedTrueTypeFonts|embedSystemFonts|saveSubsetFonts)\b[^>]*[/]>/g, ''));
+    return await zip.generateAsync({ type:'base64', compression:'DEFLATE' });
+  } catch(e){ return b64; }
+}
 async function binaDokumen(jenis, d, ttd){
   if(jenis === 'rp') return janaRP(d, ttd);
   if(jenis === 'jsu') return janaJSU(d, ttd);
@@ -6299,7 +6345,8 @@ function tabSandaran(){
     <div class="card pad"><h3 class="serif h3" style="margin-bottom:6px">Sandaran Google Drive</h3>
       <p class="mini" style="margin-bottom:14px;line-height:1.6">Setiap hari jam 1 pagi, sistem menyalin pangkalan data (Google Sheets) dan mengeksport data JSON ke folder <b>Sandaran</b>. Sebanyak 30 sandaran terkini disimpan. Fail yang dimuat naik sentiasa tersimpan dalam folder Google Drive portal.</p>
       <div id="sandaranStatus" class="mini">Memuatkan status sandaran…</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn btn-primary" onclick="sandaranSekarang()">${ik('awan')}Sandaran sekarang</button><button class="btn btn-ghost" onclick="pasangPencetus()">${ik('kalendar')}Pasang semula jadual harian</button></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn btn-primary" onclick="sandaranSekarang()">${ik('awan')}Sandaran sekarang</button><button class="btn btn-ghost" onclick="pasangPencetus()">${ik('kalendar')}Pasang semula jadual harian & pecutan</button><button class="btn btn-ghost" id="btnCacheKosong" onclick="kosongkanCache()">${ik('segar')}Kosongkan cache data</button></div>
+      <p class="mini" style="margin-top:10px;line-height:1.6"><b>Pecutan:</b> data Google Sheets disimpan sementara (cache) supaya portal cepat dibuka. Jadual pecutan mengisi semula cache setiap 10 minit dan membatalkannya apabila Google Sheets disunting terus. Jika data yang disunting terus dalam Google Sheets belum kelihatan, tekan <b>Kosongkan cache data</b>.</p>
       <div id="sandaranSenarai" style="margin-top:16px"></div></div>
     <div class="card pad"><h3 class="serif h3" style="margin-bottom:6px">Migrasi daripada sistem lama</h3>
       <p class="mini" style="margin-bottom:12px;line-height:1.6">Import data daripada dua sistem terdahulu (Laporan CPD dan Laporan Fail Kursus). Pautan dan token sistem lama telah ditetapkan dalam Code.gs; isi medan di bawah hanya jika berbeza.</p>
@@ -6323,7 +6370,7 @@ async function muatSandaran(){
 function paparSandaran(){
   const r = UI.sandaran, s = el('sandaranStatus'); if(!r || !s) return;
   s.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">
-    <div>${r.pencetus ? '<span class="badge b-ya">Sandaran harian aktif</span>' : '<span class="badge b-tidak">Jadual sandaran harian belum dipasang</span>'}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${r.pencetus ? '<span class="badge b-ya">Sandaran harian aktif</span>' : '<span class="badge b-tidak">Jadual sandaran harian belum dipasang</span>'}${r.pecutan ? '<span class="badge b-ya" id="bPecutan">Pecutan cache aktif</span>' : '<span class="badge b-tidak" id="bPecutan">Pecutan cache belum dipasang: tekan Pasang semula jadual harian & pecutan</span>'}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn-ghost btn-sm" href="${esc(r.pangkalanData)}" target="_blank" rel="noopener">${ik('jadual', 14)}Pangkalan data (Sheets)</a><a class="btn btn-ghost btn-sm" href="${esc(r.folderUtama)}" target="_blank" rel="noopener">${ik('folder', 14)}Folder Drive portal</a></div></div>`;
   el('sandaranSenarai').innerHTML = r.senarai.length
     ? `<div class="mini up" style="margin-bottom:6px">Sandaran terkini</div><ul class="senarai-ringkas">${r.senarai.slice(0, 12).map(f => `<li><span class="ikon-bulat" style="background:var(--sky-soft);color:var(--sky)">${ik(/JSON/.test(f.nama) ? 'fail' : 'jadual', 15)}</span><div class="isi"><b>${esc(f.nama)}</b><span class="mini">${esc(fmtMasa(f.tarikh))} · ${fmtSaiz(f.saiz)}</span></div><a class="btn-ikon" href="${esc(f.url)}" target="_blank" rel="noopener" aria-label="Buka sandaran">${ik('luar', 15)}</a></li>`).join('')}</ul>`
@@ -6331,6 +6378,7 @@ function paparSandaran(){
 }
 async function sandaranSekarang(){ await cuba(async () => { UI.sandaran = await api('sandaranSekarang', {}, { tanpaMesej:true }); paparSandaran(); toast('Sandaran berjaya disimpan ke Google Drive.'); }); }
 async function pasangPencetus(){ await cuba(async () => { UI.sandaran = await api('pencetusPasang', {}); paparSandaran(); }); }
+async function kosongkanCache(){ await cuba(() => api('cacheKosong', {})); }
 async function jalanMigrasi(){
   const cpd = el('mgCPD').checked, fk = el('mgFK').checked;
   if(!cpd && !fk){ toast('Pilih sekurang-kurangnya satu modul.', 'ralat'); return; }
