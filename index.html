@@ -1222,6 +1222,12 @@ function pensyarahThn(pid, thn){
   const e = rosterUntuk(thn).find(x => x.pid === pid);
   return Object.assign({}, p, { fakulti:(e && e.fakulti) || p.fakulti, jawatan:(e && e.jawatan) || p.jawatan, status: e ? e.status : p.status });
 }
+/** Baris CPD bagi pensyarah tertentu: termasuk pensyarah yang tiada dalam senarai CPD tahun itu (jam 0). */
+function barisCPDPid(pids, thn){
+  const s = S.tetapan.sasaranCPD, jam = {}, pm = petaP();
+  S.cpd.rekod.forEach(r => { if(r.tahun === thn && pids.has(r.pid)) jam[r.pid] = (jam[r.pid] || 0) + (Number(r.jam) || 0); });
+  return [...pids].filter(id => pm[id]).map(id => { const j = jam[id] || 0; return { p: pensyarahThn(id, thn), jam: j, tier: tierCPD(j), jurang: Math.max(0, s - j) }; });
+}
 function barisCPD(thn){
   const ros = rosterUntuk(thn), pm = petaP(), ids = new Set(ros.map(r => r.pid)), jam = {};
   S.cpd.rekod.forEach(r => { if(r.tahun === thn){ ids.add(r.pid); jam[r.pid] = (jam[r.pid] || 0) + (Number(r.jam) || 0); } });
@@ -2641,7 +2647,7 @@ function lukisCPD(){
   const tahunList = tahunCPDSenarai(), A = isAdmin();
   if(!UI.cpd.tahun || !tahunList.includes(UI.cpd.tahun)) UI.cpd.tahun = (S.ringkasan && tahunList.includes(S.ringkasan.tahunCPD)) ? S.ringkasan.tahunCPD : tahunList[0];
   const thn = UI.cpd.tahun;
-  if(UI.cpd.progAk && S.paparPenuh) return lukisCPDProgAk(tahunList);
+  if(UI.cpd.progAk && (S.paparPenuh || kpCPD())) return lukisCPDProgAk(tahunList);
   let h = `<div class="kepala"><div><div class="eyebrow">Modul · CPD Pensyarah</div><h1 class="serif">Laporan CPD Pensyarah</h1>
       <p class="mini">Sasaran ${S.tetapan.sasaranCPD} jam CPD setahun bagi setiap pensyarah. Tahap: <b style="color:var(--brand-deep)">Tercapai</b> (sama atau melebihi sasaran), <b style="color:#7E4C0E">Hampir</b> (75% hingga bawah sasaran), <b style="color:#9C321E">Rendah</b> (bawah 75%).</p></div>
     <div class="kepala-aksi">
@@ -2650,12 +2656,20 @@ function lukisCPD(){
       ${menuCPD(thn)}
     </div></div>`;
   h += notisSkop();
+  if(kpCPD()) h += `<div class="notis info" id="notisCPDKP">Sebagai Ketua Program, anda boleh menjana laporan CPD <b>pensyarah terpilih</b> dan laporan CPD <b>staf pengajar program akademik</b> bagi program yang anda ketuai melalui butang <b>Laporan</b>.</div>`;
   h += S.paparPenuh ? bahagianCPDPenuh(thn) : bahagianCPDSaya(thn);
   el('halaman').innerHTML = h;
   if(S.paparPenuh){ lukisJadualCPD(); cartaCPD(thn); } else cartaCPDSaya(thn);
 }
+/** Ketua Program (bukan paparan penuh): laporan CPD bagi staf pengajar program yang diketuai. */
+function kpCPD(){ return !S.paparPenuh && ((S.program || {}).senarai || []).some(p => p.bolehUrus); }
 function menuCPD(thn){
   const A = isAdmin();
+  if(kpCPD()) return `<div class="dd"><button class="btn btn-ghost" id="menuCPDKP" onclick="togolDD(event,this)">${ik('turun')}<span class="sm-sembunyi">Laporan</span></button><div class="dd-menu">
+    ${saya() ? `<button onclick="pdfCPDIndividu(${saya()},${thn})">${ik('fail')}Laporan saya (PDF)</button><div class="dd-sep"></div>` : ''}
+    <button onclick="modalLaporanCPDKP()">${ik('pengguna')}Pensyarah terpilih (pilih beberapa / semua)</button>
+    <button onclick="bukaCPDProgAk()">${ik('topi')}Laporan CPD staf pengajar program akademik</button>
+  </div></div>`;
   if(!S.paparPenuh) return saya() ? `<button class="btn btn-ghost" onclick="pdfCPDIndividu(${saya()},${thn})">${ik('turun')}<span class="sm-sembunyi">Laporan saya (PDF)</span></button>` : '';
   return `<div class="dd"><button class="btn btn-ghost" onclick="togolDD(event,this)">${ik('turun')}<span class="sm-sembunyi">Laporan</span></button><div class="dd-menu">
     ${skopFak() ? `<button onclick="pdfCPDFakulti('${esc(skopFak())}',${thn})">${ik('fail')}Laporan PDF fakulti ${esc(skopFak())}</button>` : `<button onclick="pdfCPDInstitusi(${thn})">${ik('fail')}Laporan PDF institusi</button>`}
@@ -3013,6 +3027,30 @@ function modalLaporanCPD(){
     kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" onclick="janaLaporan()">Jana laporan</button>` });
   lapKemas();
 }
+/** Ketua Program: staf pengajar semua program yang diketuai (semua sesi) dan KP sendiri. */
+function pengajarKP(){
+  const ids = new Set();
+  S.program.senarai.filter(p => p.bolehUrus).forEach(p => pengajarProgram(p.id, null).forEach(o => ids.add(o.pid)));
+  if(saya()) ids.add(saya());
+  return ids;
+}
+function modalLaporanCPDKP(){
+  const thn = UI.cpd.tahun, pm = petaP(), prog = S.program.senarai.filter(p => p.bolehUrus);
+  const L = [...pengajarKP()].filter(id => pm[id]).map(id => pensyarahThn(id, thn)).sort((a, b) => fakIdx(a.fakulti) - fakIdx(b.fakulti) || a.nama.localeCompare(b.nama));
+  LAP_FORMAT = 'pdf';
+  bukaModal({ tajuk:'Laporan CPD pensyarah terpilih', desk:'Tahun ' + thn + '. Pilih seorang, beberapa atau semua staf pengajar program ' + prog.map(p => p.kod).join(', ') + '.', isi:`<div class="borang">
+    ${L.length ? pemilihPensyarah(L) : kosong('Tiada staf pengajar', 'Staf pengajar dikenal pasti daripada struktur program dan pendaftaran fail kursus. Tetapkan struktur program di tab Ketua Program.')}
+    <label class="semak"><input type="checkbox" id="lapButiran" checked> Sertakan butiran latihan setiap pensyarah</label>
+    <div><span class="fld" style="display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:6px">Format fail</span><div class="seg" id="lapFormat"><button type="button" class="aktif" onclick="lapSetFormat('pdf',this)">PDF</button><button type="button" onclick="lapSetFormat('csv',this)">CSV</button></div></div>
+    <p class="ralat" id="lapErr" hidden></p></div>`,
+    kaki:`<button class="btn btn-ghost" onclick="tutupModal()">Batal</button><button class="btn btn-primary" id="lapKPBtn" onclick="janaLaporanCPDKP()">Jana laporan</button>` });
+}
+function janaLaporanCPDKP(){
+  const pids = pensyarahDipilih(), err = el('lapErr'), thn = UI.cpd.tahun;
+  if(!pids.size){ err.textContent = 'Pilih sekurang-kurangnya seorang pensyarah.'; err.hidden = false; return; }
+  if(LAP_FORMAT === 'pdf') pdfCPDPilihan(pids, thn, el('lapButiran').checked); else csvCPDPilihan(pids, thn, el('lapButiran').checked);
+  tutupModal();
+}
 function lapSetFormat(f, b){ LAP_FORMAT = f; document.querySelectorAll('#lapFormat button').forEach(x => x.classList.remove('aktif')); b.classList.add('aktif'); }
 function lapKemas(){
   const j = el('lapJenis').value, sel = el('lapSasaran'), thn = UI.cpd.tahun, rows = barisCPD(thn);
@@ -3092,7 +3130,7 @@ function csvCPDFakulti(fak, thn){
 }
 function csvCPDPilihan(pids, thn, butiran){
   const rows = [['Bil','Nama','Fakulti','Jawatan','Status Jawatan','Tahun','Jumlah Jam CPD','Sasaran','Jurang','Status']];
-  barisCPD(thn).filter(r => pids.has(r.p.id)).sort((a, b) => fakIdx(a.p.fakulti) - fakIdx(b.p.fakulti) || a.p.nama.localeCompare(b.p.nama))
+  barisCPDPid(pids, thn).sort((a, b) => fakIdx(a.p.fakulti) - fakIdx(b.p.fakulti) || a.p.nama.localeCompare(b.p.nama))
     .forEach((r, i) => rows.push([i + 1, r.p.nama, r.p.fakulti, r.p.jawatan, r.p.status, thn, fmt(r.jam), S.tetapan.sasaranCPD, fmt(r.jurang), statusLbl(r)]));
   if(butiran){
     rows.push([], ['Butiran latihan'], ['Nama','Fakulti','Kategori','Kursus / Bengkel','Hashtag','Catatan','Tarikh Mula','Tarikh Tamat','Jam CPD']);
@@ -3131,7 +3169,7 @@ function pengajarProgram(pid, sid){
   return [...out.values()];
 }
 function barisCPDProgAk(pid, sid, thn){
-  const s = S.tetapan.sasaranCPD, jam = {}, fak = skopFak(), urut = {};
+  const s = S.tetapan.sasaranCPD, jam = {}, urus = ((S.program.senarai.find(x => x.id === pid) || {}).bolehUrus), fak = urus ? '' : skopFak(), urut = {};
   sesiTersusun().forEach((x, i) => { urut[x.id] = i; });
   S.cpd.rekod.forEach(r => { if(r.tahun === thn) jam[r.pid] = (jam[r.pid] || 0) + (Number(r.jam) || 0); });
   return pengajarProgram(pid, sid).map(o => {
@@ -7699,7 +7737,7 @@ async function pdfCPDFakulti(fak, thn){
   return pdfCPDKumpulan(barisCPD(thn).filter(r => r.p.fakulti === fak), thn, 'Laporan CPD Mengikut Fakulti', namaFak(fak), 'Laporan_CPD_' + fak + '_' + thn + '.pdf', false, false);
 }
 async function pdfCPDPilihan(pids, thn, butiran){
-  return pdfCPDKumpulan(barisCPD(thn).filter(r => pids.has(r.p.id)), thn, 'Laporan CPD Pensyarah Terpilih', pids.size + ' pensyarah terpilih', 'Laporan_CPD_Terpilih_' + thn + '.pdf', true, butiran);
+  return pdfCPDKumpulan(barisCPDPid(pids, thn), thn, 'Laporan CPD Pensyarah Terpilih', pids.size + ' pensyarah terpilih', 'Laporan_CPD_Terpilih_' + thn + '.pdf', true, butiran);
 }
 async function pdfCPDKumpulan(senarai, thn, tajuk, sub, namaFail, denganFak, butiran){
   const doc = pdfBaru(); if(!doc) return;
